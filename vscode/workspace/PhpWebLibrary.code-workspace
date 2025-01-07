@@ -1,0 +1,77 @@
+{
+	"folders": [
+		{
+			"path": "../../www/libs"
+		}
+	],
+	"settings": {
+		"php.validate.executablePath": "../../php/php.exe",
+		"intelephense.stubs": [
+			"apcu",
+			"bz2",
+			"calendar",
+			"Core",
+			"ctype",
+			"curl",
+			"date",
+			"dom",
+			"exif",
+			"fileinfo",
+			"filter",
+			"ftp",
+			"gd",
+			"gettext",
+			"hash",
+			"iconv",
+			"igbinary",
+			"json",
+			"libxml",
+			"mbstring",
+			"mcrypt",
+			"memcached",
+			"msgpack",
+			"mysqli",
+			"openssl",
+			"pcre",
+			"PDO",
+			"pdo_mysql",
+			"pdo_sqlite",
+			"Phar",
+			"random",
+			"Reflection",
+			"session",
+			"SimpleXML",
+			"sockets",
+			"sodium",
+			"SPL",
+			"sqlite3",
+			"standard",
+			"tokenizer",
+			"xml",
+			"xmlreader",
+			"xmlwriter",
+			"xsl",
+			"zlib"
+		],
+		"files.eol": "\n",
+		"intelephense.environment.phpVersion": "8.3.0",
+		"intelephense.environment.documentRoot": "../../www/html",
+		"intelephense.environment.includePaths": [
+			"../../www/libs/php"
+		],
+		"intelephense.format.braces": "k&r",
+		"editor.suggest.showConstructors": false
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				"name": "Listen for Xdebug",
+				"type": "php",
+				"request": "launch",
+				"port": 9003
+			}
+		],
+		"compounds": []
+	}
+}

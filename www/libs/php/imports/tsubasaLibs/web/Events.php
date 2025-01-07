@@ -9,6 +9,7 @@
 //                    プロパティにログインチェックするかどうかを追加。
 //                    ログアウト処理を追加。
 //                    ログアウト後/タイムアウト後に通知メッセージを受け取るように変更。
+// 0.02.00 2024/02/06 権限チェックを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
@@ -20,7 +21,7 @@ use tsubasaLibs\database\DbBase;
 /**
  * イベントクラス
  * 
- * @version 0.01.00
+ * @version 0.02.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -33,6 +34,8 @@ class Events {
     public $db;
     /** @var bool ログインチェックするかどうか */
     public $isLoginCheck;
+    /** @var string[]|true 許可する権限リスト(全権限に許可する場合は、true) */
+    public $allowRoles;
     /** @var Message[] 受取メッセージリスト */
     protected $messages;
     // ---------------------------------------------------------------------------------------------
@@ -44,6 +47,7 @@ class Events {
         $this->setInit();
         if ($this->isLoginCheck) {
             if (!$this->session->user->isLogined()) $this->timeout();
+            if (!$this->checkRole($this->session->user->getRoles())) $this->roleError();
             $this->session->user->updateLastAccessTime();
         }
         if ($this->session->user->isLogoutAfter()) $this->addMessage(Message::ID_LOGOUT);
@@ -85,6 +89,7 @@ class Events {
      */
     protected function setInit() {
         $this->isLoginCheck = true;
+        $this->allowRoles = [];
         $this->messages = [];
     }
     /**
@@ -94,6 +99,29 @@ class Events {
      */
     protected function timeout() {
         $this->session->user->setTimeout();
+    }
+    /**
+     * 権限チェック
+     * 
+     * @since 0.02.00
+     * @param string[] $userRoles ユーザ権限リスト
+     * @return bool 成否
+     */
+    protected function checkRole($userRoles): bool {
+        if (in_array('admin', $userRoles, true)) return true;
+        if ($this->allowRoles === true) return true;
+        foreach ($userRoles as $userRole)
+            if (in_array($userRole, $this->allowRoles, true)) return true;
+        return false;
+    }
+    /**
+     * 権限チェックエラー
+     * 
+     * @since 0.02.00
+     */
+    protected function roleError() {
+        header('HTTP', true, 403);
+        exit;
     }
     /**
      * ログアウト

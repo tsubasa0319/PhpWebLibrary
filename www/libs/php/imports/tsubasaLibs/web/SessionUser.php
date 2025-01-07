@@ -6,13 +6,14 @@
 // 0.00.00 2024/01/23 作成。
 // 0.01.00 2024/02/05 ログインチェックからタイムアウト時間延長処理を分離。
 //                    後からログアウト/タイムアウトしたことを受け取る処理を追加。
+// 0.02.00 2024/02/06 権限リスト取得を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use DateTime, DateInterval;
 /**
  * ログインユーザクラス
  * 
- * @version 0.01.00
+ * @version 0.02.00
  */
 class SessionUser {
     // ---------------------------------------------------------------------------------------------
@@ -47,6 +48,15 @@ class SessionUser {
         if ($result and $this->userId === null) $result = false;
         if ($result and $this->isTimeout()) $result = false;
         return $result;
+    }
+    /**
+     * 権限リストを取得
+     * 
+     * @since 0.02.00
+     * @return string[] 権限リスト
+     */
+    public function getRoles(): array {
+        return [];
     }
     /**
      * 最終アクセス時間を更新(延長処理)

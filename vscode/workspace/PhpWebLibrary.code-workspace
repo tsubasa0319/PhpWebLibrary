@@ -1,7 +1,19 @@
 {
 	"folders": [
 		{
-			"path": "../../www/libs"
+			"path": "."
+		},
+		{
+			"name": "www/smarty",
+			"path": "../../www/smarty"
+		},
+		{
+			"name": "www/html/css/imports",
+			"path": "../../www/html/css/imports"
+		},
+		{
+			"name": "www/libs/php/imports",
+			"path": "../../www/libs/php/imports"
 		}
 	],
 	"settings": {

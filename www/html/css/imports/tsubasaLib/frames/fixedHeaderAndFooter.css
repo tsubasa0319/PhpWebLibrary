@@ -1,0 +1,48 @@
+@charset "utf-8";
+/* -------------------------------------------------------------------------------------------------
+   フレーム(ヘッダとフッタを固定)
+
+   History:
+   0.01.00 2024/02/05 作成。
+------------------------------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------------------------- */
+/* 変数定義 */
+:root {
+    /* 既定値 */
+    --tsubasaLib-default-header-height: 30px;
+    --tsubasaLib-default-footer-height: 30px;
+    /* ローカル変数 */
+    --tsubasaLib-header-height:
+        var(--tsubasaLib-setting-header-height, var(--tsubasaLib-default-header-height));
+    --tsubasaLib-footer-height:
+        var(--tsubasaLib-setting-footer-height, var(--tsubasaLib-default-footer-height));
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* ヘッダ */
+body > form:first-child > header {
+    position: fixed;
+    top: 0px;
+    width: 100%;
+    height: var(--tsubasaLib-header-height);
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* メイン */
+#main {
+    margin-top: var(--tsubasaLib-header-height);
+    margin-bottom: var(--tsubasaLib-footer-height);
+    max-height: calc(100vh - var(--tsubasaLib-header-height) - var(--tsubasaLib-footer-height));
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* フッタ */
+body > form:first-child > footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    height: calc(var(--tsubasaLib-footer-height) - 1px);
+    border-top: 1px solid black;
+}

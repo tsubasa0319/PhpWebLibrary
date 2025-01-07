@@ -4,12 +4,13 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
+// 0.01.00 2024/02/05 データ型チェックを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 /**
  * 入力項目クラス(整数型)
  * 
- * @version 0.00.00
+ * @version 0.01.00
  */
 class InputItemInteger extends InputItemBase {
     // ---------------------------------------------------------------------------------------------
@@ -31,7 +32,13 @@ class InputItemInteger extends InputItemBase {
         $this->webValue = htmlspecialchars((string)$this->value);
     }
     protected function checkWebValue(): bool {
+        if (!parent::checkWebValue()) return false;
         // 整数値に必要な文字のみ(先頭の0やカンマの位置までは、厳密にチェックしていない)
-        return preg_match('/\A[+-]?[0-9,]*\z/', $this->webValue);
+        if (!preg_match('/\A[+-]?[0-9,]*\z/', $this->webValue)) {
+            $this->errorId = Message::ID_TYPE_ERROR;
+            $this->errorParams = [$this->label, '整数'];
+            return false;
+        }
+        return true;
     }
 }

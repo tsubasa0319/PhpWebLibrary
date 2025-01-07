@@ -7,21 +7,26 @@
 // 0.01.00 2024/02/05 ログインチェックからタイムアウト時間延長処理を分離。
 //                    後からログアウト/タイムアウトしたことを受け取る処理を追加。
 // 0.02.00 2024/02/06 権限リスト取得を追加。
+// 0.03.00 2024/02/07 セッション情報のリファレンスをプロパティで持つように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use DateTime, DateInterval;
 /**
  * ログインユーザクラス
  * 
- * @version 0.02.00
+ * @version 0.03.00
  */
 class SessionUser {
     // ---------------------------------------------------------------------------------------------
     // 定数
+    /** @var string セッション配列の要素名 */
+    const ID = 'user';
     /** @var int タイムアウト時間(既定) */
     const DEFAULT_TIMEOUT_MINUTES = 5;
     // ---------------------------------------------------------------------------------------------
     // プロパティ
+    /** @var array セッション情報のリファレンス */
+    protected $session;
     /** @var int タイムアウト時間 */
     public $timeoutMinutes;
     /** @var string ユーザID */
@@ -73,7 +78,7 @@ class SessionUser {
      * @since 0.01.00
      */
     public function setTimeout() {
-        $_SESSION['isTimeoutAfter'] = true;
+        $this->session['status'] = 'isTimeoutAfter';
     }
     /**
      * ログイン
@@ -84,7 +89,7 @@ class SessionUser {
      */
     public function login($userId, $password): bool {
         if (!$this->checkForLogin($userId, $password)) return false;
-        $_SESSION['user'] = [];
+        $this->session['status'] = 'login';
         $this->setUserId($userId);
         $now = $this->getNow();
         $this->setLoginTime($now);
@@ -98,8 +103,7 @@ class SessionUser {
      */
     public function logout(): bool {
         $this->userId = null;
-        unset($_SESSION['user']);
-        $_SESSION['isLogoutAfter'] = true;
+        $this->session['status'] = 'isLogoutAfter';
         return true;
     }
     /**
@@ -109,8 +113,8 @@ class SessionUser {
      * @return bool 結果
      */
     public function isLogoutAfter(): bool {
-        if (isset($_SESSION['isLogoutAfter'])) {
-            unset($_SESSION['isLogoutAfter']);
+        if ($this->session['status'] === 'isLogoutAfter') {
+            $this->session['status'] = 'logout';
             return true;
         }
         return false;
@@ -122,8 +126,8 @@ class SessionUser {
      * @return bool 結果
      */
     public function isTimeoutAfter(): bool {
-        if (isset($_SESSION['isTimeoutAfter'])) {
-            unset($_SESSION['isTimeoutAfter']);
+        if ($this->session['status'] === 'isTimeoutAfter') {
+            $this->session['status'] = 'logout';
             return true;
         }
         return false;
@@ -134,20 +138,32 @@ class SessionUser {
      * 初期設定
      */
     protected function setInit() {
+        $this->setSession();
         $this->timeoutMinutes = self::DEFAULT_TIMEOUT_MINUTES;
         $this->userId = null;
         $this->loginTime = null;
         $this->lastAccessTime = null;
     }
     /**
+     * セッション情報のリファレンスを設定
+     * 
+     * @since 0.03.00
+     */
+    protected function setSession() {
+        if (!isset($_SESSION[static::ID]))
+            $_SESSION[static::ID] = [
+                'status' => 'logout'
+            ];
+        $this->session =& $_SESSION[static::ID];
+    }
+    /**
      * セッションより情報設定
      */
     protected function setInfoFromSession() {
-        if (!isset($_SESSION['user'])) return;
-        $user = $_SESSION['user'];
-        $this->userId = $user['userId'];
-        $this->loginTime = $this->getTimeFromString($user['loginTime']);
-        $this->lastAccessTime = $this->getTimeFromString($user['lastAccessTime']);
+        if ($this->session['status'] !== 'login') return;
+        $this->userId = $this->session['userId'];
+        $this->loginTime = $this->getTimeFromString($this->session['loginTime']);
+        $this->lastAccessTime = $this->getTimeFromString($this->session['lastAccessTime']);
     }
     /**
      * タイムアウトしているかどうか
@@ -156,8 +172,7 @@ class SessionUser {
      */
     protected function isTimeout(): bool {
         $now = $this->getNow();
-        $user = $_SESSION['user'];
-        $lastAccessTime = $this->getTimeFromString($user['lastAccessTime']);
+        $lastAccessTime = $this->getTimeFromString($this->session['lastAccessTime']);
         $limitTime = (new DateTime($lastAccessTime->format('Y/m/d H:i:s.u')))->add(
             new DateInterval(sprintf('PT%sM', $this->timeoutMinutes))
         );
@@ -170,8 +185,7 @@ class SessionUser {
      */
     protected function setUserId(string $userId) {
         $this->userId = $userId;
-        $user = &$_SESSION['user'];
-        $user['userId'] = $userId;
+        $this->session['userId'] = $userId;
     }
     /**
      * ログイン時間を変更
@@ -180,8 +194,7 @@ class SessionUser {
      */
     protected function setLoginTime(DateTime $now) {
         $this->loginTime = $now;
-        $user = &$_SESSION['user'];
-        $user['loginTime'] = $this->loginTime->format('Y/m/d H:i:s.u');
+        $this->session['loginTime'] = $this->loginTime->format('Y/m/d H:i:s.u');
     }
     /**
      * 最終アクセス時間を変更
@@ -190,8 +203,7 @@ class SessionUser {
      */
     protected function setLastAccessTime($now) {
         $this->lastAccessTime = $now;
-        $user = &$_SESSION['user'];
-        $user['lastAccessTime'] = $this->lastAccessTime->format('Y/m/d H:i:s.u');
+        $this->session['lastAccessTime'] = $this->lastAccessTime->format('Y/m/d H:i:s.u');
     }
     /**
      * ログイン時のチェック

@@ -6,12 +6,13 @@
 // 0.00.00 2024/01/23 作成。
 // 0.01.00 2024/02/05 プロパティにラベル名/エラーID/エラーパラメータを追加。
 //                    入力必須チェックを追加。
+// 0.03.00 2024/02/07 画面単位セッションとの入出力を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 /**
  * 入力項目ベースクラス
  * 
- * @version 0.01.00
+ * @version 0.03.00
  */
 class InputItemBase {
     // ---------------------------------------------------------------------------------------------
@@ -28,6 +29,8 @@ class InputItemBase {
     public $value;
     /** @var string Web値 */
     public $webValue;
+    /** @var mixed セッション値 */
+    public $sessionValue;
     /** @var bool Web入力のみかどうか */
     public $isInputOnly;
     /** @var bool Web出力のみかどうか */
@@ -66,6 +69,15 @@ class InputItemBase {
         $this->setValueFromWeb();
     }
     /**
+     * Web値を設定(画面単位セッションより)
+     * 
+     * @since 0.03.00
+     */
+    public function setFromSession(SessionUnit $unit) {
+        $this->sessionValue = isset($unit->data[$this->name]) ? $unit->data[$this->name] : null;
+        $this->setValueFromSession();
+    }
+    /**
      * 入力チェック(最小限のみ)
      * 
      * @return bool 成否
@@ -96,6 +108,15 @@ class InputItemBase {
         $this->setWebValueFromValue();
     }
     /**
+     * セッション値を設定(セッション用)
+     * 
+     * @since 0.03.00
+     * @param SessionUnit $unit
+     */
+    public function setForSession(SessionUnit $unit) {
+        $this->setSessionValueFromValue($unit);
+    }
+    /**
      * エラーかどうか
      * 
      * @since 0.01.00
@@ -124,6 +145,19 @@ class InputItemBase {
      * Web値を設定(値より)
      */
     protected function setWebValueFromValue() {}
+    /**
+     * 値を設定(セッション値より)
+     * 
+     * @since 0.03.00
+     */
+    protected function setValueFromSession() {}
+    /**
+     * セッション値を設定(値より)
+     * 
+     * @since 0.03.00
+     * @param SessionUnit $unit 画面単位セッション
+     */
+    protected function setSessionValueFromValue(SessionUnit $unit) {}
     /**
      * Web値チェック
      * 

@@ -1,0 +1,99 @@
+@charset "utf-8";
+/* -------------------------------------------------------------------------------------------------
+   基本パーツ
+
+   History:
+   0.01.00 2024/02/05 作成。
+------------------------------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------------------------- */
+/* BODY */
+body {
+    margin: 0;
+    font-family: var(--tsubasaLib-setting-font-family, sans-serif);
+    font-size: var(--tsubasaLib-setting-font-size, 14px);
+    overflow-wrap: break-word;
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* ブロック */
+div,
+form,
+section,
+header,
+footer {
+    overflow: hidden;
+    text-wrap: nowrap;
+}
+
+div.valign-middle,
+form.valign-middle,
+section.valign-middle,
+header.valign-middle,
+footer.valign-middle {
+    margin-top: auto;
+    margin-bottom: auto;
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* ラベル */
+label.required::after {
+    content: "*";
+    color: red;
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* テキストボックス */
+input[type="text"],
+input[type="password"] {
+    font-family: var(--tsubasaLib-setting-font-family, sans-serif);
+    font-size: var(--tsubasaLib-setting-font-size-inputText, 12px);
+    padding: 0 1px;
+}
+
+input[type="text"].error,
+input[type="password"].error {
+    background-color: pink;
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* ボタン */
+input[type="button"],
+input[type="submit"],
+button {
+    font-family: var(--tsubasaLib-setting-font-family, sans-serif);
+    font-size: var(--tsubasaLib-setting-font-size-button, 12px);
+    padding: 0 2px;
+}
+
+input[type="button"]:not(:disabled):hover,
+input[type="submit"]:not(:disabled):hover,
+button:not(:disabled):hover {
+    cursor: pointer;
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* エリア */
+/* 全体 */
+.area {
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* 行 */
+.area > div {
+    display: flex;
+    height: 25px;
+}
+
+/* 列 */
+.area > div > div {
+    display: flex;
+}
+
+/* セル */
+.area > div > div > * {
+    margin-top: auto;
+    margin-bottom: auto;
+}

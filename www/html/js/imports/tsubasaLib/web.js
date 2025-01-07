@@ -4,13 +4,14 @@
 // History:
 // 0.05.00 2024/02/20 作成。
 // 0.05.01 2024/02/20 構文ミスを修正。
+// 0.06.00 2024/02/22 見えるかどうか、移動可能かどうか、Enterキーによるタブ移動処理を追加。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import Ajax from "./Ajax.js";
 /**
  * Web処理
  * 
- * @version 0.05.01
+ * @version 0.06.00
  */
 const web = {
     /**
@@ -38,6 +39,12 @@ const web = {
         if (elms.length <= num) return null;
         return elms[num];
     },
+    /**
+     * エレメントより値を取得
+     * 
+     * @param {HTMLElement} element エレメント
+     * @returns {string|null} エレメントの値
+     */
     getValueByElement: (element) => {
         if (element instanceof HTMLInputElement) return element.value;
         if (element instanceof HTMLButtonElement) return element.innerText;
@@ -47,6 +54,12 @@ const web = {
         if (element instanceof HTMLLabelElement) return element.innerText;
         return null;
     },
+    /**
+     * エレメントへ値を設定
+     * 
+     * @param {HTMLElement} element エレメント
+     * @param {string} value 値
+     */
     setValueByElement: (element, value) => {
         if (element instanceof HTMLInputElement) element.value = value;
         if (element instanceof HTMLButtonElement) element.innerText = value;
@@ -221,7 +234,155 @@ const web = {
     /**
      * Ajax受取関数(失敗時)
      */
-    ajaxErrorHandler: null
+    ajaxErrorHandler: null,
+    /**
+     * 見えるかどうか
+     * 
+     * @version 0.06.00
+     * @param {HTMLElement} element エレメント
+     * @returns {boolean} 結果
+     */
+    isVisible: (element, win = window) => {
+        const style = win.getComputedStyle(element);
+
+        // 非表示
+        if (style.display === 'none') return false;
+        if (style.visibility === 'hidden') return false;
+
+        // 親要素が見えるかどうか
+        if (element.parentElement !== null && !self.isVisible(element.parentElement))
+            return false;
+
+        return true;
+    },
+    /**
+     * 移動可能かどうか
+     * 
+     * @since 0.06.00
+     * @param {HTMLElement} element エレメント
+     * @returns {boolean} 結果
+     */
+    isMovable: (element) => {
+        // 非表示
+        if (!self.isVisible(element)) return false;
+
+        // フォーム部品エレメント
+        if (element instanceof HTMLInputElement ||
+            element instanceof HTMLButtonElement ||
+            element instanceof HTMLSelectElement ||
+            element instanceof HTMLTextAreaElement) {
+            // 使用不可
+            if (element.disabled) return false;
+            return true;
+        }
+
+        // アンカーエレメント
+        if (element instanceof HTMLAnchorElement)
+            return true;
+
+        return false;
+    },
+    /**
+     * Enterキーによるタブ移動処理
+     * 
+     * @since 0.06.00
+     * @param {KeyboardEvent} event エレメント
+     */
+    enterToTabMove: (event) => {
+        if (event.code !== 'Enter') return true;
+
+        // ボタンは、元のイベントを続行(シフト実行を除く)
+        if (event.target instanceof HTMLInputElement && !event.shiftKey) {
+            if (['button', 'submit', 'image'].includes(event.target.type))
+                return true;
+        }
+        if (event.target instanceof HTMLButtonElement && !event.shiftKey)
+            return true;
+
+        // テキストエリアは、元のイベントを続行
+        if (event.target instanceof HTMLTextAreaElement)
+            return true;
+
+        // タブ移動と同等の処理を行う
+        // 自身または移動可能なエレメントを取得
+        /** @type {HTMLElement[]} */
+        const elms = [];
+        const query = [];
+        if (event.target instanceof HTMLElement)
+            query.push(event.target.nodeName.toLowerCase());
+        query.push('input:not(:disabled):not(:read-only):not([tabindex="-1"])');
+        query.push('button:not(:disabled):not([tabindex="-1"])');
+        query.push('select:not(:disabled):not([tabindex="-1"])');
+        query.push('textarea:not(:disabled):not(:read-only):not([tabindex="-1"])');
+        query.push('a:not([tabindex="-1"])');
+        Array.from(document.querySelectorAll(query.join(', '))).forEach((elm) => {
+            if (!(elm instanceof HTMLElement)) return;
+            if (elm === event.target) {
+                elms.push(elm);
+                return;
+            }
+            if (!web.isMovable(elm)) return;
+            if (elm instanceof HTMLInputElement) {
+                if (elm.readOnly) return;
+                if (elm.tabIndex == -1) return;
+                elms.push(elm);
+                return;
+            }
+            if (elm instanceof HTMLButtonElement) {
+                if (elm.tabIndex == -1) return;
+                elms.push(elm);
+                return;
+            }
+            if (elm instanceof HTMLSelectElement) {
+                if (elm.tabIndex == -1) return;
+                elms.push(elm);
+                return;
+            }
+            if (elm instanceof HTMLTextAreaElement) {
+                if (elm.readOnly) return;
+                if (elm.tabIndex == -1) return;
+                elms.push(elm);
+                return;
+            }
+            if (elm instanceof HTMLAnchorElement) {
+                if (elm.tabIndex == -1) return;
+                elms.push(elm);
+                return;
+            }
+        });
+        if (elms.length == 0) return;
+
+        // ソート
+        const sortElms = elms.sort((a, b) => {
+            if (a.tabIndex == b.tabIndex) return 0;
+            if (a.tabIndex == 0) return 1;
+            if (b.tabIndex == 0) return -1;
+            return a.tabIndex - b.tabIndex;
+        })
+
+        // 次項目を取得
+        let currentNum = null;
+        for (let i = 0; i < sortElms.length; i++) {
+            if (sortElms[i] === event.target) {
+                currentNum = i;
+                break;
+            }
+        }
+        let nextNum = 0;
+        if (currentNum !== null) {
+            nextNum = currentNum + (event.shiftKey ? -1 : 1);
+            if (nextNum > sortElms.length - 1) nextNum = 0;
+            if (nextNum < 0) nextNum = sortElms.length - 1;
+        }
+        const nextElm = sortElms[nextNum];
+
+        // フォーカス移動
+        nextElm.focus();
+        if (nextElm instanceof HTMLInputElement) nextElm.select();
+        if (nextElm instanceof HTMLTextAreaElement) nextElm.select();
+
+        return false;
+    }
 }
 const self = web;
 export default web;

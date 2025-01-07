@@ -4,6 +4,7 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
+// 0.04.00 2024/02/10 比較処理にて、自身のクラスのルールで比較するように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\type;
 use Stringable;
@@ -11,7 +12,7 @@ use DateTime, DateTimeZone;
 /**
  * 日付型クラス
  * 
- * @version 0.00.00
+ * @version 0.04.00
  */
 class TypeDate implements Stringable {
     // ---------------------------------------------------------------------------------------------
@@ -176,7 +177,8 @@ class TypeDate implements Stringable {
      */
     public function compare($that) {
         if ($that === null) return 1;
-        return (string)$this <=> (string)$that;
+        $_that = new static($that);
+        return (string)$this <=> (string)$_that;
     }
     /**
      * DateTimeインスタンスへ変換

@@ -4,16 +4,23 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
+// 0.01.00 2024/02/05 eventAfterを追加。
+//                    受取メッセージを単体からリストへ変更。
+//                    プロパティにログインチェックするかどうかを追加。
+//                    ログアウト処理を追加。
+//                    ログアウト後/タイムアウト後に通知メッセージを受け取るように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
 require_once __DIR__ . '/InputItems.php';
+require_once __DIR__ . '/Menu.php';
+require_once __DIR__ . '/Message.php';
 use tsubasaLibs\type;
 use tsubasaLibs\database\DbBase;
 /**
  * イベントクラス
  * 
- * @version 0.00.00
+ * @version 0.01.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -22,8 +29,12 @@ class Events {
     public $now;
     /** @var Session セッション */
     public $session;
-    /** @var DbBase|false $db DB */
+    /** @var DbBase|false DB */
     public $db;
+    /** @var bool ログインチェックするかどうか */
+    public $isLoginCheck;
+    /** @var Message[] 受取メッセージリスト */
+    protected $messages;
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct() {
@@ -31,7 +42,29 @@ class Events {
         $this->session = $this->getSession();
         $this->db = $this->getDb();
         $this->setInit();
-        $this->event();
+        if ($this->isLoginCheck) {
+            if (!$this->session->user->isLogined()) $this->timeout();
+            $this->session->user->updateLastAccessTime();
+        }
+        if ($this->session->user->isLogoutAfter()) $this->addMessage(Message::ID_LOGOUT);
+        if ($this->session->user->isTimeoutAfter()) $this->addMessage(Message::ID_TIMEOUT);
+        if (!$this->logout()) {
+            $this->event();
+            $this->eventAfter();
+        }
+    }
+    // ---------------------------------------------------------------------------------------------
+    // メソッド
+    /**
+     * メッセージ追加
+     * 
+     * @since 0.01.00
+     * @param string $id メッセージID
+     * @param string ...$params メッセージパラメータ
+     */
+    public function addMessage(string $id, string ...$params) {
+        if (count($this->messages) > 100) return;
+        $this->messages[] = $this->newMessage()->setId($id, ...$params);
     }
     // ---------------------------------------------------------------------------------------------
     // 内部処理
@@ -50,9 +83,54 @@ class Events {
     /**
      * 初期設定
      */
-    protected function setInit() {}
+    protected function setInit() {
+        $this->isLoginCheck = true;
+        $this->messages = [];
+    }
+    /**
+     * タイムアウト
+     * 
+     * @since 0.01.00
+     */
+    protected function timeout() {
+        $this->session->user->setTimeout();
+    }
+    /**
+     * ログアウト
+     * 
+     * @since 0.01.00
+     */
+    protected function logout(): bool {
+        return false;
+    }
     /**
      * イベント処理
      */
     protected function event() {}
+    /**
+     * イベント後処理
+     * 
+     * @since 0.01.00
+     */
+    protected function eventAfter() {}
+    /**
+     * 新規メッセージ発行
+     * 
+     * @since 0.01.00
+     * @return Message メッセージ
+     */
+    protected function newMessage(): Message {
+        return new Message();
+    }
+    /**
+     * エラーかどうか
+     * 
+     * @since 0.01.00
+     * @return bool エラーかどうか
+     */
+    protected function isError(): bool {
+        return count(array_filter($this->messages,
+            fn($message) => $message->isError()
+        )) > 0;
+    }
 }

@@ -4,13 +4,15 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
+// 0.01.00 2024/02/05 ログインチェックからタイムアウト時間延長処理を分離。
+//                    後からログアウト/タイムアウトしたことを受け取る処理を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use DateTime, DateInterval;
 /**
  * ログインユーザクラス
  * 
- * @version 0.00.00
+ * @version 0.01.00
  */
 class SessionUser {
     // ---------------------------------------------------------------------------------------------
@@ -38,14 +40,30 @@ class SessionUser {
     /**
      * ログインしているかどうか
      * 
-     * @return bool 成否
+     * @return bool 結果
      */
     public function isLogined(): bool {
-        if ($this->userId === null) return false;
-        if ($this->isTimeout()) return false;
+        $result = true;
+        if ($result and $this->userId === null) $result = false;
+        if ($result and $this->isTimeout()) $result = false;
+        return $result;
+    }
+    /**
+     * 最終アクセス時間を更新(延長処理)
+     * 
+     * @since 0.01.00
+     */
+    public function updateLastAccessTime() {
         $now = $this->getNow();
         $this->setLastAccessTime($now);
-        return true;
+    }
+    /**
+     * タイムアウトしたことを記録
+     * 
+     * @since 0.01.00
+     */
+    public function setTimeout() {
+        $_SESSION['isTimeoutAfter'] = true;
     }
     /**
      * ログイン
@@ -71,7 +89,34 @@ class SessionUser {
     public function logout(): bool {
         $this->userId = null;
         unset($_SESSION['user']);
+        $_SESSION['isLogoutAfter'] = true;
         return true;
+    }
+    /**
+     * ログアウト後かどうか
+     * 
+     * @since 0.01.00
+     * @return bool 結果
+     */
+    public function isLogoutAfter(): bool {
+        if (isset($_SESSION['isLogoutAfter'])) {
+            unset($_SESSION['isLogoutAfter']);
+            return true;
+        }
+        return false;
+    }
+    /**
+     * タイムアウト後かどうか
+     * 
+     * @since 0.01.00
+     * @return bool 結果
+     */
+    public function isTimeoutAfter(): bool {
+        if (isset($_SESSION['isTimeoutAfter'])) {
+            unset($_SESSION['isTimeoutAfter']);
+            return true;
+        }
+        return false;
     }
     // ---------------------------------------------------------------------------------------------
     // 内部処理

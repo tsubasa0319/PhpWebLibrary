@@ -15,6 +15,7 @@
 //                    パスワードの有効期限切れに対応。
 //                    エラーかどうかの判定を、protectedからpublicへ変更。
 //                    入力項目のWeb出力時のエスケープ処理を自動化。
+// 0.05.00 2024/02/20 Ajaxに対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
@@ -26,7 +27,7 @@ use tsubasaLibs\database\DbBase;
 /**
  * イベントクラス
  * 
- * @version 0.04.00
+ * @version 0.05.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -35,8 +36,12 @@ class Events {
     public $now;
     /** @var Session セッション */
     public $session;
+    /** @var bool Ajax通信かどうか */
+    protected $isAjax;
     /** @var DbBase|false DB */
     public $db;
+    /** @var bool デバッグモードかどうか */
+    protected $isDebug;
     /** @var bool ログインチェックするかどうか */
     public $isLoginCheck;
     /** @var string[]|true 許可する権限リスト(全権限に許可する場合は、true) */
@@ -49,24 +54,47 @@ class Events {
     public $errorNames;
     /** @var bool 確認画面かどうか */
     public $isConfirm;
+    /** @var array<string, string> 返り値リスト(Ajax用) */
+    public $valuesForAjax;
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct() {
+        // 現在日時を取得
         $this->now = new type\TypeTimeStamp();
+        // セッションを取得
         $this->session = $this->getSession();
+        // Ajax通信かどうか、エラーハンドリングを設定
+        $this->isAjax =
+            isset($_SERVER['HTTP_X_REQUESTED_WITH']) and
+            strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        if ($this->isAjax)
+            $this->setErrorHandlerForAjax();
+        // DB接続
         $this->db = $this->getDb();
+        // 初期設定
         $this->setInit();
         if ($this->isLoginCheck) {
+            // ログインチェック、タイムアウト処理
             if (!$this->session->user->isLogined()) $this->timeout();
         }
+        // 権限チェック
         if (!$this->checkRole($this->session->user->getRoles())) $this->roleError();
+        // 最終アクセス日時を更新
         $this->session->user->updateLastAccessTime();
+        // ログアウト後、タイムアウト後などのメッセージを取得
         if ($this->session->user->isLogoutAfter()) $this->addMessage(Message::ID_LOGOUT);
         if ($this->session->user->isTimeoutAfter()) $this->addMessage(Message::ID_TIMEOUT);
         if ($this->session->user->isExpired()) $this->addMessage(Message::ID_PASSWORD_EXPIRED);
         if (!$this->logout()) {
-            $this->event();
-            $this->eventAfter();
+            if (!$this->isAjax) {
+                // 通常イベント
+                $this->event();
+                $this->eventAfter();
+            } else {
+                // Ajaxイベント
+                $this->event();
+                $this->eventAfterForAjax();
+            }
         }
     }
     // ---------------------------------------------------------------------------------------------
@@ -111,12 +139,14 @@ class Events {
      * 初期設定
      */
     protected function setInit() {
+        $this->isDebug = false;
         $this->isLoginCheck = true;
         $this->allowRoles = [];
         $this->messages = [];
         $this->focusName = null;
         $this->errorNames = [];
         $this->isConfirm = false;
+        $this->valuesForAjax = [];
     }
     /**
      * タイムアウト
@@ -175,6 +205,17 @@ class Events {
         }
     }
     /**
+     * イベント後処理(Ajax)
+     * 
+     * @since 0.05.00
+     */
+    protected function eventAfterForAjax() {
+        echo json_encode([
+            'status' => 'success',
+            'values' => $this->valuesForAjax
+        ], JSON_UNESCAPED_UNICODE);
+    }
+    /**
      * 新規メッセージ発行
      * 
      * @since 0.01.00
@@ -182,5 +223,37 @@ class Events {
      */
     protected function newMessage(): Message {
         return new Message();
+    }
+    /**
+     * エラーハンドリングを設定(Ajax用)
+     * 
+     * @since 0.05.00
+     */
+    protected function setErrorHandlerForAjax() {
+        ini_set('display_errors', false);
+        register_shutdown_function(function () {
+            $error = error_get_last();
+            if ($error !== null) $this->errorForAjax($error);
+        });
+    }
+    /**
+     * エラー処理(Ajax用)
+     * 
+     * @since 0.05.00
+     * @param array{type:int, message:string, file:string, line:int} $error
+     */
+    protected function errorForAjax($error) {
+        $response = [
+            'status'  => 'error',
+            'message' => [
+                'id'      => Message::ID_EXCEPTION,
+                'content' => (new Message)->setId(Message::ID_EXCEPTION)->content
+            ]
+        ];
+        // デバッグモードの場合、ブラウザへエラーログを出力
+        if ($this->isDebug)
+            $response['debug'] = $error;
+        header('Content-Type: application/json', true, 500);
+        echo json_encode($response, JSON_UNESCAPED_UNICODE);
     }
 }

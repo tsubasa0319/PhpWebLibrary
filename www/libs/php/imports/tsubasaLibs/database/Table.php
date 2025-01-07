@@ -4,6 +4,7 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
+// 0.04.00 2024/02/10 新規レコード取得に失敗していたので修正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -14,7 +15,7 @@ require_once __DIR__ . '/advance/TableCamelCase.php';
 /**
  * テーブルクラス
  * 
- * @version 0.00.00
+ * @version 0.04.00
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -216,7 +217,7 @@ class Table {
      * @return Record|false レコード
      */
     public function getNewRecord() {
-        $stmt = $this->prepare($this->getSelectSql(null));
+        $stmt = $this->prepare($this->getSelectSql(false));
         if ($stmt === false) return false;
         return $stmt->getNewRecord();
     }

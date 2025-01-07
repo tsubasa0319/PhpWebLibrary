@@ -4,13 +4,15 @@
 //
 // History:
 // 0.03.00 2024/02/07 作成。
+// 0.04.00 2024/02/10 空の場合や、1日以上経過した場合も削除するように対応。
+//                    現セッションを削除した場合も新規発行するように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use DateTime, DateInterval, Exception;
 /**
  * 画面単位セッションクラス
  * 
- * @version 0.03.00
+ * @version 0.04.00
  */
 class SessionUnit {
     // ---------------------------------------------------------------------------------------------
@@ -57,6 +59,16 @@ class SessionUnit {
      * 古い画面単位セッションを削除
      */
     protected function removeOldUnits() {
+        // 空、または1日以上経過したものは削除
+        $time = $this->getNow()->add(DateInterval::createFromDateString('-1 day'));
+        foreach ($this->session['info'] as $unitId => $unitInfo) {
+            if (count($this->session[$unitId]) == 0 or
+                $unitInfo['lastAccessTime'] <= $time->format('Y/m/d H:i:s.u')
+            ) {
+                unset($this->session[$unitId]);
+                unset($this->session['info'][$unitId]);
+            }
+        }
         // 増えすぎた場合に、使っていないものから順に削除
         if (count($this->session['info']) > 100) {
             $entries = [];
@@ -72,14 +84,6 @@ class SessionUnit {
                 unset($this->session['info'][$unitId]);
             }
         }
-        // 1日以上経過したものは削除
-        $time = $this->getNow()->add(DateInterval::createFromDateString('-1 day'));
-        foreach ($this->session['info'] as $unitId => $unitInfo) {
-            if ($unitInfo['lastAccessTime'] <= $time->format('Y/m/d H:i:s.u')) {
-                unset($this->session[$unitId]);
-                unset($this->session['info'][$unitId]);
-            }
-        }
     }
     /**
      * セッションより情報設定
@@ -87,7 +91,9 @@ class SessionUnit {
     protected function setInfoFromSession() {
         $unitId = isset($_POST[static::UNIT_SESSION_ID]) ?
             $_POST[static::UNIT_SESSION_ID] :
-            $this->makeUnit();
+            null;
+        if ($unitId === null or !isset($this->session[$unitId]))
+            $unitId = $this->makeUnit();
         $this->unitId = $unitId;
         $this->data =& $this->session[$unitId];
         $this->session['info'][$unitId]['lastAccessTime'] =

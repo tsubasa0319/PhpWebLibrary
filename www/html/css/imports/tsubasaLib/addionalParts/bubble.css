@@ -1,0 +1,57 @@
+@charset "utf-8";
+/* -------------------------------------------------------------------------------------------------
+   吹き出し
+
+   [HTML構図]
+   span.bubble             - inline-block
+       label
+           span /span      - アイコン
+           input[checkbox] - ON/OFF管理(非表示)
+       /label
+       div /div            - 吹き出し(ホバー or ON時に表示)
+   /span
+
+   History:
+   0.08.00 2024/02/27 作成。
+--------------------------------------------------------------------------------------------------*/
+/* 全体 */
+.bubble {
+    position: relative;
+    overflow: visible;
+}
+
+/* アイコン */
+.bubble > label > span {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 2px black solid;
+    border-radius: 10px;
+    background-color: lightgreen;
+    text-align: center;
+}
+
+.bubble > label > span:hover {
+    cursor: pointer;
+}
+
+/* ON/OFF管理 */
+.bubble > label > input {
+    display: none;
+}
+
+/* 吹き出し */
+.bubble > div {
+    position: absolute;
+    z-index: 1;
+    overflow: visible;
+    width: auto;
+    background-color: lightgreen;
+    margin-top: 2px;
+    padding: 2px;
+}
+
+/* OFF時は、吹き出しを非表示 */
+.bubble:not(:hover):has(input:not(:checked)) > div {
+    display: none;
+}

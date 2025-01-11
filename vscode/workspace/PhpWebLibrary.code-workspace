@@ -4,6 +4,10 @@
 			"path": "."
 		},
 		{
+			"name": "www/smarty",
+			"path": "../../www/smarty"
+		},
+		{
 			"name": "www/html/css/imports",
 			"path": "../../www/html/css/imports"
 		},

@@ -4,28 +4,29 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
+// 0.11.00 2024/03/08 データ型のクラス名を変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\type;
-require_once __DIR__ . '/TypeDate.php';
-use tsubasaLibs\type\TypeDate;
+require_once __DIR__ . '/Date.php';
+use tsubasaLibs\type\Date;
 use Stringable;
-use DateTime, DateTimeZone;
+use DateTime as _DateTime, DateTimeZone;
 /**
  * 日時型クラス
  * 
- * @version 0.00.00
+ * @version 0.11.00
  */
-class TypeDateTime extends TypeDate {
+class DateTime extends Date {
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
-     * @param string|DateTime|Stringable $date 日付
+     * @param string|_DateTime|Stringable $date 日付
      * @param DateTimeZone $timezone タイムゾーン
      */
     public function __construct(
-        string|DateTime|Stringable $date = 'now', ?DateTimeZone $timezone = null
+        string|_DateTime|Stringable $date = 'now', ?DateTimeZone $timezone = null
     ) {
-        if ($date instanceof DateTime) $date = $date->format('Y/m/d H:i:s');
+        if ($date instanceof _DateTime) $date = $date->format('Y/m/d H:i:s');
         if ($date instanceof Stringable) $date = (string)$date;
         // yyyymmddHHii型
         if (preg_match('/\A[0-9]{12}\z/', $date)) $date .= '00';
@@ -33,7 +34,7 @@ class TypeDateTime extends TypeDate {
         if (preg_match('/\A[0-9]{14}\z/', $date)) $date = sprintf('%s/%s/%s %s:%s:%s',
             substr($date, 0, 4), substr($date, 4, 2), substr($date, 6, 2),
             substr($date, 8, 2), substr($date, 10, 2), substr($date, 12));
-        $this->datetime = new DateTime($date, $timezone);
+        $this->datetime = new _DateTime($date, $timezone);
     }
     // ---------------------------------------------------------------------------------------------
     // マジックメソッド(オーバーライド)

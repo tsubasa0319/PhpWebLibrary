@@ -5,6 +5,7 @@
 // History:
 // 0.00.00 2024/01/23 作成。
 // 0.10.00 2024/03/08 各メソッドをチェーン処理に対応。
+// 0.11.00 2024/03/08 データ型のクラス名を変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/advance/RecordCreatorItem.php';
@@ -14,7 +15,7 @@ use tsubasaLibs\type;
 /**
  * レコードクラス
  * 
- * @version 0.10.00
+ * @version 0.11.00
  */
 class Record {
     // ---------------------------------------------------------------------------------------------
@@ -60,7 +61,7 @@ class Record {
         foreach (get_object_vars($this) as $name => $value) {
             if (!is_object($value)) continue;
             if (in_array($name, ['stmt'], true)) continue;
-            if ($value instanceof type\TypeNothing) continue;
+            if ($value instanceof type\Nothing) continue;
             $this->{$name} = clone $value;
         }
     }
@@ -169,7 +170,7 @@ class Record {
         if (!property_exists($items, $id)) return false;
         if (!($items->{$id} instanceof Item)) return false;
         if (!property_exists($this, $id)) return false;
-        if ($this->{$id} instanceof type\TypeNothing) return false;
+        if ($this->{$id} instanceof type\Nothing) return false;
         return true;
     }
     // ---------------------------------------------------------------------------------------------
@@ -211,10 +212,10 @@ class Record {
     /**
      * Nothing型を取得
      * 
-     * @return type\TypeNothing Nothing型
+     * @return type\Nothing Nothing型
      */
-    protected function getNothing(): type\TypeNothing {
-        return new type\TypeNothing();
+    protected function getNothing(): type\Nothing {
+        return new type\Nothing();
     }
     /**
      * 作成者を設定

@@ -16,6 +16,7 @@
 //                    エラーかどうかの判定を、protectedからpublicへ変更。
 //                    入力項目のWeb出力時のエスケープ処理を自動化。
 // 0.05.00 2024/02/20 Ajaxに対応。
+// 0.11.00 2024/03/08 データ型のクラス名を変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
@@ -27,12 +28,12 @@ use tsubasaLibs\database\DbBase;
 /**
  * イベントクラス
  * 
- * @version 0.05.00
+ * @version 0.11.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
     // プロパティ
-    /** @var type\TypeTimeStamp 現在日時 */
+    /** @var type\TimeStamp 現在日時 */
     public $now;
     /** @var Session セッション */
     public $session;
@@ -60,7 +61,7 @@ class Events {
     // コンストラクタ/デストラクタ
     public function __construct() {
         // 現在日時を取得
-        $this->now = new type\TypeTimeStamp();
+        $this->now = new type\TimeStamp();
         // セッションを取得
         $this->session = $this->getSession();
         // Ajax通信かどうか、エラーハンドリングを設定

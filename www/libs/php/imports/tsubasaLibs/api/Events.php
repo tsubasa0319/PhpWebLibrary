@@ -5,6 +5,7 @@
 // History:
 // 0.09.00 2024/03/06 作成。
 // 0.10.00 2024/03/08 許可するホスト名リストを追加。
+// 0.11.00 2024/03/08 データ型のクラス名を変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
@@ -13,12 +14,12 @@ use Stringable;
 /**
  * APIイベントクラス
  * 
- * @version 0.10.00
+ * @version 0.11.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
     // プロパティ
-    /** @var type\TypeTimeStamp 現在日時 */
+    /** @var type\TimeStamp 現在日時 */
     protected $now;
     /** @var DbBase|false DB */
     protected $db;
@@ -36,7 +37,7 @@ class Events {
     // コンストラクタ/デストラクタ
     public function __construct() {
         // 現在日時を取得
-        $this->now = new type\TypeTimeStamp();
+        $this->now = new type\TimeStamp();
         // DB接続
         $this->db = $this->getDb();
         // 初期設定

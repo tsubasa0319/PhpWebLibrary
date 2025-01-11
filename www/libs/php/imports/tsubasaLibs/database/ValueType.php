@@ -5,6 +5,7 @@
 // History:
 // 0.00.00 2024/01/23 作成。
 // 0.10.00 2024/03/08 値がNothing型の場合、レコード用変換をスキップ。
+// 0.11.00 2024/03/08 データ型のクラス名を変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 use tsubasaLibs\type;
@@ -12,7 +13,7 @@ use DateTime;
 /**
  * データ型の共通処理
  * 
- * @version 0.10.00
+ * @version 0.11.00
  */
 class ValueType {
     /**
@@ -52,7 +53,7 @@ class ValueType {
      */
     static public function convertForRecord(&$value, int $type) {
         if ($value === null) return;
-        if ($value instanceof type\TypeNothing) return;
+        if ($value instanceof type\Nothing) return;
         $value = match ($type) {
             DbBase::PARAM_INT => static::convertIntForRecord($value),
             DbBase::PARAM_STR => static::convertStrForRecord($value),
@@ -89,7 +90,7 @@ class ValueType {
      */
     static protected function convertDateForBind(&$value, int &$type) {
         if ($value instanceof DateTime) $value = $value->format('Y/m/d');
-        if ($value instanceof type\TypeDate) $value = (string)$value;
+        if ($value instanceof type\Date) $value = (string)$value;
         $type = DbBase::PARAM_STR;
     }
     /**
@@ -100,7 +101,7 @@ class ValueType {
      */
     static protected function convertDateTimeForBind(&$value, int &$type) {
         if ($value instanceof DateTime) $value = $value->format('Y/m/d H:i:s');
-        if ($value instanceof type\TypeDateTime) $value = (string)$value;
+        if ($value instanceof type\DateTime) $value = (string)$value;
         $type = DbBase::PARAM_STR;
     }
     /**
@@ -111,7 +112,7 @@ class ValueType {
      */
     static protected function convertTimeStampForBind(&$value, int &$type) {
         if ($value instanceof DateTime) $value = $value->format('Y/m/d H:i:s.u');
-        if ($value instanceof type\TypeTimeStamp) $value = (string)$value;
+        if ($value instanceof type\TimeStamp) $value = (string)$value;
         $type = DbBase::PARAM_STR;
     }
     /**
@@ -155,36 +156,36 @@ class ValueType {
      * レコード用変換(PARAM_ADD_DATE)
      * 
      * @param mixed $value 値
-     * @return type\TypeDate 変換後
+     * @return type\Date 変換後
      */
-    static protected function convertDateForRecord($value): type\TypeDate {
-        return new type\TypeDate($value);
+    static protected function convertDateForRecord($value): type\Date {
+        return new type\Date($value);
     }
     /**
      * レコード用変換(PARAM_ADD_DATETIME)
      * 
      * @param mixed $value 値
-     * @return type\TypeDateTime 変換後
+     * @return type\DateTime 変換後
      */
-    static protected function convertDateTimeForRecord($value): type\TypeDateTime {
-        return new type\TypeDateTime($value);
+    static protected function convertDateTimeForRecord($value): type\DateTime {
+        return new type\DateTime($value);
     }
     /**
      * レコード用変換(PARAM_ADD_TIMESTAMP)
      * 
      * @param mixed $value 値
-     * @return type\TypeTimeStamp 変換後
+     * @return type\TimeStamp 変換後
      */
-    static protected function convertTimeStampForRecord($value): type\TypeTimeStamp {
-        return new type\TypeTimeStamp($value);
+    static protected function convertTimeStampForRecord($value): type\TimeStamp {
+        return new type\TimeStamp($value);
     }
     /**
      * レコード用変換(PARAM_ADD_DECIMAL)
      * 
      * @param mixed $value 値
-     * @return type\TypeDecimal 変換後
+     * @return type\Decimal 変換後
      */
-    static protected function convertDecimalForRecord($value): type\TypeDecimal {
-        return new type\TypeDecimal($value);
+    static protected function convertDecimalForRecord($value): type\Decimal {
+        return new type\Decimal($value);
     }
 }

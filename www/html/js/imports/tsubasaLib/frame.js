@@ -5,6 +5,7 @@
 // 0.05.00 2024/02/20 作成。
 // 0.06.00 2024/02/22 キー押下時処理を追加。
 // 0.07.00 2024/02/22 フォーム送信時、実行時間を算出するように対応。
+// 0.19.00 2024/04/16 キー押下時処理に、誤動作防止を追加。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import web from "./web.js";
@@ -42,7 +43,7 @@ const frame = {
      * @returns {boolean} イベントを続行するかどうか
      */
     body_keydown: (event) => {
-        return web.enterToTabMove(event);
+        return web.enterToTabMove(event) && web.preventMistakeByEnter(event);
     },
     /**
      * エラー処理

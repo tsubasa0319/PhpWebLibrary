@@ -8,11 +8,13 @@
                       エリアの行の高さを、テキストボックスへ合わせて調整。
                       エリアのセルに対して、右寄せ/中央寄せ用のクラスを実装。
                       非表示クラスを実装。
-   0.08.00 2024/02/27 セレクトリスト/ラジオボタンを追加。
+   0.08.00 2024/02/27 セレクトボックス/ラジオボタンを追加。
    0.14.00 2024/03/14 見出しh1を追加。
    0.15.00 2024/03/15 flexのよく使う処理をクラス化。
    0.18.02 2024/04/04 テーブルを追加。
    0.18.03 2024/04/09 テーブルの左/中央/右寄せ、リンクボタンを追加。
+   0.19.00 2024/04/16 flex行の上寄せを追加。
+                      数値用のテキストボックス/テキストエリア/チェックボックスを追加。
 ------------------------------------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------------------------------- */
 /* 変数定義 */
@@ -82,6 +84,10 @@ footer.valign-middle {
     flex: 1 1 0;
 }
 
+.flex-row > .top {
+    align-self: flex-start;
+}
+
 /* ---------------------------------------------------------------------------------------------- */
 /* 見出し */
 h1 {
@@ -99,27 +105,55 @@ label.required::after {
 /* ---------------------------------------------------------------------------------------------- */
 /* テキストボックス */
 input[type="text"],
-input[type="password"] {
+input[type="password"],
+input[type="number"] {
     font-family: var(--tsubasaLib-font-family);
     font-size: var(--tsubasaLib-font-size);
     padding: 0 3px;
 }
 
 input[type="text"].error,
-input[type="password"].error {
+input[type="password"].error,
+input[type="number"].error {
     background-color: pink;
 }
 
 /* 表示項目用 */
 input[type="text"]:disabled,
-input[type="password"]:disabled {
+input[type="password"]:disabled,
+input[type="number"]:disabled {
+    color: inherit;
+    border-color: transparent;
+    background-color: transparent;
+}
+
+/* 数値は右寄せ */
+input[type="text"].number,
+input[type="number"] {
+    text-align: right;
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* テキストエリア */
+textarea {
+    resize: none;
+    font-family: var(--tsubasaLib-font-family);
+    font-size: var(--tsubasaLib-font-size);
+    padding: 0 4px;
+}
+
+textarea.error {
+    background-color: pink;
+}
+
+textarea:disabled {
     color: inherit;
     border-color: transparent;
     background-color: transparent;
 }
 
 /* ---------------------------------------------------------------------------------------------- */
-/* セレクトリスト */
+/* セレクトボックス */
 select {
     font-family: var(--tsubasaLib-font-family);
     font-size: var(--tsubasaLib-font-size);
@@ -141,8 +175,35 @@ select:not(:disabled):hover {
     cursor: pointer;
 }
 
+select > option:nth-child(odd) {
+    background-color: white;
+}
+
+select > option:nth-child(even) {
+    background-color: lightgray;
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* チェックボックス */
+label:has(input[type="checkbox"].error) {
+    background-color: pink;
+}
+
+input[type="checkbox"]:not(:disabled):hover,
+label:has(> input[type="checkbox"]:not(:disabled)):hover {
+    cursor: pointer;
+}
+
 /* ---------------------------------------------------------------------------------------------- */
 /* ラジオボタン */
+input[type="radio"] {
+    margin-left: 4px;
+}
+
+.radioList:has(> label:first-child > input[type="radio"].error) {
+    background-color: pink;
+}
+
 input[type="radio"]:not(:disabled):hover,
 label:has(> input[type="radio"]:not(:disabled)):hover {
     cursor: pointer;
@@ -270,7 +331,7 @@ table.list.general button {
 /* 行 */
 .area > div {
     display: flex;
-    height: 30px;
+    min-height: 30px;
 }
 
 /* 列 */

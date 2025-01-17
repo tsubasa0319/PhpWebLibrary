@@ -45,17 +45,16 @@ class InputTableRow extends InputItems {
     }
     // ---------------------------------------------------------------------------------------------
     // メソッド(オーバーライド)
-    public function setFromPost() {
-        foreach ($this->getItems() as $var) {
-            if ($var->isReadOnly) continue;
-            $var->setFromPost();
-        }
-    }
     public function setFocus() {
+        // 設定済ならば、上書きしない
         if ($this->events->focusName !== null) return;
+
         foreach ($this->getItems() as $var) {
             if (!$var->isFocus) continue;
+
+            // フォーカス先のname値を取得
             $this->events->focusName = $var->getName();
+
             // 頁を移動する
             $this->table->setPageCount($this->getPageCount());
             return;
@@ -108,18 +107,20 @@ class InputTableRow extends InputItems {
     public function select() {
         if (!$this->isVisible) return;
 
+        // 選択、再選択した場合は解除
         foreach ($this->table as $row)
             if ($row !== $this)
                 $row->isSelected = false;
         $this->isSelected = !$this->isSelected;
 
+        // 頁を移動
         $this->table->setPageCount($this->getPageCount());
     }
     /**
-     * 入力情報の対象かどうか
+     * 検索対象かどうか
      * 
      * @since 0.18.02
-     * @param InputItems $items 入力情報
+     * @param InputItems $items 検索の入力情報
      * @return bool 結果
      */
     public function isTarget($items): bool {

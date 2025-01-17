@@ -7,6 +7,7 @@
 // 0.04.00 2024/02/10 空の場合や、1日以上経過した場合も削除するように対応。
 //                    現セッションを削除した場合も新規発行するように対応。
 // 0.18.00 2024/03/30 データの設定/取得/追加メソッドを追加。
+// 0.19.00 2024/04/16 セッションより値を削除するメソッドを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use DateTime, DateInterval, Exception;
@@ -98,6 +99,26 @@ class SessionUnit {
             $this->data[$name] = [$this->data[$name]];
 
         $this->data[$name][] = $value;
+    }
+    /**
+     * セッションより値を削除
+     * 
+     * @since 0.19.00
+     * @param string $name 名前
+     * @param mixed $key キー値
+     */
+    public function deleteData(string $name, $key = null) {
+        if (!isset($this->data[$name])) return;
+
+        if ($key === null)
+            unset($this->data[$name]);
+
+        if ($key !== null) {
+            if (isset($this->data[$name][$key]))
+                unset($this->data[$name][$key]);
+            if (count($this->data[$name]) == 0)
+                unset($this->data[$name]);
+        }
     }
     // ---------------------------------------------------------------------------------------------
     // 内部処理

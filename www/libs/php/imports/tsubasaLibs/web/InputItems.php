@@ -9,6 +9,8 @@
 // 0.04.00 2024/02/10 POSTメソッドより取得時、読取専用の場合はセッションより取得するように変更。
 //                    Web出力用にWeb値を設定時、エラー項目も登録するように対応。
 //                    フォーカス移動/エラー出力に対応。
+// 0.18.00 2024/03/30 入力テーブルに対応。
+// 0.18.01 2024/04/02 入力テーブルに関わる処理を、InputTableRowへ分離。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/InputItemBase.php';
@@ -17,15 +19,14 @@ require_once __DIR__ . '/InputItemString.php';
 /**
  * 入力項目リストクラス
  * 
- * @version 0.04.00
+ * @since 0.00.00
+ * @version 0.18.01
  */
 class InputItems {
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var Events イベントクラス */
     protected $events;
-    /** @var ?InputTable 入力テーブルクラス */
-    protected $table;
     /** @var array<string, InputItemBase> 入力項目リスト(再取得用) */
     protected $items;
     // ---------------------------------------------------------------------------------------------
@@ -40,17 +41,19 @@ class InputItems {
     }
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
+    /**
+     * @param Events $events イベント
+     * @param ?InputTable $table 不使用(継承先で使用)
+     */
     public function __construct(Events $events, ?InputTable $table = null) {
         $this->events = $events;
-        $this->table = $table;
         $this->setInit();
     }
     // ---------------------------------------------------------------------------------------------
     // メソッド
-    public function getTable(): ?InputTable {
-        return $this->table;
-    }
     /**
+     * 項目リストを取得
+     * 
      * @return array<string, InputItemBase>
      */
     public function getItems(): array {
@@ -67,20 +70,16 @@ class InputItems {
      * GETメソッドより値を設定
      */
     public function setFromGet() {
-        foreach (get_object_vars($this) as $var) {
-            if (!($var instanceof InputItemBase)) continue;
+        foreach ($this->getItems() as $var)
             $var->setFromGet();
-        }
     }
     /**
      * POSTメソッドより値を設定
      */
     public function setFromPost() {
-        foreach (get_object_vars($this) as $var) {
-            if (!($var instanceof InputItemBase)) continue;
+        foreach ($this->getItems() as $var) {
             if ($var->isReadOnly) {
-                if ($this->table === null)
-                    $var->setFromSession($this->events->session->unit);
+                $var->setFromSession($this->events->session->unit);
                 continue;
             }
             $var->setFromPost();
@@ -92,10 +91,8 @@ class InputItems {
      * @since 0.03.00
      */
     public function setFromSession() {
-        foreach (get_object_vars($this) as $var) {
-            if (!($var instanceof InputItemBase)) continue;
+        foreach ($this->getItems() as $var)
             $var->setFromSession($this->events->session->unit);
-        }
     }
     /**
      * Web出力用にWeb値を設定
@@ -147,9 +144,6 @@ class InputItems {
         foreach ($this->getItems() as $var) {
             if (!$var->isFocus) continue;
             $this->events->focusName = $var->getName();
-            // テーブルの場合、頁を移動する
-            if ($this->table !== null)
-                $this->table->setPageCount($this->getPageCount());
             return;
         }
     }
@@ -161,10 +155,9 @@ class InputItems {
      */
     public function getError(): array {
         $names = [];
-        foreach (get_object_vars($this) as $var) {
-            if (!($var instanceof InputItemBase)) continue;
-            if ($var->isError()) $names[] = $var->getName();
-        }
+        foreach ($this->getItems() as $var)
+            if ($var->isError())
+                $names[] = $var->getName();
         return $names;
     }
     /**
@@ -184,50 +177,12 @@ class InputItems {
      */
     public function checkFromWeb(): bool {
         $result = true;
-        foreach (get_object_vars($this) as $var) {
-            if (!($var instanceof InputItemBase)) continue;
+        foreach ($this->getItems() as $var) {
             if ($var->checkFromWeb()) continue;
             $result = false;
             $this->events->addMessage($var->errorId, ...$var->errorParams);
         }
         return $result;
-    }
-    /**
-     * 行番号を取得(テーブルの場合のみ)
-     * 
-     * @return ?int 行番号
-     */
-    public function getRowCount(): ?int {
-        if ($this->table === null) return null;
-
-        foreach ($this->table as $num => $row)
-            if ($row === $this)
-                return $num;
-        return null;
-    }
-    /**
-     * 頁番号を取得(テーブルの場合のみ)
-     * 
-     * @return ?int 頁番号
-     */
-    public function getPageCount(): ?int {
-        if ($this->table === null) return null;
-
-        $rowCount = $this->getRowCount();
-        if ($rowCount === null) return null;
-        return intdiv($rowCount, $this->table->getUnitRowCount());
-    }
-    /**
-     * 頁内の行番号を取得(テーブルの場合のみ)
-     * 
-     * @return ?int エレメント番号
-     */
-    public function getRowCountInPage(): ?int {
-        if ($this->table === null) return null;
-
-        $rowCount = $this->getRowCount();
-        if ($rowCount === null) return null;
-        return $rowCount % $this->table->getUnitRowCount();
     }
     // ---------------------------------------------------------------------------------------------
     // 内部処理

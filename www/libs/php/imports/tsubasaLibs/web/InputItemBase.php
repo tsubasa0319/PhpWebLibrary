@@ -12,13 +12,14 @@
 //                    入力専用の場合、セッションへ保管しないように変更。
 //                    出力専用/読取専用の場合、入力チェックしないように変更。
 // 0.18.00 2024/03/30 配列型のGETメソッド/POSTメソッドに対応。
+// 0.18.01 2024/04/03 親要素が入力テーブルかどうかの判定方法を変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 /**
  * 入力項目ベースクラス
  * 
  * @since 0.00.00
- * @version 0.18.00
+ * @version 0.18.01
  */
 class InputItemBase {
     // ---------------------------------------------------------------------------------------------
@@ -199,10 +200,10 @@ class InputItemBase {
      * @return string name属性値
      */
     public function getName(): string {
-        if ($this->items->getTable() === null)
-            return $this->name;
+        if ($this->items instanceof InputTableRow)
+            return sprintf('%s[],%s', $this->name, $this->items->getRowCountInPage());
         
-        return sprintf('%s[],%s', $this->name, $this->items->getRowCountInPage());
+        return $this->name;
     }
     // ---------------------------------------------------------------------------------------------
     // 内部処理

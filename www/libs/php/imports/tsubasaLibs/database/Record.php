@@ -6,6 +6,7 @@
 // 0.00.00 2024/01/23 作成。
 // 0.10.00 2024/03/08 各メソッドをチェーン処理に対応。
 // 0.11.00 2024/03/08 データ型のクラス名を変更。
+// 0.16.00 2024/03/23 インデックスキーのキー値リスト取得を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/advance/RecordCreatorItem.php';
@@ -15,7 +16,8 @@ use tsubasaLibs\type;
 /**
  * レコードクラス
  * 
- * @version 0.11.00
+ * @since 0.00.00
+ * @version 0.16.00
  */
 class Record {
     // ---------------------------------------------------------------------------------------------
@@ -172,6 +174,19 @@ class Record {
         if (!property_exists($this, $id)) return false;
         if ($this->{$id} instanceof type\Nothing) return false;
         return true;
+    }
+    /**
+     * インデックスキーのキー値リストを取得
+     * 
+     * @since 0.16.00
+     * @return array キー値リスト
+     */
+    public function getIndexKeyValues(): array {
+        $key = $this->stmt->table->getIndexKey();
+        $values = [];
+        foreach ($key->getKeyItems() as $keyItem)
+            $values[] = $this->{$keyItem->item->id};
+        return $values;
     }
     // ---------------------------------------------------------------------------------------------
     // 内部処理

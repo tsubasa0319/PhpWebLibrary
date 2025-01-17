@@ -6,17 +6,21 @@
 // 0.00.00 2024/01/23 作成。
 // 0.04.00 2024/02/10 新規レコード取得に失敗していたので修正。
 // 0.10.00 2024/03/08 DB情報無しのインスタンスを取得できるように対応。
+// 0.16.00 2024/03/23 レコード取得の予定と実行を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
 require_once __DIR__ . '/Items.php';
 require_once __DIR__ . '/Key.php';
 require_once __DIR__ . '/Indexes.php';
+require_once __DIR__ . '/QueryPlanning.php';
+require_once __DIR__ . '/Records.php';
 require_once __DIR__ . '/advance/TableCamelCase.php';
 /**
  * テーブルクラス
  * 
- * @version 0.10.00
+ * @since 0.00.00
+ * @version 0.16.00
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -41,6 +45,8 @@ class Table {
     protected $isTemp;
     /** @var ?static 基のテーブル */
     public $baseTable;
+    /** @var QueryPlanning クエリ予定クラス */
+    protected $queryPlanning;
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
@@ -217,7 +223,7 @@ class Table {
      * 
      * @return Record|false レコード
      */
-    public function getNewRecord() {
+    public function getNewRecord(): Record|false {
         if ($this->db !== null) {
             $stmt = $this->prepare('SELECT 1');
         } else {
@@ -228,6 +234,15 @@ class Table {
         }
         if ($stmt === false) return false;
         return $stmt->getNewRecord();
+    }
+    /**
+     * 新規レコードリストを取得
+     * 
+     * @since 0.16.00
+     * @return Records レコードリスト
+     */
+    public function getNewRecords(): Records {
+        return new Records();
     }
     /**
      * レコード追加
@@ -358,6 +373,43 @@ class Table {
 
         return $tempTable;
     }
+    /**
+     * インデックスキーを取得
+     * 
+     * @since 0.16.00
+     * @return Key インデックスキー
+     */
+    public function getIndexKey(): Key {
+        return $this->indexKey;
+    }
+    /**
+     * レコード取得を予定
+     * 
+     * @since 0.16.00
+     * @param array ...$values インデックスキー値リスト
+     * @return Record レコード
+     */
+    public function selectPlan(...$values): Record {
+        return $this->queryPlanning->select($values);
+    }
+    /**
+     * レコード取得を予定(複数レコード版)
+     * 
+     * @since 0.16.00
+     * @param array ...$values インデックスキー値リスト
+     * @return Records レコード
+     */
+    public function selectArrayPlan(...$values): Records {
+        return $this->queryPlanning->selectArray($values);
+    }
+    /**
+     * 予定を実行
+     * 
+     * @since 0.16.00
+     */
+    public function executePlan() {
+        $this->queryPlanning->execute();
+    }
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -370,6 +422,7 @@ class Table {
     protected function setInit() {
         $this->tempTables = [];
         $this->isTemp = false;
+        $this->queryPlanning = new QueryPlanning($this);
     }
     /**
      * インデックスキーを設定

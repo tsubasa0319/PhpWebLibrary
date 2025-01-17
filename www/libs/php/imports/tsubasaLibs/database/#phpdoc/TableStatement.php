@@ -4,9 +4,10 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
+// 0.16.00 2024/03/23 クラス名を訂正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
-class DbStatement extends DbStatement {
+class TableStatement extends DbStatement {
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -21,7 +22,7 @@ class DbStatement extends DbStatement {
     /**
      * @return Record[] 見つかればレコード配列、見つからなければfalse
      */
-    public function fetchAll(int $mode = DbBase::FETCH_DEFAULT, ...$args):array {
+    public function fetchAll(int $mode = DbBase::FETCH_DEFAULT, ...$args): array {
         return [];
     }
 }

@@ -6,12 +6,14 @@
 // 0.00.00 2024/01/23 作成。
 // 0.01.00 2024/02/05 データ型チェックを追加。
 // 0.03.00 2024/02/07 画面単位セッションとの入出力を追加。
+// 0.18.00 2024/03/30 一部メソッドの処理内容を継承元へ移動。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 /**
  * 入力項目クラス(整数型)
  * 
- * @version 0.03.00
+ * @since 0.00.00
+ * @version 0.18.00
  */
 class InputItemInteger extends InputItemBase {
     // ---------------------------------------------------------------------------------------------
@@ -35,15 +37,8 @@ class InputItemInteger extends InputItemBase {
     /**
      * @since 0.03.00
      */
-    protected function setValueFromSession() {
+    protected function setValueFromSessionValue() {
         $this->value = is_numeric($this->sessionValue) ? (int)$this->sessionValue : null;
-    }
-    /**
-     * @since 0.03.00
-     */
-    protected function setSessionValueFromValue(SessionUnit $unit) {
-        $this->sessionValue = $this->value;
-        $unit->data[$this->name] = $this->sessionValue;
     }
     protected function checkWebValue(): bool {
         if (!parent::checkWebValue()) return false;

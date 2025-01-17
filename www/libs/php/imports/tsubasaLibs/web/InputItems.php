@@ -11,6 +11,7 @@
 //                    フォーカス移動/エラー出力に対応。
 // 0.18.00 2024/03/30 入力テーブルに対応。
 // 0.18.01 2024/04/02 入力テーブルに関わる処理を、InputTableRowへ分離。
+// 0.18.03 2024/04/09 入力チェックを実装。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/InputItemBase.php';
@@ -20,7 +21,7 @@ require_once __DIR__ . '/InputItemString.php';
  * 入力項目リストクラス
  * 
  * @since 0.00.00
- * @version 0.18.01
+ * @version 0.18.03
  */
 class InputItems {
     // ---------------------------------------------------------------------------------------------
@@ -182,6 +183,19 @@ class InputItems {
             $result = false;
             $this->events->addMessage($var->errorId, ...$var->errorParams);
         }
+        return $result;
+    }
+    /**
+     * 入力チェック
+     * 
+     * @since 0.18.03
+     * @return bool 成否
+     */
+    public function check(): bool {
+        $result = true;
+        foreach ($this->getItems() as $item)
+            if (!$item->check())
+                $result = false;
         return $result;
     }
     // ---------------------------------------------------------------------------------------------

@@ -14,13 +14,14 @@
 // 0.18.00 2024/03/30 配列型のGETメソッド/POSTメソッドに対応。
 // 0.18.01 2024/04/03 親要素が入力テーブルかどうかの判定方法を変更。
 // 0.18.02 2024/04/04 セッション版の入力チェック(最小限のみ)を追加。
+// 0.18.03 2024/04/09 入力チェックを枠のみ実装。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 /**
  * 入力項目ベースクラス
  * 
  * @since 0.00.00
- * @version 0.18.02
+ * @version 0.18.03
  */
 class InputItemBase {
     // ---------------------------------------------------------------------------------------------
@@ -177,7 +178,7 @@ class InputItemBase {
      */
     public function setForWeb() {
         $this->webValue = '';
-        if ($this->isInputOnly and !$this->isError()) return;
+        if ($this->isInputOnly and !$this->items->isError()) return;
         $this->setWebValueFromValue();
     }
     /**
@@ -220,6 +221,15 @@ class InputItemBase {
             return sprintf('%s[],%s', $this->name, $this->items->getRowCountInPage());
         
         return $this->name;
+    }
+    /**
+     * 入力チェック
+     * 
+     * @since 0.18.03
+     * @return bool 成否
+     */
+    public function check(): bool {
+        return true;
     }
     // ---------------------------------------------------------------------------------------------
     // 内部処理

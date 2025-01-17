@@ -5,6 +5,7 @@
 // History:
 // 0.18.01 2024/04/03 作成。
 // 0.18.02 2024/04/04 追加時の入力チェック、入力情報より行へ設定するメソッドを実装。選択/削除を実装。
+// 0.18.03 2024/04/09 選択済の場合に選択処理を実行した場合、選択を外すように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/InputItems.php';
@@ -12,7 +13,7 @@ require_once __DIR__ . '/InputItems.php';
  * 入力テーブルの行クラス
  * 
  * @since 0.18.01
- * @version 0.18.02
+ * @version 0.18.03
  */
 class InputTableRow extends InputItems {
     // ---------------------------------------------------------------------------------------------
@@ -108,8 +109,9 @@ class InputTableRow extends InputItems {
         if (!$this->isVisible) return;
 
         foreach ($this->table as $row)
-            $row->isSelected = false;
-        $this->isSelected = true;
+            if ($row !== $this)
+                $row->isSelected = false;
+        $this->isSelected = !$this->isSelected;
 
         $this->table->setPageCount($this->getPageCount());
     }

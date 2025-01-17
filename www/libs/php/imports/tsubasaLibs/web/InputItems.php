@@ -4,7 +4,7 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
-// 0.01.00 2024/02/05 getForSmarty/getErrorForSmarty/CheckForWebを追加。
+// 0.01.00 2024/02/05 getForSmarty/getErrorForSmarty/checkForWebを追加。
 // 0.03.00 2024/02/07 画面単位セッションとの入出力を追加。
 // 0.04.00 2024/02/10 POSTメソッドより取得時、読取専用の場合はセッションより取得するように変更。
 //                    Web出力用にWeb値を設定時、エラー項目も登録するように対応。
@@ -24,14 +24,45 @@ class InputItems {
     // プロパティ
     /** @var Events イベントクラス */
     protected $events;
+    /** @var ?InputTable 入力テーブルクラス */
+    protected $table;
+    /** @var array<string, InputItemBase> 入力項目リスト(再取得用) */
+    protected $items;
+    // ---------------------------------------------------------------------------------------------
+    // マジックメソッド
+    public function __debugInfo() {
+        $info = [];
+        foreach (get_object_vars($this) as $var) {
+            if (!($var instanceof InputItemBase)) continue;
+            $info[] = $var;
+        }
+        return $info;
+    }
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
-    public function __construct(Events $events) {
+    public function __construct(Events $events, ?InputTable $table = null) {
         $this->events = $events;
+        $this->table = $table;
         $this->setInit();
     }
     // ---------------------------------------------------------------------------------------------
     // メソッド
+    public function getTable(): ?InputTable {
+        return $this->table;
+    }
+    /**
+     * @return array<string, InputItemBase>
+     */
+    public function getItems(): array {
+        if ($this->items === null) {
+            $this->items = [];
+            foreach (get_object_vars($this) as $name => $var)
+                if ($var instanceof InputItemBase)
+                    $this->items[$name] = $var;
+        }
+
+        return $this->items;
+    }
     /**
      * GETメソッドより値を設定
      */
@@ -48,7 +79,8 @@ class InputItems {
         foreach (get_object_vars($this) as $var) {
             if (!($var instanceof InputItemBase)) continue;
             if ($var->isReadOnly) {
-                $var->setFromSession($this->events->session->unit);
+                if ($this->table === null)
+                    $var->setFromSession($this->events->session->unit);
                 continue;
             }
             $var->setFromPost();
@@ -71,18 +103,8 @@ class InputItems {
      * 主にhtmlspecialcharsによるエスケープ処理を行います。
      */
     public function setForWeb() {
-        // エスケープ処理、セッション保管
-        foreach (get_object_vars($this) as $var) {
-            if (!($var instanceof InputItemBase)) continue;
+        foreach ($this->getItems() as $var)
             $var->setForWeb();
-            if ($this->events->isConfirm or $var->isReadOnly)
-                $var->setForSession($this->events->session->unit);
-        }
-        // エラー項目を登録
-        $this->events->errorNames = [
-            ...$this->events->errorNames,
-            ...$this->getError()
-        ];
     }
     /**
      * セッション出力用にセッション値を設定
@@ -90,10 +112,18 @@ class InputItems {
      * @since 0.03.00
      */
     public function setForSession() {
-        foreach (get_object_vars($this) as $var) {
-            if (!($var instanceof InputItemBase)) continue;
+        foreach ($this->getItems() as $var) {
+            if (!$this->events->isConfirm and !$var->isReadOnly) continue;
             $var->setForSession($this->events->session->unit);
         }
+    }
+    /**
+     * エラー項目を登録
+     */
+    public function addErrorNames() {
+        foreach ($this->getItems() as $var)
+            if ($var->isError())
+                $this->events->errorNames[] = $var->getName();
     }
     /**
      * Smarty用にWeb値リストを取得
@@ -103,10 +133,8 @@ class InputItems {
      */
     public function getForSmarty(): array {
         $values = [];
-        foreach (get_object_vars($this) as $id => $var) {
-            if (!($var instanceof InputItemBase)) continue;
+        foreach ($this->getItems() as $id => $var)
             $values[$id] = $var->webValue;
-        }
         return $values;
     }
     /**
@@ -116,12 +144,13 @@ class InputItems {
      */
     public function setFocus() {
         if ($this->events->focusName !== null) return;
-        foreach (get_object_vars($this) as $var) {
-            if (!($var instanceof InputItemBase)) continue;
-            if ($var->isFocus) {
-                $this->events->focusName = $var->name;
-                return;
-            }
+        foreach ($this->getItems() as $var) {
+            if (!$var->isFocus) continue;
+            $this->events->focusName = $var->getName();
+            // テーブルの場合、頁を移動する
+            if ($this->table !== null)
+                $this->table->setPageCount($this->getPageCount());
+            return;
         }
     }
     /**
@@ -134,7 +163,7 @@ class InputItems {
         $names = [];
         foreach (get_object_vars($this) as $var) {
             if (!($var instanceof InputItemBase)) continue;
-            if ($var->isError()) $names[] = $var->name;
+            if ($var->isError()) $names[] = $var->getName();
         }
         return $names;
     }
@@ -163,10 +192,49 @@ class InputItems {
         }
         return $result;
     }
+    /**
+     * 行番号を取得(テーブルの場合のみ)
+     * 
+     * @return ?int 行番号
+     */
+    public function getRowCount(): ?int {
+        if ($this->table === null) return null;
+
+        foreach ($this->table as $num => $row)
+            if ($row === $this)
+                return $num;
+        return null;
+    }
+    /**
+     * 頁番号を取得(テーブルの場合のみ)
+     * 
+     * @return ?int 頁番号
+     */
+    public function getPageCount(): ?int {
+        if ($this->table === null) return null;
+
+        $rowCount = $this->getRowCount();
+        if ($rowCount === null) return null;
+        return intdiv($rowCount, $this->table->getUnitRowCount());
+    }
+    /**
+     * 頁内の行番号を取得(テーブルの場合のみ)
+     * 
+     * @return ?int エレメント番号
+     */
+    public function getRowCountInPage(): ?int {
+        if ($this->table === null) return null;
+
+        $rowCount = $this->getRowCount();
+        if ($rowCount === null) return null;
+        return $rowCount % $this->table->getUnitRowCount();
+    }
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
      * 初期設定
      */
-    protected function setInit() {}
+    protected function setInit() {
+        $this->items = null;
+    }
 }

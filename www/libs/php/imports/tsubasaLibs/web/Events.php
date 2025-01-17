@@ -18,6 +18,7 @@
 // 0.05.00 2024/02/20 Ajaxに対応。
 // 0.11.00 2024/03/08 データ型のクラス名を変更。
 // 0.18.00 2024/03/30 入力テーブルに対応。
+// 0.18.02 2024/04/04 ArrayLikeをforeachループ時、cloneするように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
@@ -33,7 +34,7 @@ use tsubasaLibs\database\DbBase;
  * イベントクラス
  * 
  * @since 0.00.00
- * @version 0.18.00
+ * @version 0.18.02
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -227,7 +228,7 @@ class Events {
             }
             if ($var instanceof InputTable) {
                 $isError = $var->errorPage();
-                foreach ($var as $row) {
+                foreach (clone $var as $row) {
                     $row->setForWeb();
                     $row->addErrorNames();
                     if (!$isError)

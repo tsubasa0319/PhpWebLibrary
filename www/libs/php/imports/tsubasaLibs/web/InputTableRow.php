@@ -4,6 +4,7 @@
 //
 // History:
 // 0.18.01 2024/04/03 作成。
+// 0.18.02 2024/04/04 追加時の入力チェック、入力情報より行へ設定するメソッドを実装。選択/削除を実装。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/InputItems.php';
@@ -11,7 +12,7 @@ require_once __DIR__ . '/InputItems.php';
  * 入力テーブルの行クラス
  * 
  * @since 0.18.01
- * @version 0.18.01
+ * @version 0.18.02
  */
 class InputTableRow extends InputItems {
     // ---------------------------------------------------------------------------------------------
@@ -20,6 +21,14 @@ class InputTableRow extends InputItems {
     protected $table;
     /** @var bool 表示するかどうか */
     public $isVisible;
+    /** @var bool 選択されているかどうか */
+    public $isSelected;
+    /**
+     * @var bool 後から追加したものかどうか
+     * 
+     * trueにすると、行を削除時に論理削除ではなく、物理削除になります。
+     */
+    public $isAdded;
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
@@ -90,10 +99,85 @@ class InputTableRow extends InputItems {
         if ($rowCount === null) return null;
         return $rowCount % $this->table->getUnitRowCount();
     }
+    /**
+     * 選択
+     * 
+     * @since 0.18.02
+     */
+    public function select() {
+        if (!$this->isVisible) return;
+
+        foreach ($this->table as $row)
+            $row->isSelected = false;
+        $this->isSelected = true;
+
+        $this->table->setPageCount($this->getPageCount());
+    }
+    /**
+     * 入力情報の対象かどうか
+     * 
+     * @since 0.18.02
+     * @param InputItems $items 入力情報
+     * @return bool 結果
+     */
+    public function isTarget($items): bool {
+        return false;
+    }
+    /**
+     * 行をWeb画面より追加時の入力チェック
+     * 
+     * @since 0.18.02
+     * @param InputItems $add 追加用の入力項目リスト
+     * @return bool 結果
+     */
+    public function checkForWebAdd($add): bool {
+        return true;
+    }
+    /**
+     * 行をWeb画面より追加時の項目設定
+     * 
+     * @since 0.18.02
+     * @param InputItems $add 追加用の入力項目リスト
+     */
+    public function setForWebAdd($add) {}
+    /**
+     * 削除
+     * 
+     * @since 0.18.02
+     */
+    public function delete() {
+        $this->isVisible = false;
+        $this->isSelected = false;
+        if ($this->isAdded) {
+            foreach ($this->table as $num => $row) {
+                if ($row === $this) {
+                    unset($this->table[$num]);
+                    break;
+                }
+            }
+        }
+    }
+    /**
+     * 入力チェック(最小限のみ、入力テーブルの表示外の頁)
+     * 
+     * @since 0.18.02
+     * @return bool 成否
+     */
+    public function checkFromSession(): bool {
+        $result = true;
+        foreach ($this->getItems() as $var) {
+            if ($var->checkFromSession()) continue;
+            $result = false;
+            $this->events->addMessage($var->errorId, ...$var->errorParams);
+        }
+        return $result;
+    }
     // ---------------------------------------------------------------------------------------------
     // 内部処理(オーバーライド)
     protected function setInit() {
         parent::setInit();
         $this->isVisible = true;
+        $this->isSelected = false;
+        $this->isAdded = false;
     }
 }

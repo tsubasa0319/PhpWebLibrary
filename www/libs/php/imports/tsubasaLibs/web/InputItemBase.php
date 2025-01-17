@@ -13,13 +13,14 @@
 //                    出力専用/読取専用の場合、入力チェックしないように変更。
 // 0.18.00 2024/03/30 配列型のGETメソッド/POSTメソッドに対応。
 // 0.18.01 2024/04/03 親要素が入力テーブルかどうかの判定方法を変更。
+// 0.18.02 2024/04/04 セッション版の入力チェック(最小限のみ)を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 /**
  * 入力項目ベースクラス
  * 
  * @since 0.00.00
- * @version 0.18.01
+ * @version 0.18.02
  */
 class InputItemBase {
     // ---------------------------------------------------------------------------------------------
@@ -140,7 +141,22 @@ class InputItemBase {
     public function checkFromWeb() {
         if ($this->isOutputOnly) return true;
         if ($this->isReadOnly) return true;
-        if (!$this->checkWebValue()) {
+        if (!$this->checkValue($this->webValue)) {
+            $this->setError();
+            return false;
+        }
+        return true;
+    }
+    /**
+     * 入力チェック(最小限のみ、入力テーブルの表示外の頁)
+     * 
+     * @since 0.18.02
+     * @return bool 成否
+     */
+    public function checkFromSession() {
+        if ($this->isOutputOnly) return true;
+        if ($this->isReadOnly) return true;
+        if (!$this->checkValue($this->sessionValue)) {
             $this->setError();
             return false;
         }
@@ -244,13 +260,14 @@ class InputItemBase {
         $this->sessionValue = $this->value;
     }
     /**
-     * Web値チェック
+     * 値チェック
      * 
+     * @param string $value 値
      * @return bool 成否
      */
-    protected function checkWebValue(): bool {
+    protected function checkValue(string $value): bool {
         // 入力が必須
-        if ($this->isRequired and $this->webValue === '') {
+        if ($this->isRequired and $value === '') {
             $this->errorId = Message::ID_REQUIRED;
             $this->errorParams = [$this->label];
             return false;

@@ -7,6 +7,7 @@
 // 0.04.00 2024/02/10 新規レコード取得に失敗していたので修正。
 // 0.10.00 2024/03/08 DB情報無しのインスタンスを取得できるように対応。
 // 0.16.00 2024/03/23 レコード取得の予定と実行を追加。
+// 0.18.02 2024/04/04 ArrayLikeをforeachループ時、cloneするように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -20,7 +21,7 @@ require_once __DIR__ . '/advance/TableCamelCase.php';
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.16.00
+ * @version 0.18.02
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -267,7 +268,7 @@ class Table {
     public function inserts(Record ...$records): int|false {
         $items = $this->getInsertsItems(...$records);
         if ($items === false) return 0;
-        foreach ($records as $record) $record->setValuesForInsert();
+        foreach (clone $records as $record) $record->setValuesForInsert();
         $stmt = $this->prepare($this->getInsertsSql($items, ...$records));
         if ($stmt === false) return false;
         $this->bindInsertsValue($items, $stmt, ...$records);
@@ -990,7 +991,7 @@ class Table {
         }
         $valuesStr = sprintf('(%s)', implode(', ', $values));
         $valuesList = [];
-        foreach ($records as $record) $valuesList[] = $valuesStr;
+        foreach (clone $records as $record) $valuesList[] = $valuesStr;
         return sprintf('INSERT INTO %s (%s) VALUES %s',
             $tableId, implode(', ', $itemIds), implode(', ', $valuesList));
     }
@@ -1008,7 +1009,7 @@ class Table {
         $executorIds = $this->getExecutorIds();
         $recordForExecutor = $this->getNewRecord();
         $recordForExecutor->setValuesForInsert();
-        foreach ($records as $record) {
+        foreach (clone $records as $record) {
             $rowNum++;
             // 通常項目
             foreach ($insertItems as $id => $item) {

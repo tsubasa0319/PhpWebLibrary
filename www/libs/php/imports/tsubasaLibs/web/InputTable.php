@@ -5,6 +5,7 @@
 // History:
 // 0.18.00 2024/03/30 作成。
 // 0.18.01 2024/04/03 行クラスをInputTableRowへ変更。
+// 0.18.02 2024/04/04 行を検索/選択/追加/削除を実装。入力チェックを頁外に対しても行うように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/../type/ArrayLike.php';
@@ -14,7 +15,7 @@ use tsubasaLibs\type\ArrayLike;
  * 入力テーブルクラス
  * 
  * @since 0.18.00
- * @version 0.18.01
+ * @version 0.18.02
  */
 class InputTable extends ArrayLike {
     // ---------------------------------------------------------------------------------------------
@@ -47,14 +48,137 @@ class InputTable extends ArrayLike {
         return new InputTableRow($this->events, $this);
     }
     /**
+     * 入力情報より検索
+     * 
+     * @since 0.18.02
+     * @param InputItems $items 入力情報
+     * @return ?InputTableRow 行
+     */
+    public function searchRow(InputItems $items): ?InputTableRow {
+        foreach ($this as $row) {
+            if ($row->isTarget($items))
+                return $row;
+        }
+        return null;
+    }
+    /**
+     * 入力情報より行を追加
+     * 
+     * @since 0.18.02
+     * @param InputItems $add 追加用の入力情報
+     * @return bool 成否
+     */
+    public function addRow(InputItems $add): bool {
+        // 存在チェック
+        $new = $this->searchRow($add);
+
+        // 存在する
+        if ($new !== null) {
+            // 非表示の場合は、表示へ戻し、処理を続行
+            if (!$new->isVisible) {
+                $new->isVisible = true;
+            } else {
+                // 存在エラー
+                foreach ($add->getItems() as $item)
+                    $item->setError();
+                $this->events->addMessage(Message::ID_ALREADY_REGISTERED);
+                return false;
+            }
+        }
+
+        // 存在しなかった場合は、新規作成
+        $isNew = false;
+        if ($new === null) {
+            $new = $this->getNewRow();
+            $new->isAdded = true;
+            $isNew = true;
+        }
+
+        // 入力情報を設定
+        if (!$new->checkForWebAdd($add)) return false;
+        $new->setForWebAdd($add);
+
+        // 新規作成を実体化
+        if ($isNew)
+            $this[] = $new;
+
+        return true;
+    }
+    /**
+     * 表示する行のリストを取得
+     * 
+     * @since 0.18.02
+     * @return InputTableRow[] 行リスト
+     */
+    public function getVisibleRows(): array {
+        $rows = [];
+        foreach ($this as $row)
+            if ($row->isVisible)
+                $rows[] = $row;
+        return $rows;
+    }
+    /**
+     * 頁内行番号より行を取得
+     * 
+     * @since 0.18.02
+     * @return ?InputTableRow 行
+     */
+    public function getRowByNumInPage(int $numInPage): ?InputTableRow {
+        if ($numInPage >= $this->unitRowCount) return null;
+        $rows = $this->getVisibleRows();
+
+        $i = $numInPage + $this->unitRowCount * $this->pageCount;
+        if ($i <= count($rows) - 1)
+            return $rows[$i];
+
+        return null;
+    }
+    /**
+     * 頁内行番号より行を選択
+     * 
+     * @since 0.18.02
+     * @param ?int $numInPage 頁内行番号(nullの場合は解除)
+     * @return ?InputTableRow 選択した行
+     */
+    public function selectRowByNumInPage(?int $numInPage): ?InputTableRow {
+        // nullの場合は、選択解除
+        if ($numInPage === null) {
+            foreach ($this as $row)
+                $row->isSelected = false;
+            return null;
+        }
+
+        $row = $this->getRowByNumInPage($numInPage);
+        if ($row === null) return null;
+
+        $row->select();
+        return $row;
+    }
+    /**
+     * 頁内行番号より行を削除
+     * 
+     * @since 0.18.02
+     * @return bool 成否
+     */
+    public function deleteRowByNumInPage(int $numInPage): bool {
+        $row = $this->getRowByNumInPage($numInPage);
+        if ($row === null) return false;
+
+        $row->delete();
+        return true;
+    }
+    /**
      * GETメソッドより値を設定
      */
     public function setFromGet() {
+        // データを表示するもののみへ絞り込み
+        $rows = $this->getVisibleRows();
+
         $start = $this->unitRowCount * $this->pageCount;
         for ($num = $start; $num < $start + $this->unitRowCount; $num++) {
-            if ($num >= count($this)) continue;
+            if ($num >= count($rows)) continue;
 
-            $row = $this->offsetGet($num);
+            $row = $rows[$num];
             foreach ($row->getItems() as $var)
                 $var->setFromGet($num - $start);
         }
@@ -63,11 +187,14 @@ class InputTable extends ArrayLike {
      * POSTメソッドより値を設定
      */
     public function setFromPost() {
+        // データを表示するもののみへ絞り込み
+        $rows = $this->getVisibleRows();
+
         $start = $this->unitRowCount * $this->pageCount;
         for ($num = $start; $num < $start + $this->unitRowCount; $num++) {
-            if ($num >= count($this)) continue;
+            if ($num >= count($rows)) continue;
 
-            $row = $this->offsetGet($num);
+            $row = $rows[$num];
             foreach ($row->getItems() as $var)
                 $var->setFromPost($num - $start);
         }
@@ -91,6 +218,17 @@ class InputTable extends ArrayLike {
             $datas[] = $values;
         }
         $list['datas'] = $datas;
+
+        // 行情報
+        $rowInfos = [];
+        foreach ($this as $row) {
+            $infos = [];
+            $infos['isVisible'] = $row->isVisible;
+            $infos['isSelected'] = $row->isSelected;
+            $infos['isAdded'] = $row->isAdded;
+            $rowInfos[] = $infos;
+        }
+        $list['rowInfos'] = $rowInfos;
 
         // 頁情報
         $infos = [];
@@ -124,6 +262,14 @@ class InputTable extends ArrayLike {
                 $var->setFromTable($sessionValue);
             }
             $this[] = $items;
+        }
+
+        // 行情報
+        foreach ($list['rowInfos'] as $i => $infos) {
+            $row = $this->offsetGet($i);
+            $row->isVisible = $infos['isVisible'];
+            $row->isSelected = $infos['isSelected'];
+            $row->isAdded = $infos['isAdded'];
         }
 
         // 頁情報
@@ -191,7 +337,7 @@ class InputTable extends ArrayLike {
      * @return int 最大の頁数
      */
     public function getMaxPageCount(): int {
-        return intdiv(count($this) - 1, $this->unitRowCount);
+        return intdiv(count($this->getVisibleRows()) - 1, $this->unitRowCount);
     }
     /**
      * 入力チェック(最小限のみ)
@@ -200,13 +346,23 @@ class InputTable extends ArrayLike {
      */
     public function checkFromWeb(): bool {
         $result = true;
-        $start = $this->unitRowCount * $this->pageCount;
-        for ($num = $start; $num < $start + $this->unitRowCount; $num++) {
-            if ($num >= count($this)) continue;
 
-            $row = $this->offsetGet($num);
-            if (!$row->checkFromWeb())
-                $result = false;
+        // データを表示するもののみへ絞り込み
+        $rows = $this->getVisibleRows();
+
+        $start = $this->unitRowCount * $this->pageCount;
+        $end = $start + $this->unitRowCount - 1;
+        for ($num = 0; $num < count($rows); $num++) {
+            $row = $rows[$num];
+            if ($num >= $start and $num <= $end) {
+                // 頁内
+                if (!$row->checkFromWeb())
+                    $result = false;
+            } else {
+                // 頁外
+                if (!$row->checkFromSession())
+                    $result = false;
+            }
         }
         return $result;
     }
@@ -219,21 +375,21 @@ class InputTable extends ArrayLike {
         $values = [];
 
         // データを表示するもののみへ絞り込み
-        $_this = clone $this;
-        for ($i = 0; $i < count($this); $i++) {
-            $row = $this->offsetGet($i);
-            if (!$row->isVisible)
-                unset($_this[$i]);
-        }
+        $rows = $this->getVisibleRows();
 
         // データ
         $datas = [];
+        $selectedKey = null;
         $start = $this->unitRowCount * $this->pageCount;
         for ($i = $start; $i < $start + $this->unitRowCount; $i++) {
-            if ($i >= count($_this)) break;
+            if ($i >= count($rows)) break;
 
-            $row = $_this->offsetGet($i);
+            $row = $rows[$i];
             $datas[] = $row->getForSmarty();
+
+            // 選択キー
+            if ($row->isSelected)
+                $selectedKey = $i - $start;
         }
         $values['datas'] = $datas;
 
@@ -243,6 +399,7 @@ class InputTable extends ArrayLike {
         $infos['maxPage'] = $this->getMaxPageCount() + 1;
         $infos['isPrev'] = $infos['page'] > 1;
         $infos['isNext'] = $infos['page'] < $infos['maxPage'];
+        $infos['selectedKey'] = $selectedKey;
         $values['infos'] = $infos;
 
         return $values;
@@ -253,6 +410,7 @@ class InputTable extends ArrayLike {
      * @return bool 成否
      */
     public function eventPrevPage(): bool {
+        $this->setItemsNoRequired();
         $this->setFromPost();
         if (!$this->checkFromWeb()) return true;
 
@@ -265,6 +423,7 @@ class InputTable extends ArrayLike {
      * @return bool 成否
      */
     public function eventNextPage(): bool {
+        $this->setItemsNoRequired();
         $this->setFromPost();
         if (!$this->checkFromWeb()) return true;
         
@@ -277,10 +436,49 @@ class InputTable extends ArrayLike {
      * @return bool 成否
      */
     public function eventSetPage(int $count): bool {
+        $this->setItemsNoRequired();
         $this->setFromPost();
         if (!$this->checkFromWeb()) return true;
 
         $this->setPageCount($count);
+        return true;
+    }
+    /**
+     * 行を選択イベント
+     * 
+     * @since 0.18.02
+     * @param ?int $rowNum 頁内行番号(nullの場合は解除)
+     * @return bool 成否
+     */
+    public function eventSelectRow(?int $rowNum): bool {
+        $this->selectRowByNumInPage($rowNum);
+
+        return true;
+    }
+    /**
+     * 行を追加イベント
+     * 
+     * @since 0.18.02
+     * @param InputItems $add 追加用の入力情報
+     * @return bool 成否
+     */
+    public function eventAddRow($add): bool {
+        $add->setFromPost();
+        if (!$add->checkFromWeb()) return true;
+
+        $this->addRow($add);
+        return true;
+    }
+    /**
+     * 行を削除イベント
+     * 
+     * @since 0.18.02
+     * @param ?int $rowNum 頁内行番号(nullの場合は解除)
+     * @return bool 成否
+     */
+    public function eventDeleteRow(int $rowNum): bool {
+        $this->deleteRowByNumInPage($rowNum);
+
         return true;
     }
     // ---------------------------------------------------------------------------------------------
@@ -291,5 +489,15 @@ class InputTable extends ArrayLike {
     protected function setInit() {
         $this->unitRowCount = 50;
         $this->pageCount = 0;
+    }
+    /**
+     * 入力情報より必須設定を外す
+     * 
+     * @since 0.18.02
+     */
+    protected function setItemsNoRequired() {
+        foreach ($this->getVisibleRows() as $row)
+            foreach ($row->getItems() as $item)
+                $item->isRequired = false;
     }
 }

@@ -7,13 +7,14 @@
 // 0.01.00 2024/02/05 データ型チェックを追加。
 // 0.03.00 2024/02/07 画面単位セッションとの入出力を追加。
 // 0.18.00 2024/03/30 一部メソッドの処理内容を継承元へ移動。
+// 0.18.02 2024/04/04 入力チェックのメソッド名を変更。Web版とセッション版の統合のため。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 /**
  * 入力項目クラス(文字列型)
  * 
  * @since 0.00.00
- * @version 0.18.00
+ * @version 0.18.02
  */
 class InputItemString extends InputItemBase {
     // ---------------------------------------------------------------------------------------------
@@ -48,18 +49,18 @@ class InputItemString extends InputItemBase {
     protected function setValueFromSessionValue() {
         $this->value = $this->sessionValue !== null ? (string)$this->sessionValue : null;
     }
-    protected function checkWebValue(): bool {
-        if (!parent::checkWebValue()) return false;
+    protected function checkValue(string $value): bool {
+        if (!parent::checkValue($value)) return false;
         // 特殊文字は使用不可
         if ($this->isMultiple) {
             // 改行文字のみ許可
-            if (!preg_match('/\A[^\x00-\x09\x0b\x0c\x0e-\x1f]*\z/', $this->webValue)) {
+            if (!preg_match('/\A[^\x00-\x09\x0b\x0c\x0e-\x1f]*\z/', $value)) {
                 $this->errorId = Message::ID_TYPE_ERROR;
                 $this->errorParams = [$this->label, '文字列'];
                 return false;
             }
         }
-        if (!preg_match('/\A[^\x00-\x1f]*\z/', $this->webValue)) {
+        if (!preg_match('/\A[^\x00-\x1f]*\z/', $this->value)) {
             $this->errorId = Message::ID_TYPE_ERROR;
             $this->errorParams = [$this->label, '文字列'];
             return false;

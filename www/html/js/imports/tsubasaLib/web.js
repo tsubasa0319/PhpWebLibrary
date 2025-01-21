@@ -12,6 +12,7 @@
 //                    Enterキーによる誤動作防止を追加。テキストボックス上でフォーム送信しないように対応。
 // 0.20.00 2024/04/23 結合名を取得を追加。
 //                    別画面に対してエレメントの種類を判定する可能性がある場合は、instanceofを使わないように変更。
+// 0.21.00 2024/04/24 エレメントに対して値を取得/設定できる対象に、preを追加。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import Ajax from "./Ajax.js";
@@ -19,7 +20,7 @@ import Ajax from "./Ajax.js";
  * Web処理
  * 
  * @since 0.05.00
- * @version 0.20.00
+ * @version 0.21.00
  */
 const web = {
     /**
@@ -79,6 +80,7 @@ const web = {
         if (nodeName === 'textarea') return element.value;
         if (nodeName === 'span') return element.innerText;
         if (nodeName === 'label') return element.innerText;
+        if (nodeName === 'pre') return element.innerText;
         return null;
     },
     /**
@@ -95,6 +97,7 @@ const web = {
         if (nodeName === 'textarea') element.value = value;
         if (nodeName === 'span') element.innerText = value;
         if (nodeName === 'label') element.innerText = value;
+        if (nodeName === 'pre') element.innerText = value;
     },
     /**
      * フォーカス移動(結合名へ対応)

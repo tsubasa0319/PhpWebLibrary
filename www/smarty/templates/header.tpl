@@ -22,6 +22,7 @@
                         <div class="info userid">
                             <span>USERID:</span>
                             <span>{$general.userId}</span>
+                            <span>{$general.userName}</span>
                         </div>
                     </div>
                     <div class="title">

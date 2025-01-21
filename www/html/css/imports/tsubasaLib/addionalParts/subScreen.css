@@ -1,0 +1,29 @@
+@charset "utf-8";
+/* -------------------------------------------------------------------------------------------------
+   サブ画面
+
+   History:
+   0.20.00 2024/04/23 作成。
+--------------------------------------------------------------------------------------------------*/
+div.subScreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+div.subScreen > iframe {
+    width: min(600px, 95vw);
+    height: min(500px, 95vh);
+    background-color: white;
+}
+
+div.subScreen:not(:has(> iframe[src])) {
+    display: none;
+}

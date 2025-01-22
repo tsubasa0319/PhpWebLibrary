@@ -17,16 +17,13 @@
 
    History:
    0.08.00 2024/02/27 作成。
+   0.22.00 2024/05/17 全体のdisplayをflexへ変更。高さを中央寄せへ変更。
 --------------------------------------------------------------------------------------------------*/
 /* 全体 */
 .radioList {
-    display: inline-block;
+    display: flex;
+    align-items: center;
     overflow: hidden;
-}
-
-/* 項目 */
-.radioList > label {
-    vertical-align: middle;
 }
 
 /* 項目間の余白 */

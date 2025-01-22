@@ -18,13 +18,14 @@
 // 0.19.00 2024/04/16 セッションより取得をイベント前処理で行うように変更。
 //                    セレクトボックス/ラジオボタンに対応。
 // 0.20.00 2024/04/23 Web値を設定(GETメソッドより)は、読取専用/出力専用であっても実行するように変更。
+// 0.22.00 2024/05/17 一度セッションへ保管した値は、そのまま保持するように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 /**
  * 入力項目ベースクラス
  * 
  * @since 0.00.00
- * @version 0.20.00
+ * @version 0.22.00
  */
 class InputItemBase {
     // ---------------------------------------------------------------------------------------------
@@ -266,7 +267,8 @@ class InputItemBase {
         $this->webValue = '';
 
         // 入力専用は、設定しない(エラーの場合は除く)
-        if ($this->isInputOnly and !$this->items->isError() and
+        if (($this->items->isInputOnly or $this->isInputOnly) and
+            !$this->items->isError() and
             !$this->items->getEvent()->isConfirm)
             return;
 
@@ -283,19 +285,7 @@ class InputItemBase {
         $this->sessionValue = '';
 
         // 設定するかどうか
-        $isTarget = false;
-
-        // 読取専用/入力専用は、設定する
-        if ($this->isReadOnly or $this->isInputOnly)
-            $isTarget = true;
-
-        // 確認画面は、設定する
-        if ($this->items->getEvent()->isConfirm)
-            $isTarget = true;
-
-        // 入力テーブルは、設定する
-        if ($this->items instanceof InputTableRow)
-            $isTarget = true;
+        $isTarget = true;
 
         // 出力専用は、設定しない
         if ($this->isOutputOnly)

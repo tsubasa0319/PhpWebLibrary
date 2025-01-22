@@ -22,6 +22,7 @@
 // 0.19.00 2024/04/16 セッションより取得をイベント前処理で行うように統一。
 //                    選択リストをセッション保管に対応。
 // 0.20.00 2024/04/23 イベントエラーを実装。
+// 0.22.00 2024/05/17 例外をエラーログへ出力を実装。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
@@ -32,15 +33,21 @@ require_once __DIR__ . '/InputItems.php';
 require_once __DIR__ . '/InputTable.php';
 require_once __DIR__ . '/Menu.php';
 require_once __DIR__ . '/Message.php';
+require_once __DIR__ . '/WebException.php';
 use tsubasaLibs\type;
 use tsubasaLibs\database\DbBase;
+use Exception;
 /**
  * イベントクラス
  * 
  * @since 0.00.00
- * @version 0.20.00
+ * @version 0.22.00
  */
 class Events {
+    // ---------------------------------------------------------------------------------------------
+    // 定数
+    /** システム管理者権限 */
+    const ROLE_SYSTEM_ADMINISTRATOR = 'sysAdmin';
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var type\TimeStamp 現在日時 */
@@ -125,6 +132,19 @@ class Events {
         $this->messages[] = $this->newMessage()->setId($id, ...$params);
     }
     /**
+     * 例外をエラーログへ出力
+     * 
+     * @since 0.22.00
+     * @param string $message メッセージ
+     * @param int $code エラーコード
+     * @param Exception 例外オブジェクト
+     */
+    public function writeException(string $message, int $code = 0, ?Exception $ex = null) {
+        try {
+            throw new WebException($message, $code, $ex);
+        } catch (Exception $_ex) {}
+    }
+    /**
      * エラーかどうか
      * 
      * @since 0.01.00
@@ -178,7 +198,7 @@ class Events {
      * @return bool 成否
      */
     protected function checkRole($userRoles): bool {
-        if (in_array('admin', $userRoles, true)) return true;
+        if (in_array(static::ROLE_SYSTEM_ADMINISTRATOR, $userRoles, true)) return true;
         if ($this->allowRoles === true) return true;
         foreach ($userRoles as $userRole)
             if (in_array($userRole, $this->allowRoles, true)) return true;

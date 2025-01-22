@@ -13,6 +13,7 @@
 // 0.18.01 2024/04/02 入力テーブルに関わる処理を、InputTableRowへ分離。
 // 0.18.03 2024/04/09 入力チェックを実装。
 // 0.19.00 2024/04/16 対応する入力項目の型に、ブール型/十進数型/日付型/タイムスタンプ型を追加。
+// 0.22.00 2024/05/17 プロパティに$isInputOnlyを追加。値リストを取得/設定を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/InputItemBase.php';
@@ -26,13 +27,20 @@ require_once __DIR__ . '/InputItemTimeStamp.php';
  * 入力項目リストクラス
  * 
  * @since 0.00.00
- * @version 0.19.00
+ * @version 0.22.00
  */
 class InputItems {
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var Events イベントクラス */
     protected $events;
+    /**
+     * @var bool Web入力のみかどうか
+     * 
+     * trueにすると、Webへ出力せず、データを保持しません。  
+     * 登録エリアに設定すると、初期化の手間を省くことができます。
+     */
+    public $isInputOnly;
     /** @var array<string, InputItemBase> 入力項目リスト(再取得用) */
     protected $items;
     // ---------------------------------------------------------------------------------------------
@@ -57,6 +65,11 @@ class InputItems {
     }
     // ---------------------------------------------------------------------------------------------
     // メソッド
+    /**
+     * イベントを取得
+     * 
+     * @return Events イベント
+     */
     public function getEvent(): Events {
         return $this->events;
     }
@@ -74,6 +87,31 @@ class InputItems {
         }
 
         return $this->items;
+    }
+    /**
+     * 値リストを取得
+     * 
+     * @since 0.22.00
+     * @return array<string, mixed>
+     */
+    public function getValues(): array {
+        $values = [];
+        foreach ($this->getItems() as $name => $item)
+            $values[$name] = $item->value;
+
+        return $values;
+    }
+    /**
+     * 値リストより設定
+     * 
+     * @since 0.22.00
+     * @param array<string, mixed> $values 値リスト
+     */
+    public function setValues(array $values) {
+        $names = array_keys($values);
+        foreach ($this->getItems() as $name => $item)
+            if (in_array($name, $names, true))
+                $item->value = $values[$name];
     }
     // ---------------------------------------------------------------------------------------------
     // メソッド(イベント前処理)
@@ -212,6 +250,11 @@ class InputItems {
     }
     // ---------------------------------------------------------------------------------------------
     // メソッド(イベント後処理)
+    /**
+     * セッションへ登録
+     * 
+     * @param SessionUnit 画面単位セッション
+     */
     public function setToSession(SessionUnit $unit) {
         foreach ($this->getItems() as $item)
             $item->setToSession($unit);

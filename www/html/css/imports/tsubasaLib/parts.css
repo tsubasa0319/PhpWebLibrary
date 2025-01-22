@@ -18,6 +18,7 @@
    0.20.00 2024/04/23 数値用のテキストボックスのスピンボタンを非表示へ変更。
                       頁切替のスタイルを追加。
    0.21.00 2024/04/24 ブロックに対して、下寄せ用のクラスを実装。
+   0.22.00 2024/05/17 更新ボタン/警告付き更新ボタンを追加。高さの標準値を25pxへ変更。
 ------------------------------------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------------------------------- */
 /* 変数定義 */
@@ -115,6 +116,8 @@ input[type="text"],
 input[type="password"],
 input[type="number"] {
     width: 180px;
+    height: 23px;
+    border: solid 1px rgb(133, 133, 133);
     font-family: var(--tsubasaLib-font-family);
     font-size: var(--tsubasaLib-font-size);
     padding: 0 3px;
@@ -156,6 +159,7 @@ input[type="number"] {
 /* テキストエリア */
 textarea {
     resize: none;
+    border: solid 1px rgb(133, 133, 133);
     font-family: var(--tsubasaLib-font-family);
     font-size: var(--tsubasaLib-font-size);
     padding: 0 4px;
@@ -204,6 +208,17 @@ select > option:nth-child(even) {
 
 /* ---------------------------------------------------------------------------------------------- */
 /* チェックボックス */
+input[type="checkbox"] {
+    height: 13px;
+    margin: 0 3px;
+}
+
+label:has(input[type="checkbox"]) {
+    height: 25px;
+    display: inline-flex;
+    align-items: center;
+}
+
 label:has(input[type="checkbox"].error) {
     background-color: pink;
 }
@@ -216,7 +231,14 @@ label:has(> input[type="checkbox"]:not(:disabled)):hover {
 /* ---------------------------------------------------------------------------------------------- */
 /* ラジオボタン */
 input[type="radio"] {
-    margin-left: 4px;
+    height: 13px;
+    margin: 0 3px;
+}
+
+label:has(input[type="radio"]) {
+    height: 25px;
+    display: inline-flex;
+    align-items: center;
 }
 
 .radioList:has(> label:first-child > input[type="radio"].error) {
@@ -235,7 +257,7 @@ input[type="submit"],
 button {
     font-family: var(--tsubasaLib-font-family);
     font-size: var(--tsubasaLib-setting-font-size-button, 12px);
-    height: 26px;
+    height: 25px;
     padding: 0 3px;
 }
 
@@ -243,6 +265,21 @@ input[type="button"]:not(:disabled):hover,
 input[type="submit"]:not(:disabled):hover,
 button:not(:disabled):hover {
     cursor: pointer;
+}
+
+/* 更新ボタン */
+input[type="button"]:not(:disabled).update,
+input[type="submit"]:not(:disabled).update,
+button:not(:disabled).update {
+    font-weight: bold;
+    color: blue;
+}
+
+/* 警告付き更新ボタン */
+input[type="button"]:not(:disabled).update.warning,
+input[type="submit"]:not(:disabled).update.warning,
+button:not(:disabled).update.warning {
+    color: red;
 }
 
 /* リンクボタン */
@@ -263,6 +300,7 @@ button.link {
 /* 全体 */
 table {
     border-collapse: collapse;
+    table-layout: fixed;
 }
 
 table > tbody > tr > th,
@@ -291,9 +329,11 @@ table.list.general > tbody:has(> tr:first-child > th):not(:has(> tr:nth-child(2)
 }
 
 /* 行の高さ */
+/* 25px未満に設定すると、セルの中身にぎりぎりの高さのものを配置した時に、高さを延長調整されてしまうため */
 table.list.general > tbody > tr > th,
 table.list.general > tbody > tr > td {
-    height: 22px;
+    height: 25px;
+    vertical-align: middle;
 }
 
 /* 偶数の明細行 */
@@ -327,7 +367,7 @@ td.right, th.right {
 /* 明細上の入力項目 */
 /* テキストボックス */
 table.list.general input[type="text"] {
-    height: 18px;
+    height: 23px;
 }
 
 table.list.general input[type="text"]:not(:disabled):not(.error) {
@@ -337,7 +377,7 @@ table.list.general input[type="text"]:not(:disabled):not(.error) {
 /* ボタン */
 table.list.general input[type="button"],
 table.list.general button {
-    height: 22px;
+    height: 25px;
 }
 
 /* 頁切替 */
@@ -347,7 +387,7 @@ table.list.general button {
 
 .pager > div:first-child,
 .pager > div:last-child {
-    flex: 0 0 22px;
+    flex: 0 0 25px;
 }
 
 .pager > div:nth-child(2) {

@@ -4,6 +4,7 @@
 //
 // History:
 // 0.19.00 2024/04/16 作成。
+// 0.22.00 2024/05/17 未入力の場合に現在日時に変わってしまうので対処。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use tsubasaLibs\type;
@@ -11,7 +12,7 @@ use tsubasaLibs\type;
  * 入力項目クラス(タイムスタンプ型)
  * 
  * @since 0.19.00
- * @version 0.19.00
+ * @version 0.22.00
  */
 class InputItemTimeStamp extends InputItemBase {
     // ---------------------------------------------------------------------------------------------
@@ -35,7 +36,7 @@ class InputItemTimeStamp extends InputItemBase {
         $this->maxValue = null;
     }
     protected function setValueFromWebValue() {
-        $this->value = $this->getNewTimeStamp($this->webValue);
+        $this->value = $this->webValue !== '' ? $this->getNewTimeStamp($this->webValue) : null;
     }
     protected function getWebValueFromValue(): string {
         return (string)$this->value;

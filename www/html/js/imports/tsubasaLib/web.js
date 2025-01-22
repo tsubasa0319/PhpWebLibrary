@@ -13,14 +13,16 @@
 // 0.20.00 2024/04/23 結合名を取得を追加。
 //                    別画面に対してエレメントの種類を判定する可能性がある場合は、instanceofを使わないように変更。
 // 0.21.00 2024/04/24 エレメントに対して値を取得/設定できる対象に、preを追加。
+// 0.22.00 2024/05/17 送信処理時、未選択のエレメントも対象に含まれるように対応。
 // -------------------------------------------------------------------------------------------------
+import forArray from "./forArray.js";
 import checker from "./checker.js";
 import Ajax from "./Ajax.js";
 /**
  * Web処理
  * 
  * @since 0.05.00
- * @version 0.21.00
+ * @version 0.22.00
  */
 const web = {
     /**
@@ -125,6 +127,56 @@ const web = {
         elm.style.height = '100%';
         elm.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
         document.body.append(elm);
+    },
+    /**
+     * 送信前に未選択項目に対応した非表示項目を追加
+     * 
+     * @since 0.22.00
+     */
+    addUnselectedElementsBeforeSend: () => {
+        // チェックボックス
+        document.querySelectorAll(
+            'input[type="checkbox"]:not(:disabled):not(:checked)'
+        ).forEach(elm => {
+            self.addHiddenElementAfterTarget(elm);
+        });
+
+        // セレクトボックス
+        document.querySelectorAll('select:not(:disabled)').forEach((elm) => {
+            if (elm.selectedIndex > -1) return;
+
+            self.addHiddenElementAfterTarget(elm);
+        });
+
+        // ラジオボタン
+        forArray.ugroupByElement(document.querySelectorAll(
+            'input[type="radio"]:not(:disabled):not(:checked)'
+        ), (a, b) => (a.name === b.name)).forEach(elm => {
+            /** @type {string} */
+            const name = elm.name;
+            
+            // 同名にチェック済があれば、処理しない
+            if (document.querySelectorAll(
+                '[name="' + name + '"]:not(:disabled):checked'
+            ).length > 0)
+                return;
+
+            self.addHiddenElementAfterTarget(elm);
+        });
+    },
+    /**
+     * 対象エレメントの後ろに同名のHiddenエレメントを追加
+     * 
+     * @since 0.22.00
+     * @param {HTMLElement} elm 対象エレメント
+     * @param {string} value 値
+     */
+    addHiddenElementAfterTarget: (elm, value = '') => {
+        const elmHidden = document.createElement('input');
+        elmHidden.type = 'hidden';
+        elmHidden.name = elm.name;
+        elmHidden.value = value;
+        elm.parentNode.insertBefore(elmHidden, elm.nextElementSibling);
     },
     /**
      * 送信処理(Submit以外のイベント用)

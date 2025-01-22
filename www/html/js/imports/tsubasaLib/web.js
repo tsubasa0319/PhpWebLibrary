@@ -15,6 +15,7 @@
 // 0.21.00 2024/04/24 エレメントに対して値を取得/設定できる対象に、preを追加。
 // 0.22.00 2024/05/17 送信処理時、未選択のエレメントも対象に含まれるように対応。
 // 0.22.01 2024/05/17 PageUp/PageDownキーによる次頁/前頁へ移動処理を追加。
+// 0.22.02 2024/05/17 子画面を開く時、受取先が未指定の場合に"undefined"として送信してしまうため修正。
 // -------------------------------------------------------------------------------------------------
 import forArray from "./forArray.js";
 import checker from "./checker.js";
@@ -561,6 +562,7 @@ const web = {
         if (params !== null) for (let key in params) {
             const param = params[key];
             const _param = Array.isArray(param) ? param : [param, null];
+            if (_param[0] === undefined) continue;
             _params[key] = self.getJoinName(_param[0], _param[1]);
         }
 

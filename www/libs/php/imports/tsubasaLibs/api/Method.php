@@ -4,12 +4,15 @@
 //
 // History:
 // 0.12.00 2024/03/12 作成。
+// 0.25.00 2024/05/21 一部処理を共通化。エラーをイベントのメッセージ領域へ返すように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
+use web;
 /**
  * APIメソッドクラス
  * 
- * @version 0.12.00
+ * @since 0.12.00
+ * @version 0.25.00
  */
 class Method {
     // ---------------------------------------------------------------------------------------------
@@ -17,71 +20,101 @@ class Method {
     /** APIシステムのプロトコル */
     const PROTOCOL = 'https';
     /** APIシステムのホスト名(要オーバーライド) */
-    const HOST_NAME = 'localhost';
+    const HOST_NAME = null;
+    /** APIシステムのプログラムID(要オーバーライド) */
+    const PROGRAM_ID = 'index.html';
     // ---------------------------------------------------------------------------------------------
     // プロパティ
+    /** @var ?web\Events イベント */
+    protected $events;
     /** @var string http(s)+host */
     protected $webRoot;
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
-    public function __construct() {
+    /**
+     * @param web\Events $events イベント
+     */
+    public function __construct(web\Events $events = null) {
         $this->setInit();
+        $this->events = $events;
+    }
+    // ---------------------------------------------------------------------------------------------
+    // メソッド
+    /**
+     * 実行
+     * 
+     * @return mixed|false 取得データ、失敗時はfalse
+     */
+    public function exec(): mixed {
+        $curl = $this->makeCurlInstance($this->getUrl());
+        $curl->setData($this->getParams());
+        $response = $curl->exec();
+
+        // 結果を受け取り
+        $error = null;
+        $data = null;
+        if (is_array($curl->receiveData)) {
+            if (array_key_exists('error', $curl->receiveData))
+                $error = $curl->receiveData['error'];
+            if (array_key_exists('data', $curl->receiveData))
+                $data = $curl->receiveData['data'];
+        }
+
+        // エラー処理
+        if ($response === false) {
+            if ($this->events !== null)
+                $this->events->addMessage(web\Message::ID_HTTP_REQUEST_ERROR, $curl->getHttpStatus());
+            if ($error !== null)
+                trigger_error($error['message'], E_USER_WARNING);
+            return false;
+        }
+
+        return $data;
     }
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
      * 初期設定
      */
-    protected function setInit() {
-        $this->setWebRoot();
-    }
+    protected function setInit() {}
     /**
-     * http(s)+hostを設定
+     * Curlインスタンスを生成
      */
-    protected function setWebRoot() {
-        $this->webRoot = $this->getWebRootForAnotherServer();
-        if ($this->isMyApi())
-            $this->webRoot = $this->getWebRootForSelfServer();
-    }
-    /**
-     * http(s)+hostを取得(APIが別サーバにある場合)
-     * 
-     * @return string http(s)+host
-     */
-    protected function getWebRootForAnotherServer(): string {
-        return sprintf('%s://%s', static::PROTOCOL, static::HOST_NAME);
-    }
-    /**
-     * 自身のホスト名を取得
-     * 
-     * @return string ホスト名
-     */
-    protected function getMyHostName(): string {
-        return static::HOST_NAME;
-    }
-    /**
-     * 自サーバのAPIかどうか
-     * 
-     * @return bool 結果
-     */
-    protected function isMyApi(): bool {
-        $hostname = explode(':', $_SERVER['HTTP_HOST'])[0];
-        return $hostname === $this->getMyHostName();
-    }
-    /**
-     * http(s)+hostを取得(APIが自サーバにある場合)
-     * 
-     * @return string http(s)+host
-     */
-    protected function getWebRootForSelfServer(): string {
-        return 'http://localhost';
+    protected function makeCurlInstance($url = null): web\Curl {
+        return new web\Curl($url);
     }
     /**
      * URLを取得
      * 
      * @return string URL
      */
-    protected function getUrl(string $pgmid): string {
-        return sprintf('%s/%s', $this->webRoot, $pgmid);
+    protected function getUrl(): string {
+        if (static::HOST_NAME === null)
+            return $this->makeUrl('http', 'localhost');
+
+        return $this->makeUrl();
+    }
+    /**
+     * URLを生成
+     * 
+     * @param ?string $protocol プロトコル
+     * @param ?string $hostName ホスト名
+     * @param ?string $programId プログラムID
+     * @return string URL
+     */
+    protected function makeUrl($protocol = null, $hostName = null, $programId = null): string {
+        return sprintf('%s://%s/%s',
+            $protocol ?? static::PROTOCOL,
+            $hostName ?? static::HOST_NAME,
+            $programId ?? static::PROGRAM_ID
+        );
+    }
+    /**
+     * パラメータリストを取得
+     * 
+     * @param array<string, mixed> パラメータリスト
+     */
+    protected function getParams(): array {
+        return [];
     }
 }

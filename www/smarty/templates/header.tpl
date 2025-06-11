@@ -10,7 +10,11 @@
         <script defer src="/js/general.js"></script>
         <script defer src="{$general.js}"></script>
     </head>
-    <body onload="frame.body_load(event);" onpagehide="frame.body_pagehide(event);" onkeydown="return frame.body_keydown(event);">
+    <body
+        onload="frame.body_load(event);"
+        onpagehide="frame.body_pagehide(event);"
+        onkeydown="return frame.body_keydown(event);"
+    >
         <form method="post" onsubmit="frame.form_submit(event);">
             <header>
                 <section id="bodyHeaderInfo">

@@ -33,6 +33,8 @@ class Message {
     const ID_EDIT_COMPLETE = 'Info00005';
     /** メッセージID(削除完了) */
     const ID_REMOVE_COMPLETE = 'Info00006';
+    /** メッセージID(データ出力開始) */
+    const ID_DATA_OUTPUT_START = 'Info00007';
     /** メッセージID(パスワードが有効期限切れ) */
     const ID_PASSWORD_EXPIRED = 'Warn00001';
     /** メッセージID(一覧の上限オーバー) */
@@ -171,6 +173,7 @@ class Message {
             ['id' => 'Info00004', 'content' => '登録処理が正常に終了しました。'],
             ['id' => 'Info00005', 'content' => '変更処理が正常に終了しました。'],
             ['id' => 'Info00006', 'content' => '削除処理が正常に終了しました。'],
+            ['id' => 'Info00007', 'content' => 'データ出力処理が開始しました。'],
             ['id' => 'Warn00001', 'content' => '有効期限を過ぎました。パスワードを再設定してください。'],
             ['id' => 'Warn00002', 'content' => '件数の上限を超えました。上位%s件を表示します。'],
             ['id' => 'Err00001' , 'content' => '%sは入力が必須です。'],

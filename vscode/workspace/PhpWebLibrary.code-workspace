@@ -12,6 +12,10 @@
 			"path": "../../www/html/css/imports"
 		},
 		{
+			"name": "www/html/js/imports",
+			"path": "../../www/html/js/imports"
+		},
+		{
 			"name": "www/libs/php/imports",
 			"path": "../../www/libs/php/imports"
 		}
@@ -73,7 +77,10 @@
 			"../../www/libs/php"
 		],
 		"intelephense.format.braces": "k&r",
-		"editor.suggest.showConstructors": false
+		"editor.suggest.showConstructors": false,
+		"path-autocomplete.pathMappings": {
+			"/": "${folder}/../../../www/html"
+		}
 	},
 	"launch": {
 		"version": "0.2.0",

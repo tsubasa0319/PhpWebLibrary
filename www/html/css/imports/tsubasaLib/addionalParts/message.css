@@ -1,0 +1,27 @@
+@charset "utf-8";
+/* -------------------------------------------------------------------------------------------------
+   メッセージ
+
+   History:
+   0.05.00 2024/02/20 作成。
+--------------------------------------------------------------------------------------------------*/
+/* 一般 */
+#messageId.information,
+#messageContent.information {
+    color: blue;
+    font-weight: bold;
+}
+
+/* 警告 */
+#messageId.warning,
+#messageContent.warning {
+    color: darkorange;
+    font-weight: bold;
+}
+
+/* エラー */
+#messageId.error,
+#messageContent.error {
+    color: red;
+    font-weight: bold;
+}

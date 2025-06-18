@@ -1,10 +1,10 @@
             </section>
-            <footer class="{$general.messageClass}">
+            <footer>
                 <div>
-                    <span>{$general.messageId}</span>
+                    <span id="messageId" class="{$general.messageClass}">{$general.messageId}</span>
                 </div>
                 <div>
-                    <span>{$general.message}</span>
+                    <span id="messageContent" class="{$general.messageClass}">{$general.message}</span>
                 </div>
             </footer>
             <input type="hidden" name="UNIT_SESSION_ID" value="{$general.unitSessionId}">

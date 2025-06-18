@@ -4,10 +4,13 @@
         <meta charset="utf-8">
         <title>{$general.title}</title>
         <link rel="stylesheet" href="{$general.css}">
-        <script src="{$general.js}"></script>
+        <script type="module" src="/js/imports/tsubasaLib/webLoader.js"></script>
+        <script defer src="/js/frame.js"></script>
+        <script defer src="/js/general.js"></script>
+        <script defer src="{$general.js}"></script>
     </head>
-    <body onload="body_onload(event);">
-        <form method="post" onsubmit="form_submit(event);">
+    <body onload="frame.body_load(event);">
+        <form method="post" onsubmit="frame.form_submit(event);">
             <header>
                 <section id="bodyHeaderInfo">
                     <div>
@@ -35,7 +38,7 @@
                             </div>
                         </div>
                         <div class="logout">
-                            <button id="btnLogout" type="button" onclick="logout(event);"{$general.logoutDisabled}>ログアウト</button>
+                            <button id="btnLogout" type="button" onclick="frame.logout(event);"{$general.logoutDisabled}>ログアウト</button>
                         </div>
                     </div>
                 </section>
@@ -45,7 +48,7 @@
                         <div class="valign-middle">|</div>
                     {/foreach}</div>
                     <div class="valign-middle">
-                        <button type="button" onclick="move('passwordChange');">パスワード変更</button>
+                        <button type="button" onclick="frame.move('passwordChange');">パスワード変更</button>
                     </div>
                 </section>
             </header>

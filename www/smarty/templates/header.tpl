@@ -6,8 +6,8 @@
         <link rel="stylesheet" href="{$general.css}">
         <script src="{$general.js}"></script>
     </head>
-    <body>
-        <form method="post">
+    <body onload="body_onload(event);">
+        <form method="post" onsubmit="form_submit(event);">
             <header>
                 <section id="bodyHeaderInfo">
                     <div>
@@ -35,7 +35,7 @@
                             </div>
                         </div>
                         <div class="logout">
-                            <button id="btnLogout" type="button" onclick="logout(this);"{$general.logoutDisabled}>ログアウト</button>
+                            <button id="btnLogout" type="button" onclick="logout(event);"{$general.logoutDisabled}>ログアウト</button>
                         </div>
                     </div>
                 </section>
@@ -45,8 +45,8 @@
                         <div class="valign-middle">|</div>
                     {/foreach}</div>
                     <div class="valign-middle">
-                        <button type="button">パスワード変更</button>
+                        <button type="button" onclick="move('passwordChange');">パスワード変更</button>
                     </div>
                 </section>
             </header>
-            <section id="main">
+            <section id="main" class="hidden">

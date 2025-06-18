@@ -7,6 +7,7 @@
                     <span>{$general.message}</span>
                 </div>
             </footer>
+            <input type="hidden" name="UNIT_SESSION_ID" value="{$general.unitSessionId}">
         </form>
     </body>
 </html>

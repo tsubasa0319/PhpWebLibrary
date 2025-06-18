@@ -3,13 +3,14 @@
 //
 // History:
 // 0.05.00 2024/02/20 作成。
+// 0.05.01 2024/02/20 構文ミスを修正。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import Ajax from "./Ajax.js";
 /**
  * Web処理
  * 
- * @version 0.05.00
+ * @version 0.05.01
  */
 const web = {
     /**
@@ -149,7 +150,7 @@ const web = {
      */
     move: (url, params = {}) => {
         const elmA = document.createElement('a');
-        elmA.href = $.web.makeUrlWithParam(url, params);
+        elmA.href = web.makeUrlWithParam(url, params);
         elmA.click();
     },
     /**

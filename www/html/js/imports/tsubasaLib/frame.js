@@ -3,13 +3,14 @@
 //
 // History:
 // 0.05.00 2024/02/20 作成。
+// 0.06.00 2024/02/22 キー押下時処理を追加。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import web from "./web.js";
 /**
  * フレーム処理
  * 
- * @version 0.05.00
+ * @version 0.06.00
  */
 const frame = {
     /**
@@ -31,6 +32,16 @@ const frame = {
      * @param {Event} event イベント
      */
     my_body_load: (event) => {},
+    /**
+     * キー押下時処理
+     * 
+     * @since 0.06.00
+     * @param {Event} event イベント
+     * @returns {boolean} イベントを続行するかどうか
+     */
+    body_keydown: (event) => {
+        return web.enterToTabMove(event);
+    },
     /**
      * エラー処理
      */

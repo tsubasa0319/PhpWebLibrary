@@ -4,13 +4,14 @@
 // History:
 // 0.05.00 2024/02/20 作成。
 // 0.06.00 2024/02/22 キー押下時処理を追加。
+// 0.07.00 2024/02/22 フォーム送信時、実行時間を算出するように対応。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import web from "./web.js";
 /**
  * フレーム処理
  * 
- * @version 0.06.00
+ * @version 0.07.00
  */
 const frame = {
     /**
@@ -23,6 +24,7 @@ const frame = {
         self.setConfirm();
         if (typeof self.my_body_load === 'function')
             self.my_body_load(event);
+        web.setExecuteTime();
         self.display();
         self.setFocus();
     },
@@ -134,6 +136,7 @@ const frame = {
      */
     form_submit: (event) => {
         web.setBlackout();
+        web.setStartTime();
     },
     /**
      * ログアウト

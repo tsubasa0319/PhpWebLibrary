@@ -4,12 +4,13 @@
 //
 // History:
 // 0.01.00 2024/02/05 作成。
+// 0.01.01 2024/02/06 TOPへ遷移するリンクを修正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 /**
  * メニュークラス
  * 
- * @version 0.01.00
+ * @version 0.01.01
  */
 class Menu {
     // ---------------------------------------------------------------------------------------------
@@ -131,7 +132,7 @@ class Menu {
      * @return array{url: string, name: string} リンク用項目
      */
     protected function makeGroupLink($group): array {
-        $urlParam = sprintf('?id=%s', $group['id']) ?? '';
+        $urlParam = $group['id'] !== null ? sprintf('?id=%s', $group['id']) : '';
         return [
             'url'  => sprintf('/%s/%s', static::PROGRAM_ID_MENU, $urlParam),
             'name' => $group['name']

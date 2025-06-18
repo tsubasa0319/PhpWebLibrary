@@ -5,6 +5,7 @@
 // History:
 // 0.00.00 2024/01/23 作成。
 // 0.01.00 2024/02/05 getForSmarty/getErrorForSmarty/CheckForWebを追加。
+// 0.03.00 2024/02/07 画面単位セッションとの入出力を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/InputItemBase.php';
@@ -13,7 +14,7 @@ require_once __DIR__ . '/InputItemString.php';
 /**
  * 入力項目リストクラス
  * 
- * @version 0.01.00
+ * @version 0.03.00
  */
 class InputItems {
     // ---------------------------------------------------------------------------------------------
@@ -47,6 +48,17 @@ class InputItems {
         }
     }
     /**
+     * 画面単位セッションより値を設定
+     * 
+     * @since 0.03.00
+     */
+    public function setFromSession() {
+        foreach (get_object_vars($this) as $var) {
+            if (!($var instanceof InputItemBase)) continue;
+            $var->setFromSession($this->events->session->unit);
+        }
+    }
+    /**
      * Web出力用にWeb値を設定
      * 
      * 主にhtmlspecialcharsによるエスケープ処理を行います。
@@ -55,6 +67,17 @@ class InputItems {
         foreach (get_object_vars($this) as $var) {
             if (!($var instanceof InputItemBase)) continue;
             $var->setForWeb();
+        }
+    }
+    /**
+     * セッション出力用にセッション値を設定
+     * 
+     * @since 0.03.00
+     */
+    public function setForSession() {
+        foreach (get_object_vars($this) as $var) {
+            if (!($var instanceof InputItemBase)) continue;
+            $var->setForSession($this->events->session->unit);
         }
     }
     /**

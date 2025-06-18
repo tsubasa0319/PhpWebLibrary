@@ -5,13 +5,14 @@
 // 0.05.00 2024/02/20 作成。
 // 0.05.01 2024/02/20 構文ミスを修正。
 // 0.06.00 2024/02/22 見えるかどうか、移動可能かどうか、Enterキーによるタブ移動処理を追加。
+// 0.07.00 2024/02/22 Ajax送信時、実行時間を算出するように対応。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import Ajax from "./Ajax.js";
 /**
  * Web処理
  * 
- * @version 0.06.00
+ * @version 0.07.00
  */
 const web = {
     /**
@@ -194,6 +195,9 @@ const web = {
         const elmSession = self.getElementByJoinName('UNIT_SESSION_ID');
         if (elmSession instanceof HTMLInputElement)
             params['UNIT_SESSION_ID'] = elmSession.value;
+
+        // 開始日時を設定
+        self.setStartTime();
         
         // Ajax送信
         const ajax = new Ajax();
@@ -230,6 +234,9 @@ const web = {
             const elm = self.getElementByJoinName(key);
             self.setValueByElement(elm, val);
         });
+
+        // 実行時間を設定
+        self.setExecuteTime();
     },
     /**
      * Ajax受取関数(失敗時)
@@ -382,6 +389,45 @@ const web = {
         if (nextElm instanceof HTMLTextAreaElement) nextElm.select();
 
         return false;
+    },
+    /**
+     * 開始日時を設定
+     * 
+     * @since 0.07.00
+     */
+    setStartTime: () => {
+        const time = new Date();
+        const timeStr = time.getFullYear() + '/'
+                      + (time.getMonth() + 1).toString().padStart(2, '0') + '/'
+                      + time.getDate().toString().padStart(2, '0') + ' '
+                      + time.getHours().toString().padStart(2, '0') + ':'
+                      + time.getMinutes().toString().padStart(2, '0') + ':'
+                      + time.getSeconds().toString().padStart(2, '0') + '.'
+                      + time.getMilliseconds().toString().padStart(3, '0');
+        const elm = self.getElementByJoinName('startTime');
+        if (elm === null) return;
+        elm.value = timeStr;
+    },
+    /**
+     * 実行時間を設定
+     * 
+     * @since 0.07.00
+     */
+    setExecuteTime: () => {
+        // 開始日時、終了日時を取得
+        const timeEnd = new Date();
+        const elm = self.getElementByJoinName('startTime');
+        if (elm === null || elm.value === '') return;
+        const timeStart = new Date(elm.value);
+
+        // 実行時間を算出
+        const executeTime = ((timeEnd - timeStart) / 1000) + '秒'
+
+        // 設定
+        const elmExecuteTime = document.getElementById('executeTime');
+        if (elmExecuteTime !== null)
+            self.setValueByElement(elmExecuteTime, executeTime);
+        console.log(executeTime);
     }
 }
 const self = web;

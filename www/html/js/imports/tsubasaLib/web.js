@@ -6,13 +6,14 @@
 // 0.05.01 2024/02/20 構文ミスを修正。
 // 0.06.00 2024/02/22 見えるかどうか、移動可能かどうか、Enterキーによるタブ移動処理を追加。
 // 0.07.00 2024/02/22 Ajax送信時、実行時間を算出するように対応。
+// 0.08.01 2024/02/28 Enterキーによるタブ移動にて、ボタンであっても移動するように変更。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import Ajax from "./Ajax.js";
 /**
  * Web処理
  * 
- * @version 0.07.00
+ * @version 0.08.01
  */
 const web = {
     /**
@@ -297,14 +298,6 @@ const web = {
      */
     enterToTabMove: (event) => {
         if (event.code !== 'Enter') return true;
-
-        // ボタンは、元のイベントを続行(シフト実行を除く)
-        if (event.target instanceof HTMLInputElement && !event.shiftKey) {
-            if (['button', 'submit', 'image'].includes(event.target.type))
-                return true;
-        }
-        if (event.target instanceof HTMLButtonElement && !event.shiftKey)
-            return true;
 
         // テキストエリアは、元のイベントを続行
         if (event.target instanceof HTMLTextAreaElement)

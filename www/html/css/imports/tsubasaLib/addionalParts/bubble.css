@@ -3,21 +3,30 @@
    吹き出し
 
    [HTML構図]
-   span.bubble             - inline-block
+   a.bubble
        label
            span /span      - アイコン
            input[checkbox] - ON/OFF管理(非表示)
        /label
        div /div            - 吹き出し(ホバー or ON時に表示)
-   /span
+   /a
 
    History:
    0.08.00 2024/02/27 作成。
+   0.08.01 2024/02/28 タブ移動の対象となるように変更。
 --------------------------------------------------------------------------------------------------*/
 /* 全体 */
 .bubble {
     position: relative;
     overflow: visible;
+}
+
+a.bubble {
+    color: inherit;
+}
+
+a.bubble:hover {
+    font-weight: inherit;
 }
 
 /* アイコン */
@@ -52,6 +61,6 @@
 }
 
 /* OFF時は、吹き出しを非表示 */
-.bubble:not(:hover):has(input:not(:checked)) > div {
+.bubble:not(:hover):not(:focus):has(input:not(:checked)) > div {
     display: none;
 }

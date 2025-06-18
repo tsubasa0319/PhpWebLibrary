@@ -9,7 +9,7 @@
         <script defer src="/js/general.js"></script>
         <script defer src="{$general.js}"></script>
     </head>
-    <body onload="frame.body_load(event);">
+    <body onload="frame.body_load(event);" onkeydown="return frame.body_keydown(event);">
         <form method="post" onsubmit="frame.form_submit(event);">
             <header>
                 <section id="bodyHeaderInfo">
@@ -48,7 +48,7 @@
                         <div class="valign-middle">|</div>
                     {/foreach}</div>
                     <div class="valign-middle">
-                        <button type="button" onclick="frame.move('passwordChange');">パスワード変更</button>
+                        <button id="btnPasswordChange" type="button" onclick="frame.move('passwordChange');">パスワード変更</button>
                     </div>
                 </section>
             </header>

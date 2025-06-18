@@ -8,6 +8,7 @@
                       エリアの行の高さを、テキストボックスへ合わせて調整。
                       エリアのセルに対して、右寄せ/中央寄せ用のクラスを実装。
                       非表示クラスを実装。
+   0.08.00 2024/02/27 セレクトリスト/ラジオボタンを追加。
 ------------------------------------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------------------------------- */
 /* 変数定義 */
@@ -37,7 +38,6 @@ form,
 section,
 header,
 footer {
-    overflow: hidden;
     text-wrap: nowrap;
 }
 
@@ -63,7 +63,7 @@ input[type="text"],
 input[type="password"] {
     font-family: var(--tsubasaLib-font-family);
     font-size: var(--tsubasaLib-font-size);
-    padding: 0 1px;
+    padding: 0 3px;
 }
 
 input[type="text"].error,
@@ -78,6 +78,37 @@ input[type="password"]:disabled {
     border-color: transparent;
     background-color: transparent;
 }
+
+/* ---------------------------------------------------------------------------------------------- */
+/* セレクトリスト */
+select {
+    font-family: var(--tsubasaLib-font-family);
+    font-size: var(--tsubasaLib-font-size);
+    padding: 0;
+}
+
+select.error {
+    background-color: pink;
+}
+
+select:disabled {
+    color: inherit;
+    opacity: inherit;
+    border-color: transparent;
+    background-color: transparent;
+}
+
+select:not(:disabled):hover {
+    cursor: pointer;
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* ラジオボタン */
+input[type="radio"]:not(:disabled):hover,
+label:has(> input[type="radio"]:not(:disabled)):hover {
+    cursor: pointer;
+}
+
 /* ---------------------------------------------------------------------------------------------- */
 /* ボタン */
 input[type="button"],

@@ -1,0 +1,35 @@
+@charset "utf-8";
+/* -------------------------------------------------------------------------------------------------
+   ラジオボタンリスト(横並び)
+
+   [HTML構図]
+   span.radioList       - inline-block
+       label            - 項目1
+           input[radio] - ラジオボタン
+           span /span   - テキスト
+       /label
+       label            - 項目2
+           input[radio] - ラジオボタン
+           span /span   - テキスト
+       /label
+       ...
+   /span
+
+   History:
+   0.08.00 2024/02/27 作成。
+--------------------------------------------------------------------------------------------------*/
+/* 全体 */
+.radioList {
+    display: inline-block;
+    overflow: hidden;
+}
+
+/* 項目 */
+.radioList > label {
+    vertical-align: middle;
+}
+
+/* 項目間の余白 */
+.radioList > label:not(:first-child) {
+    margin-left: 5px;
+}

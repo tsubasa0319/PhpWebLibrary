@@ -10,6 +10,11 @@
 //                    ログアウト処理を追加。
 //                    ログアウト後/タイムアウト後に通知メッセージを受け取るように変更。
 // 0.02.00 2024/02/06 権限チェックを追加。
+// 0.04.00 2024/02/10 フォーカス移動/エラー処理/確認画面に対応。
+//                    読取専用時、自動でセッションへ保管するように対応。
+//                    パスワードの有効期限切れに対応。
+//                    エラーかどうかの判定を、protectedからpublicへ変更。
+//                    入力項目のWeb出力時のエスケープ処理を自動化。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
@@ -21,7 +26,7 @@ use tsubasaLibs\database\DbBase;
 /**
  * イベントクラス
  * 
- * @version 0.02.00
+ * @version 0.04.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -38,6 +43,12 @@ class Events {
     public $allowRoles;
     /** @var Message[] 受取メッセージリスト */
     protected $messages;
+    /** @var string フォーカス項目 */
+    public $focusName;
+    /** @var string[] エラー項目リスト */
+    public $errorNames;
+    /** @var bool 確認画面かどうか */
+    public $isConfirm;
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct() {
@@ -47,11 +58,12 @@ class Events {
         $this->setInit();
         if ($this->isLoginCheck) {
             if (!$this->session->user->isLogined()) $this->timeout();
-            if (!$this->checkRole($this->session->user->getRoles())) $this->roleError();
-            $this->session->user->updateLastAccessTime();
         }
+        if (!$this->checkRole($this->session->user->getRoles())) $this->roleError();
+        $this->session->user->updateLastAccessTime();
         if ($this->session->user->isLogoutAfter()) $this->addMessage(Message::ID_LOGOUT);
         if ($this->session->user->isTimeoutAfter()) $this->addMessage(Message::ID_TIMEOUT);
+        if ($this->session->user->isExpired()) $this->addMessage(Message::ID_PASSWORD_EXPIRED);
         if (!$this->logout()) {
             $this->event();
             $this->eventAfter();
@@ -69,6 +81,17 @@ class Events {
     public function addMessage(string $id, string ...$params) {
         if (count($this->messages) > 100) return;
         $this->messages[] = $this->newMessage()->setId($id, ...$params);
+    }
+    /**
+     * エラーかどうか
+     * 
+     * @since 0.01.00
+     * @return bool エラーかどうか
+     */
+    public function isError(): bool {
+        return count(array_filter($this->messages,
+            fn($message) => $message->isError()
+        )) > 0;
     }
     // ---------------------------------------------------------------------------------------------
     // 内部処理
@@ -91,6 +114,9 @@ class Events {
         $this->isLoginCheck = true;
         $this->allowRoles = [];
         $this->messages = [];
+        $this->focusName = null;
+        $this->errorNames = [];
+        $this->isConfirm = false;
     }
     /**
      * タイムアウト
@@ -140,7 +166,14 @@ class Events {
      * 
      * @since 0.01.00
      */
-    protected function eventAfter() {}
+    protected function eventAfter() {
+        // 各入力値をWeb出力用にエスケープ処理、フォーカス設定
+        foreach (get_object_vars($this) as $id => $var) {
+            if (!($var instanceof InputItems)) continue;
+            $var->setForWeb();
+            $var->setFocus();
+        }
+    }
     /**
      * 新規メッセージ発行
      * 
@@ -149,16 +182,5 @@ class Events {
      */
     protected function newMessage(): Message {
         return new Message();
-    }
-    /**
-     * エラーかどうか
-     * 
-     * @since 0.01.00
-     * @return bool エラーかどうか
-     */
-    protected function isError(): bool {
-        return count(array_filter($this->messages,
-            fn($message) => $message->isError()
-        )) > 0;
     }
 }

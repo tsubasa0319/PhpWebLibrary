@@ -7,12 +7,16 @@
 // 0.01.00 2024/02/05 プロパティにラベル名/エラーID/エラーパラメータを追加。
 //                    入力必須チェックを追加。
 // 0.03.00 2024/02/07 画面単位セッションとの入出力を追加。
+// 0.04.00 2024/02/10 読取専用/フォーカス移動に対応。
+//                    出力専用の場合、セッションより取得しないように変更。
+//                    入力専用の場合、セッションへ保管しないように変更。
+//                    出力専用/読取専用の場合、入力チェックしないように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 /**
  * 入力項目ベースクラス
  * 
- * @version 0.03.00
+ * @version 0.04.00
  */
 class InputItemBase {
     // ---------------------------------------------------------------------------------------------
@@ -31,14 +35,31 @@ class InputItemBase {
     public $webValue;
     /** @var mixed セッション値 */
     public $sessionValue;
-    /** @var bool Web入力のみかどうか */
+    /**
+     * @var bool Web入力のみかどうか
+     * 
+     * trueにすると、Webへ出力せず、データを保持しません。  
+     * 主にパスワード用。
+     */
     public $isInputOnly;
-    /** @var bool Web出力のみかどうか */
+    /**
+     * @var bool Web出力のみかどうか
+     * 
+     * trueにすると、Webより受け取りません。
+     */
     public $isOutputOnly;
+    /**
+     * @var bool 読取専用かどうか
+     * 
+     * trueにすると、Webへは出力のみとなり、データ入出力はセッションより行います。
+     */
+    public $isReadOnly;
     /** @var string cssクラス(エラー時) */
     public $cssClassForError;
     /** @var bool 入力が必須かどうか */
     public $isRequired;
+    /** @var bool フォーカス移動先かどうか */
+    public $isFocus;
     /** @var string エラーID */
     public $errorId;
     /** @var string[] エラーパラメータ */
@@ -74,6 +95,7 @@ class InputItemBase {
      * @since 0.03.00
      */
     public function setFromSession(SessionUnit $unit) {
+        if ($this->isOutputOnly) return;
         $this->sessionValue = isset($unit->data[$this->name]) ? $unit->data[$this->name] : null;
         $this->setValueFromSession();
     }
@@ -83,6 +105,8 @@ class InputItemBase {
      * @return bool 成否
      */
     public function checkFromWeb() {
+        if ($this->isOutputOnly) return true;
+        if ($this->isReadOnly) return true;
         if (!$this->checkWebValue()) {
             $this->setError();
             return false;
@@ -93,7 +117,7 @@ class InputItemBase {
      * エラーへ設定
      */
     public function setError() {
-        $this->cssClassForError = static::CSS_CLASS_ERROR;
+        if ($this->errorId === null) $this->errorId = '-';
     }
     /**
      * 値を初期化
@@ -114,7 +138,17 @@ class InputItemBase {
      * @param SessionUnit $unit
      */
     public function setForSession(SessionUnit $unit) {
+        $this->sessionValue = null;
+        if ($this->isInputOnly) return;
         $this->setSessionValueFromValue($unit);
+    }
+    /**
+     * フォーカス移動
+     * 
+     * @since 0.04.00
+     */
+    public function setFocus() {
+        $this->isFocus = true;
     }
     /**
      * エラーかどうか
@@ -133,6 +167,7 @@ class InputItemBase {
     protected function setInit() {
         $this->isInputOnly = false;
         $this->isOutputOnly = false;
+        $this->isReadOnly = false;
         $this->clearValue();
         $this->isRequired = false;
         $this->cssClassForError = '';

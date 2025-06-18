@@ -4,6 +4,7 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
+// 0.04.00 2024/02/10 microtimeを配列で受け取っていなかったため修正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 use DateTime;
@@ -11,7 +12,7 @@ use Stringable;
 /**
  * 実行者クラス
  * 
- * @version 0.00.00
+ * @version 0.04.00
  */
 class Executor {
     // ---------------------------------------------------------------------------------------------
@@ -43,7 +44,7 @@ class Executor {
         if ($time instanceof DateTime) $time = $time->format('Y/m/d H:i:s.u');
         if ($time instanceof Stringable) $time = (string)$time;
         if ($time === 'now') {
-            $timeArr = microtime();
+            $timeArr = explode(' ', microtime());
             $timeStr = sprintf('%s%s', date('Y/m/d H:i:s', (int)$timeArr[1]), substr($timeArr[0], 1));
         } else {
             $timeStr = $time;

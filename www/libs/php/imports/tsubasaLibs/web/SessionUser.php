@@ -8,13 +8,16 @@
 //                    後からログアウト/タイムアウトしたことを受け取る処理を追加。
 // 0.02.00 2024/02/06 権限リスト取得を追加。
 // 0.03.00 2024/02/07 セッション情報のリファレンスをプロパティで持つように変更。
+// 0.04.00 2024/02/10 パスワードの有効期限切れに対応。
+//                    ステータスを定数化。
+//                    既定のタイムアウト時間を変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use DateTime, DateInterval;
 /**
  * ログインユーザクラス
  * 
- * @version 0.03.00
+ * @version 0.04.00
  */
 class SessionUser {
     // ---------------------------------------------------------------------------------------------
@@ -22,7 +25,17 @@ class SessionUser {
     /** @var string セッション配列の要素名 */
     const ID = 'user';
     /** @var int タイムアウト時間(既定) */
-    const DEFAULT_TIMEOUT_MINUTES = 5;
+    const DEFAULT_TIMEOUT_MINUTES = 30;
+    /** @var string ステータス(ログイン中) */
+    const STATUS_LOGIN = 'login';
+    /** @var string ステータス(ログアウト済) */
+    const STATUS_LOGOUT = 'logout';
+    /** @var string ステータス(ログアウト直後) */
+    const STATUS_LOGOUT_AFTER = 'logoutAfter';
+    /** @var string ステータス(タイムアウト直後) */
+    const STATUS_TIMEOUT_AFTER = 'timeoutAfter';
+    /** @var string ステータス(パスワードが有効期限切れ) */
+    const STATUS_EXPIRED = 'expired';
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var array セッション情報のリファレンス */
@@ -49,10 +62,9 @@ class SessionUser {
      * @return bool 結果
      */
     public function isLogined(): bool {
-        $result = true;
-        if ($result and $this->userId === null) $result = false;
-        if ($result and $this->isTimeout()) $result = false;
-        return $result;
+        if ($this->session['status'] !== static::STATUS_LOGIN) return false;
+        if ($this->isTimeout()) return false;
+        return true;
     }
     /**
      * 権限リストを取得
@@ -78,7 +90,7 @@ class SessionUser {
      * @since 0.01.00
      */
     public function setTimeout() {
-        $this->session['status'] = 'isTimeoutAfter';
+        $this->session['status'] = static::STATUS_TIMEOUT_AFTER;
     }
     /**
      * ログイン
@@ -89,7 +101,7 @@ class SessionUser {
      */
     public function login($userId, $password): bool {
         if (!$this->checkForLogin($userId, $password)) return false;
-        $this->session['status'] = 'login';
+        $this->session['status'] = static::STATUS_LOGIN;
         $this->setUserId($userId);
         $now = $this->getNow();
         $this->setLoginTime($now);
@@ -103,7 +115,7 @@ class SessionUser {
      */
     public function logout(): bool {
         $this->userId = null;
-        $this->session['status'] = 'isLogoutAfter';
+        $this->session['status'] = static::STATUS_LOGOUT_AFTER;
         return true;
     }
     /**
@@ -113,8 +125,8 @@ class SessionUser {
      * @return bool 結果
      */
     public function isLogoutAfter(): bool {
-        if ($this->session['status'] === 'isLogoutAfter') {
-            $this->session['status'] = 'logout';
+        if ($this->session['status'] === static::STATUS_LOGOUT_AFTER) {
+            $this->session['status'] = static::STATUS_LOGOUT;
             return true;
         }
         return false;
@@ -126,11 +138,28 @@ class SessionUser {
      * @return bool 結果
      */
     public function isTimeoutAfter(): bool {
-        if ($this->session['status'] === 'isTimeoutAfter') {
-            $this->session['status'] = 'logout';
+        if ($this->session['status'] === static::STATUS_TIMEOUT_AFTER) {
+            $this->session['status'] = static::STATUS_LOGOUT;
             return true;
         }
         return false;
+    }
+    /**
+     * パスワードが有効期限切れ
+     * 
+     * @since 0.04.00
+     */
+    public function setExpired() {
+        $this->session['status'] = static::STATUS_EXPIRED;
+    }
+    /**
+     * パスワードが有効期限切れかどうか
+     * 
+     * @since 0.04.00
+     * @return bool 結果
+     */
+    public function isExpired(): bool {
+        return $this->session['status'] === static::STATUS_EXPIRED;
     }
     // ---------------------------------------------------------------------------------------------
     // 内部処理
@@ -160,7 +189,8 @@ class SessionUser {
      * セッションより情報設定
      */
     protected function setInfoFromSession() {
-        if ($this->session['status'] !== 'login') return;
+        if ($this->session['status'] !== static::STATUS_LOGIN and
+            $this->session['status'] !== static::STATUS_EXPIRED) return;
         $this->userId = $this->session['userId'];
         $this->loginTime = $this->getTimeFromString($this->session['loginTime']);
         $this->lastAccessTime = $this->getTimeFromString($this->session['lastAccessTime']);

@@ -4,6 +4,8 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
+// 0.04.00 2024/02/10 オートコミットがfalseの場合、何かクエリを実行すると、
+//                    トランザクションが開始するため対処。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/DbStatement.php';
@@ -17,7 +19,7 @@ use Throwable;
 /**
  * DBクラス(PDOベース)
  * 
- * @version 0.00.00
+ * @version 0.04.00
  */
 class DbBase extends PDO {
     // ---------------------------------------------------------------------------------------------
@@ -34,6 +36,8 @@ class DbBase extends PDO {
     // プロパティ
     /** @var bool デバッグモード */
     public $isDebug;
+    /** @var bool トランザクション開始したかどうか */
+    protected $isBeginTransaction;
     /** @var bool 持続的な接続に対するセーフモード */
     protected $isSafeForPersistent;
     /** @var ExecuteLog 実行ログ(デバッグ時のみ) */
@@ -144,7 +148,12 @@ class DbBase extends PDO {
         if ($this->isNeedPersistentCheck())
             throw new DbException('持続的な接続で、トランザクション処理は禁止されています。');
         try {
+            // 自動で生成されたトランザクションは終了させる
+            $autocommit = $this->getAttribute(static::ATTR_AUTOCOMMIT);
+            if (!$autocommit and $this->inTransaction()) $this->rollBack();
+            // トランザクション開始
             $result = parent::beginTransaction();
+            if ($result) $this->isBeginTransaction = true;
         } catch (PDOException $ex) {
             $this->throwException('トランザクション開始に失敗しました。', $ex);
         }
@@ -162,6 +171,7 @@ class DbBase extends PDO {
         $log->setName('コミット');
         try {
             $result = parent::commit();
+            if ($result) $this->isBeginTransaction = false;
         } catch (PDOException $ex) {
             $this->throwException('コミットに失敗しました。', $ex);
         }
@@ -179,6 +189,7 @@ class DbBase extends PDO {
         $log->setName('ロールバック');
         try {
             $result = parent::rollBack();
+            if ($result) $this->isBeginTransaction = false;
         } catch (PDOException $ex) {
             $this->throwException('ロールバックに失敗しました。', $ex);
         }
@@ -255,6 +266,7 @@ class DbBase extends PDO {
     protected function setInit() {
         // プロパティ
         $this->isDebug = false;
+        $this->isBeginTransaction = false;
         $this->isSafeForPersistent = false;
         $this->executeLog = new ExecuteLog();
         $this->reservedWords = $this->getReservedWords();

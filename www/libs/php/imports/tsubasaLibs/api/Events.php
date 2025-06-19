@@ -7,6 +7,7 @@
 // 0.10.00 2024/03/08 許可するホスト名リストを追加。
 // 0.11.00 2024/03/08 データ型のクラス名を変更。
 // 0.11.01 2024/03/09 権限チェックエラー時、メッセージを返すように対応。
+// 0.13.00 2024/03/13 エラーメッセージを返すかどうか、ログ出力を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
@@ -15,7 +16,7 @@ use Stringable;
 /**
  * APIイベントクラス
  * 
- * @version 0.11.01
+ * @version 0.13.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -36,26 +37,60 @@ class Events {
     protected $responseData;
     /** @var ?string エラーメッセージ */
     protected $errorMessage;
+    /** @var bool エラーメッセージを返すどうか */
+    protected $canResponseError;
+    /** @var ?string ログファイルパス */
+    protected $logFilePath;
+    /** @var ?resource ログファイルポインタ */
+    protected $logFilePointer;
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct() {
+        $this->setErrorHandler();
         // 現在日時を取得
         $this->now = new type\TimeStamp();
         // DB接続
         $this->db = $this->getDb();
         // 初期設定
         $this->setInit();
+        // ログファイルを開く
+        if ($this->logFilePath !== null) {
+            $this->logFilePointer = fopen($this->logFilePath, 'a');
+            if ($this->logFilePointer === false)
+                $this->error('Failed to open log file');
+        }
+        $this->startLog();
         // 権限チェック
         if (!$this->checkRole()) $this->roleError();
         // イベント
-        if (!$this->event()) {
-            header('HTTP', true, 500);
-            exit;
-        }
+        if (!$this->event())
+            $this->error('Event processing failed');
         $this->eventAfter();
+        // ログファイルを閉じる
+        $this->endLog();
+        fclose($this->logFilePointer);
     }
     // ---------------------------------------------------------------------------------------------
     // 内部処理
+    /**
+     * エラーハンドリングを設定
+     * 
+     * @since 0.13.00
+     */
+    protected function setErrorHandler() {
+        ini_set('display_errors', false);
+        register_shutdown_function(function () {
+            $error = error_get_last();
+            if ($error !== null) {
+                $message = sprintf('[type:%s]%s',
+                    $error['type'],
+                    $error['message']
+                );
+                $this->log('Abort: ' . $message);
+                $this->error($message);
+            }
+        });
+    }
     /**
      * DBを取得
      */
@@ -83,6 +118,8 @@ class Events {
             }
         }
         $this->errorMessage = null;
+        $this->canResponseError = false;
+        $this->logFilePath = null;
     }
     /**
      * 権限チェック
@@ -127,16 +164,8 @@ class Events {
      * @return never
      */
     protected function roleError() {
-        header('HTTP', true, 403);
-        header(sprintf('Content-Type: application/json; charset=%s',
-            $this->responseCharset !== null ? $this->responseCharset : 'utf-8'
-        ));
-        echo json_encode([
-            'error' => [
-                'message' => $this->errorMessage
-            ]
-        ], JSON_UNESCAPED_UNICODE);
-        exit;
+        $this->log('Role error: ' . $this->errorMessage);
+        $this->error($this->errorMessage, 403);
     }
     /**
      * イベント処理
@@ -187,5 +216,63 @@ class Events {
                 return is_string($data) ?
                     mb_convert_encoding($data, $this->responseCharset) : $data;
         }
+    }
+    /**
+     * エラー処理
+     * 
+     * @since 0.13.00
+     * @param string $message メッセージ
+     * @param int $httpCode HTTPステータスコード
+     * @return never
+     */
+    protected function error(string $message, int $httpCode = 500) {
+        header('HTTP', true, $httpCode);
+        if ($this->canResponseError) {
+            header(sprintf('Content-Type: application/json; charset=%s',
+                $this->responseCharset !== null ? $this->responseCharset : 'utf-8'
+            ));
+            echo json_encode([
+                'error' => [
+                    'message' => $message
+                ]
+            ], JSON_UNESCAPED_UNICODE);
+        }
+        exit;
+    }
+    /**
+     * ログを出力
+     * 
+     * @since 0.13.00
+     * @param string $message メッセージ
+     */
+    protected function log(string $message) {
+        if ($this->logFilePointer === null) return;
+
+        $time = new type\TimeStamp();
+        fwrite($this->logFilePointer, implode(', ', [
+            sprintf('"%s"', (string)$time),
+            sprintf('"%s"', $_SERVER['REMOTE_ADDR']),
+            sprintf('"%s"', $_SERVER['REQUEST_URI']),
+            sprintf('"%s"', str_replace('"', '""', $message))
+        ]) . "\n");
+    }
+    /**
+     * 開始ログを出力
+     * 
+     * @since 0.13.00
+     */
+    protected function startLog() {
+        $this->log('Start: ' . json_encode([
+            'Remote-Host' => $this->remoteHost,
+            'Data' => [...$_GET, ...$_POST]
+        ]));
+    }
+    /**
+     * 終了ログを出力
+     * 
+     * @since 0.13.00
+     */
+    protected function endLog() {
+        $this->log('End');
     }
 }

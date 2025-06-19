@@ -7,6 +7,7 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
+// 0.11.00 2024/03/08 データ型のクラス名を変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database\advance;
 use tsubasaLibs\database;
@@ -14,12 +15,12 @@ use tsubasaLibs\type;
 /**
  * レコードへ項目追加(入力ログ)
  * 
- * @version 1.00.00
+ * @version 0.11.00
  */
 trait RecordInputterItem {
     // ---------------------------------------------------------------------------------------------
     // プロパティ(追加)
-    /** @var type\TypeTimeStamp 入力日時 */
+    /** @var type\TimeStamp 入力日時 */
     public $inputTime;
     /** @var string 入力ユーザID */
     public $inputUserId;
@@ -34,7 +35,7 @@ trait RecordInputterItem {
      */
     protected function setInputterValues(database\Executor $executor) {
         if (!$executor->isInput) return;
-        $this->inputTime = new type\TypeTimeStamp($executor->time);
+        $this->inputTime = new type\TimeStamp($executor->time);
         $this->inputUserId = $executor->userId;
         $this->inputProgramId = $executor->programId;
     }

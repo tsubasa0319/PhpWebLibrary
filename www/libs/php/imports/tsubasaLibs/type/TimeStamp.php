@@ -4,28 +4,29 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
+// 0.11.00 2024/03/08 データ型のクラス名を変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\type;
-require_once __DIR__ . '/TypeDateTime.php';
-use tsubasaLibs\type\TypeDateTime;
+require_once __DIR__ . '/DateTime.php';
+use tsubasaLibs\type\DateTime;
 use Stringable;
-use DateTime, DateTimeZone;
+use DateTime as _DateTime, DateTimeZone;
 /**
  * タイムスタンプ型クラス
  * 
- * @version 0.00.00
+ * @version 0.11.00
  */
-class TypeTimeStamp extends TypeDateTime {
+class TimeStamp extends DateTime {
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
-     * @param string|DateTime|Stringable $date 日付
+     * @param string|_DateTime|Stringable $date 日付
      * @param DateTimeZone $timezone タイムゾーン
      */
     public function __construct(
-        string|DateTime|Stringable $date = 'now', ?DateTimeZone $timezone = null
+        string|_DateTime|Stringable $date = 'now', ?DateTimeZone $timezone = null
     ) {
-        if ($date instanceof DateTime) $date = $date->format('Y/m/d H:i:s.u');
+        if ($date instanceof _DateTime) $date = $date->format('Y/m/d H:i:s.u');
         if ($date instanceof Stringable) $date = (string)$date;
         // 現在日時
         if ($date === 'now') {
@@ -34,7 +35,7 @@ class TypeTimeStamp extends TypeDateTime {
                 (string)(new parent(date('Y/m/d H:i:s', (int)$mtimeArr[1]), $timezone)),
                 substr($mtimeArr[0], 1));
         }
-        $this->datetime = new DateTime($date, $timezone);
+        $this->datetime = new _DateTime($date, $timezone);
     }
     // ---------------------------------------------------------------------------------------------
     // マジックメソッド(オーバーライド)

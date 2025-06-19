@@ -4,6 +4,7 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
+// 0.10.00 2024/03/08 各メソッドをチェーン処理に対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/advance/RecordCreatorItem.php';
@@ -13,7 +14,7 @@ use tsubasaLibs\type;
 /**
  * レコードクラス
  * 
- * @version 0.00.00
+ * @version 0.10.00
  */
 class Record {
     // ---------------------------------------------------------------------------------------------
@@ -83,30 +84,36 @@ class Record {
      * 連想配列より値を受け取り
      * 
      * @param array<string, mixed> $rm 配列レコード
+     * @return static チェーン用
      */
-    public function setValuesFromArray(array $rm) {
+    public function setValuesFromArray(array $rm): static {
         foreach ($rm as $name => $value) {
             if (!is_string($name)) continue;
             $this->{$name} = $value;
         }
         $this->convertValues();
         $this->setComputedValues();
+        return $this;
     }
     /**
      * 他のレコードより値を受け取り
      * 
-     * @param static $record レコード
+     * @param static $that レコード
+     * @return static チェーン用
      */
-    public function setValuesFromRecord(self $that) {
+    public function setValuesFromRecord(self $that): static {
         foreach (get_object_vars($this->stmt->table->items) as $name => $value) {
             if (!($value instanceof Item)) continue;
             $this->{$name} = $that->{$name};
         }
         $this->convertValues();
         $this->setComputedValues();
+        return $this;
     }
     /**
      * 実行者を設定(INSERT用)
+     * 
+     * @return static チェーン用
      */
     public function setValuesForInsert() {
         $executor = $this->stmt->getExecutor();
@@ -114,25 +121,34 @@ class Record {
         $this->setCreatorValues($executor);
         $this->setInputterValues($executor);
         $this->setUpdaterValues($executor);
+        return $this;
     }
     /**
      * 実行者を設定(UPDATE用)
+     * 
+     * @return static チェーン用
      */
     public function setValuesForUpdate() {
         $executor = $this->stmt->getExecutor();
         if ($executor === null) return;
         $this->setInputterValues($executor);
         $this->setUpdaterValues($executor);
+        return $this;
     }
     /**
      * リフレッシュ
+     * 
+     * @return static チェーン用
      */
     public function refresh() {
         $this->convertValues();
         $this->setComputedValues();
+        return $this;
     }
     /**
      * 全ての項目にNothingを設定
+     * 
+     * @return static チェーン用
      */
     public function setNothing() {
         $nothing = $this->getNothing();
@@ -140,6 +156,7 @@ class Record {
             if (!($value instanceof Item)) continue;
             $this->{$name} = $nothing;
         }
+        return $this;
     }
     /**
      * 指定した項目が入力されているか

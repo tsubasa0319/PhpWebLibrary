@@ -4,6 +4,7 @@
 //
 // History:
 // 0.09.00 2024/03/06 作成。
+// 0.10.00 2024/03/08 許可するホスト名リストを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
@@ -12,15 +13,17 @@ use Stringable;
 /**
  * APIイベントクラス
  * 
- * @version 0.09.00
+ * @version 0.10.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var type\TypeTimeStamp 現在日時 */
-    public $now;
+    protected $now;
     /** @var DbBase|false DB */
-    public $db;
+    protected $db;
+    /** @var ?string[] 許可するホスト名リスト */
+    protected $allowHosts;
     /** @var string リモートホスト名 */
     protected $remoteHost;
     /** @var string コンテンツタイプ */
@@ -59,6 +62,7 @@ class Events {
      * 初期設定
      */
     protected function setInit() {
+        $this->allowHosts = [];
         $this->remoteHost = null;
         $this->contentType = null;
         foreach (getallheaders() as $key => $val) {
@@ -95,6 +99,10 @@ class Events {
             if (!$isOk)
                 return false;
         }
+        // 許可したリモートホスト名かどうか
+        $host = explode(':', $this->remoteHost)[0];
+        if ($this->allowHosts !== null and !in_array($host, $this->allowHosts, true))
+            return false;
         return true;
     }
     /**

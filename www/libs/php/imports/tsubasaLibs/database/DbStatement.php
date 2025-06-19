@@ -4,6 +4,7 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
+// 0.10.00 2024/03/08 DB情報無しのインスタンスを取得できるように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/ValueType.php';
@@ -11,12 +12,12 @@ use PDOStatement, PDOException;
 /**
  * DBステートメントクラス(PDOベース)
  * 
- * @version 0.00.00
+ * @version 0.10.00
  */
 class DbStatement extends PDOStatement {
     // ---------------------------------------------------------------------------------------------
     // プロパティ
-    /** @var DbBase DBクラス */
+    /** @var ?DbBase DBクラス */
     protected $db;
     /** @var array<string, ?int|string> バインド値リスト(デバッグ用) */
     protected $bindedValues;
@@ -25,7 +26,7 @@ class DbStatement extends PDOStatement {
     /**
      * @param DbBase $db DBクラス
      */
-    protected function __construct(DbBase $db) {
+    protected function __construct(?DbBase $db) {
         $this->db = $db;
         $this->setInit();
     }
@@ -67,6 +68,17 @@ class DbStatement extends PDOStatement {
     // メソッド(追加)
     public function getExecutor(): ?Executor {
         return $this->db->executor;
+    }
+    // ---------------------------------------------------------------------------------------------
+    // メソッド(追加、静的)
+    /**
+     * DB情報無しのインスタンスを取得
+     * 
+     * @since 0.10.00
+     * @return static DBステートメント
+     */
+    static public function getNoDbInstance(): static {
+        return new static(null);
     }
     // ---------------------------------------------------------------------------------------------
     // 内部処理

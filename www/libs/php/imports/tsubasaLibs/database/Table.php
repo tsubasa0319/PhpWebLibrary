@@ -5,6 +5,7 @@
 // History:
 // 0.00.00 2024/01/23 作成。
 // 0.04.00 2024/02/10 新規レコード取得に失敗していたので修正。
+// 0.10.00 2024/03/08 DB情報無しのインスタンスを取得できるように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -15,7 +16,7 @@ require_once __DIR__ . '/advance/TableCamelCase.php';
 /**
  * テーブルクラス
  * 
- * @version 0.04.00
+ * @version 0.10.00
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -43,9 +44,9 @@ class Table {
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
-     * @param DbBase $db DBクラス
+     * @param ?DbBase $db DBクラス
      */
-    public function __construct($db) {
+    public function __construct(?DbBase $db = null) {
         $this->db = $db;
         $this->primaryKey = new Key();
         $this->indexKey = new Key();
@@ -217,7 +218,14 @@ class Table {
      * @return Record|false レコード
      */
     public function getNewRecord() {
-        $stmt = $this->prepare($this->getSelectSql(false));
+        if ($this->db !== null) {
+            $stmt = $this->prepare('SELECT 1');
+        } else {
+            // DB情報が無い場合、prepareが使えないので、直接インスタンスを生成
+            /** @var TableStatement */
+            $stmt = $this->statementClass::getNoDbInstance();
+            $stmt->setTable($this);
+        }
         if ($stmt === false) return false;
         return $stmt->getNewRecord();
     }

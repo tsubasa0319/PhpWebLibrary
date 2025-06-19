@@ -4,6 +4,7 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
+// 0.10.00 2024/03/08 値がNothing型の場合、レコード用変換をスキップ。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 use tsubasaLibs\type;
@@ -11,7 +12,7 @@ use DateTime;
 /**
  * データ型の共通処理
  * 
- * @version 0.00.00
+ * @version 0.10.00
  */
 class ValueType {
     /**
@@ -51,6 +52,7 @@ class ValueType {
      */
     static public function convertForRecord(&$value, int $type) {
         if ($value === null) return;
+        if ($value instanceof type\TypeNothing) return;
         $value = match ($type) {
             DbBase::PARAM_INT => static::convertIntForRecord($value),
             DbBase::PARAM_STR => static::convertStrForRecord($value),

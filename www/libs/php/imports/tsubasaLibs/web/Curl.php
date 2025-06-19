@@ -4,13 +4,14 @@
 //
 // History:
 // 0.09.00 2024/03/06 作成。
+// 0.11.01 2024/03/09 通信エラー時、警告を返すように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use CurlHandle;
 /**
  * cURLクラス
  * 
- * @version 0.09.00
+ * @version 0.11.01
  */
 class Curl {
     // ---------------------------------------------------------------------------------------------
@@ -86,6 +87,7 @@ class Curl {
     public function exec(): string|false {
         // URL
         curl_setopt($this->curl, CURLOPT_URL, $this->url);
+
         // リクエストヘッダ
         $headers = [];
         $headers[] = sprintf('Remote-Host: %s', $_SERVER['HTTP_HOST']);
@@ -97,35 +99,45 @@ class Curl {
         if ($this->responseCharset !== null)
             $headers[] = sprintf('Response-Charset: %s', $this->responseCharset);
         curl_setopt($this->curl, CURLOPT_HTTPHEADER, $headers);
+
         // SSLチェックを無効化
         if (!$this->isCheckSSL)
             curl_setopt($this->curl, CURLOPT_SSL_VERIFYPEER, false);
+
         // 送信メソッド
         if ($this->method === static::METHOD_POST)
             curl_setopt($this->curl, CURLOPT_POST, true);
+
         // 返り値を受け取るかどうか
         if ($this->isReturnTransfer)
             curl_setopt($this->curl, CURLOPT_RETURNTRANSFER, true);
+
         // 送信データ
         if ($this->method === static::METHOD_POST)
             curl_setopt($this->curl, CURLOPT_POSTFIELDS, http_build_query($this->data));
+
         // 実行
         $response = curl_exec($this->curl);
         $info = $this->getInfo();
-        // エラーかどうか
-        if ($info['http_code'] !== 200)
-            $response = false;
+
         // 受け取りデータ
         $this->receiveData = null;
-        if ($info['http_code'] === 200) {
-            switch (explode(';', $info['content_type'])[0]) {
-                case static::CONTENT_TYPE_JSON:
-                    $this->receiveData = json_decode($response);
-                    break;
-                default:
-                    $this->receiveData = $response;
-            }
+        switch (explode(';', $info['content_type'])[0]) {
+            case static::CONTENT_TYPE_JSON:
+                $this->receiveData = json_decode($response, true);
+                break;
+            default:
+                $this->receiveData = $response;
         }
+
+        // エラーかどうか
+        if ($info['http_code'] !== 200) {
+            trigger_error(sprintf(
+                'cURL error: HTTP %s', $info['http_code']
+            ), E_USER_NOTICE);
+            $response = false;
+        }
+
         // 自動で閉じる
         if ($this->isAutoClose)
             curl_close($this->curl);

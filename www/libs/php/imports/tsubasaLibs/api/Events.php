@@ -6,6 +6,7 @@
 // 0.09.00 2024/03/06 作成。
 // 0.10.00 2024/03/08 許可するホスト名リストを追加。
 // 0.11.00 2024/03/08 データ型のクラス名を変更。
+// 0.11.01 2024/03/09 権限チェックエラー時、メッセージを返すように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
@@ -14,7 +15,7 @@ use Stringable;
 /**
  * APIイベントクラス
  * 
- * @version 0.11.00
+ * @version 0.11.01
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -33,6 +34,8 @@ class Events {
     protected $responseCharset;
     /** @var mixed レスポンスデータ */
     protected $responseData;
+    /** @var ?string エラーメッセージ */
+    protected $errorMessage;
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct() {
@@ -79,6 +82,7 @@ class Events {
                     break;
             }
         }
+        $this->errorMessage = null;
     }
     /**
      * 権限チェック
@@ -86,7 +90,10 @@ class Events {
      * @return bool 結果
      */
     protected function checkRole(): bool {
-        if ($this->remoteHost === null) return false;
+        if ($this->remoteHost === null) {
+            $this->errorMessage = 'Failed to get Remote-Host: No such parameter in request header';
+            return false;
+        }
         // リモートホスト名と、リモートIPアドレスの整合チェック
         $remoteIp = gethostbyname($this->remoteHost);
         if ($remoteIp !== $_SERVER['REMOTE_ADDR']) {
@@ -97,13 +104,21 @@ class Events {
             // 同じサーバからのアクセスはOK
             if ($_SERVER['REMOTE_ADDR'] === '127.0.0.1')
                 $isOk = true;
-            if (!$isOk)
+            if (!$isOk) {
+                $this->errorMessage = sprintf(
+                    '%s and %s are inconsistent', $this->remoteHost, $_SERVER['REMOTE_ADDR']
+                );
                 return false;
+            }
         }
         // 許可したリモートホスト名かどうか
         $host = explode(':', $this->remoteHost)[0];
-        if ($this->allowHosts !== null and !in_array($host, $this->allowHosts, true))
+        if ($this->allowHosts !== null and !in_array($host, $this->allowHosts, true)) {
+            $this->errorMessage = sprintf(
+                '%s is not allowed', $this->remoteHost
+            );
             return false;
+        }
         return true;
     }
     /**
@@ -113,6 +128,14 @@ class Events {
      */
     protected function roleError() {
         header('HTTP', true, 403);
+        header(sprintf('Content-Type: application/json; charset=%s',
+            $this->responseCharset !== null ? $this->responseCharset : 'utf-8'
+        ));
+        echo json_encode([
+            'error' => [
+                'message' => $this->errorMessage
+            ]
+        ], JSON_UNESCAPED_UNICODE);
         exit;
     }
     /**
@@ -131,7 +154,9 @@ class Events {
         header(sprintf('Content-Type: application/json; charset=%s',
             $this->responseCharset !== null ? $this->responseCharset : 'utf-8'
         ));
-        echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        echo json_encode([
+            'data' => $data
+        ], JSON_UNESCAPED_UNICODE);
     }
     /**
      * データ変換(JSON用)

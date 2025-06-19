@@ -5,13 +5,14 @@
 // History:
 // 0.09.00 2024/03/06 作成。
 // 0.11.01 2024/03/09 通信エラー時、警告を返すように対応。
+// 0.11.02 2024/03/09 ユーザエージェントが空文字ではWAFを通れないため対処。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use CurlHandle;
 /**
  * cURLクラス
  * 
- * @version 0.11.01
+ * @version 0.11.02
  */
 class Curl {
     // ---------------------------------------------------------------------------------------------
@@ -100,9 +101,10 @@ class Curl {
             $headers[] = sprintf('Response-Charset: %s', $this->responseCharset);
         curl_setopt($this->curl, CURLOPT_HTTPHEADER, $headers);
 
-        // SSLチェックを無効化
-        if (!$this->isCheckSSL)
-            curl_setopt($this->curl, CURLOPT_SSL_VERIFYPEER, false);
+        // ユーザエージェント
+        curl_setopt($this->curl, CURLOPT_USERAGENT, sprintf(
+            'cURL from %s', $_SERVER['HTTP_HOST']
+        ));
 
         // 送信メソッド
         if ($this->method === static::METHOD_POST)
@@ -113,7 +115,7 @@ class Curl {
             curl_setopt($this->curl, CURLOPT_RETURNTRANSFER, true);
 
         // 送信データ
-        if ($this->method === static::METHOD_POST)
+        if ($this->method === static::METHOD_POST and $this->data !== null)
             curl_setopt($this->curl, CURLOPT_POSTFIELDS, http_build_query($this->data));
 
         // 実行
@@ -122,12 +124,14 @@ class Curl {
 
         // 受け取りデータ
         $this->receiveData = null;
-        switch (explode(';', $info['content_type'])[0]) {
-            case static::CONTENT_TYPE_JSON:
-                $this->receiveData = json_decode($response, true);
-                break;
-            default:
-                $this->receiveData = $response;
+        if ($info['content_type'] !== null) {
+            switch (explode(';', $info['content_type'])[0]) {
+                case static::CONTENT_TYPE_JSON:
+                    $this->receiveData = json_decode($response, true);
+                    break;
+                default:
+                    $this->receiveData = $response;
+            }
         }
 
         // エラーかどうか

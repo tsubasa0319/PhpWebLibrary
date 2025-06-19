@@ -206,7 +206,7 @@ class DbBase extends PDO {
      * @param ?Throwable $ex 1つ前に発生した例外
      */
     public function throwException(string $message, ?Throwable $ex = null) {
-        throw new DbException($message, $ex->getCode(), $ex);
+        throw new DbException($message, 0, $ex);
     }
     /**
      * MySQLかどうか

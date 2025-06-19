@@ -52,4 +52,4 @@
                     </div>
                 </section>
             </header>
-            <section id="main" class="hidden">
+            <section id="main" class="hidden{foreach from=$classes|default:[] item=$item} {$item}{/foreach}">

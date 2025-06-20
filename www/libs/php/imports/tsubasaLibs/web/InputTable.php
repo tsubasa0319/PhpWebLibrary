@@ -4,15 +4,17 @@
 //
 // History:
 // 0.18.00 2024/03/30 作成。
+// 0.18.01 2024/04/03 行クラスをInputTableRowへ変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/../type/ArrayLike.php';
+require_once __DIR__ . '/InputTableRow.php';
 use tsubasaLibs\type\ArrayLike;
 /**
  * 入力テーブルクラス
  * 
  * @since 0.18.00
- * @version 0.18.00
+ * @version 0.18.01
  */
 class InputTable extends ArrayLike {
     // ---------------------------------------------------------------------------------------------
@@ -27,11 +29,11 @@ class InputTable extends ArrayLike {
     // コンストラクタ/デストラクタ
     /**
      * @param Events $events イベント
-     * @param InputItems ...$items 入力項目リスト
+     * @param InputTableRow ...$rows 入力項目リスト
      */
-    public function __construct(Events $events, InputItems ...$items) {
+    public function __construct(Events $events, InputTableRow ...$rows) {
         $this->events = $events;
-        $this->datas = $items;
+        $this->datas = $rows;
         $this->setInit();
     }
     // ---------------------------------------------------------------------------------------------
@@ -39,10 +41,10 @@ class InputTable extends ArrayLike {
     /**
      * 新規の行を取得
      * 
-     * @return InputItems 行
+     * @return InputTableRow 行
      */
-    public function getNewRow(): InputItems {
-        return new InputItems($this->events, $this);
+    public function getNewRow(): InputTableRow {
+        return new InputTableRow($this->events, $this);
     }
     /**
      * GETメソッドより値を設定
@@ -216,12 +218,21 @@ class InputTable extends ArrayLike {
     public function getForSmarty(): array {
         $values = [];
 
+        // データを表示するもののみへ絞り込み
+        $_this = clone $this;
+        for ($i = 0; $i < count($this); $i++) {
+            $row = $this->offsetGet($i);
+            if (!$row->isVisible)
+                unset($_this[$i]);
+        }
+
         // データ
         $datas = [];
         $start = $this->unitRowCount * $this->pageCount;
         for ($i = $start; $i < $start + $this->unitRowCount; $i++) {
-            if ($i >= count($this)) break;
-            $row = $this[$i];
+            if ($i >= count($_this)) break;
+
+            $row = $_this->offsetGet($i);
             $datas[] = $row->getForSmarty();
         }
         $values['datas'] = $datas;

@@ -6,6 +6,7 @@
 // 0.18.00 2024/03/30 作成。
 // 0.18.01 2024/04/03 行クラスをInputTableRowへ変更。
 // 0.18.02 2024/04/04 行を検索/選択/追加/削除を実装。入力チェックを頁外に対しても行うように変更。
+// 0.18.03 2024/04/09 入力チェックを実装。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/../type/ArrayLike.php';
@@ -15,7 +16,7 @@ use tsubasaLibs\type\ArrayLike;
  * 入力テーブルクラス
  * 
  * @since 0.18.00
- * @version 0.18.02
+ * @version 0.18.03
  */
 class InputTable extends ArrayLike {
     // ---------------------------------------------------------------------------------------------
@@ -364,6 +365,19 @@ class InputTable extends ArrayLike {
                     $result = false;
             }
         }
+        return $result;
+    }
+    /**
+     * 入力チェック
+     * 
+     * @since 0.18.03
+     * @return bool 成否
+     */
+    public function check(): bool {
+        $result = true;
+        foreach ($this as $row)
+            if (!$row->check())
+                $result = false;
         return $result;
     }
     /**

@@ -12,6 +12,7 @@
    0.14.00 2024/03/14 見出しh1を追加。
    0.15.00 2024/03/15 flexのよく使う処理をクラス化。
    0.18.02 2024/04/04 テーブルを追加。
+   0.18.03 2024/04/09 テーブルの左/中央/右寄せ、リンクボタンを追加。
 ------------------------------------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------------------------------- */
 /* 変数定義 */
@@ -165,6 +166,19 @@ button:not(:disabled):hover {
     cursor: pointer;
 }
 
+/* リンクボタン */
+input[type="button"].link,
+input[type="submit"].link,
+button.link {
+    border: 0;
+    background-color: transparent;
+    min-width: unset;
+    text-decoration: underline;
+    font-family: var(--tsubasaLib-font-family);
+    font-size: var(--tsubasaLib-font-size);
+    color: blue;
+}
+
 /* ---------------------------------------------------------------------------------------------- */
 /* テーブル */
 /* 全体 */
@@ -214,6 +228,19 @@ table.list > tbody > tr.selected > td {
     background-color: lightgreen;
 }
 
+/* セルの左/中央/右寄せ */
+td.left, th.left {
+    text-align: left;
+}
+
+td.center, th.center {
+    text-align: center;
+}
+
+td.right, th.right {
+    text-align: right;
+}
+
 /* 明細上の入力項目 */
 /* テキストボックス */
 table.list.general input[type="text"] {
@@ -221,7 +248,7 @@ table.list.general input[type="text"] {
 }
 
 table.list.general input[type="text"]:not(:disabled):not(.error) {
-    background-color: rgba(255, 255, 255, 0.6);
+    background-color: rgba(255, 255, 255, 0.4);
 }
 
 /* ボタン */

@@ -10,22 +10,43 @@
 // 0.18.02 2024/04/04 送信処理時、イベント値を設定できるように対応。
 // 0.19.00 2024/04/16 Enterキーによるタブ移動にて、全角入力を受けるテキストボックスは移動しないように変更。
 //                    Enterキーによる誤動作防止を追加。テキストボックス上でフォーム送信しないように対応。
+// 0.20.00 2024/04/23 結合名を取得を追加。
+//                    別画面に対してエレメントの種類を判定する可能性がある場合は、instanceofを使わないように変更。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import Ajax from "./Ajax.js";
 /**
  * Web処理
  * 
- * @version 0.08.01
+ * @since 0.05.00
+ * @version 0.20.00
  */
 const web = {
+    /**
+     * @since 0.20.00
+     * @type {Window[]} 子ウィンドウリスト
+     */
+    childWindows: [],
+    /**
+     * 結合名を取得
+     * 
+     * @since 0.20.00
+     * @param {string} name 名前
+     * @param {?int} index 要素番号
+     */
+    getJoinName: (name, index) => {
+        if (index === null) return name;
+
+        return [name, index].join(',');
+    },
     /**
      * エレメントを取得(名前指定、結合名へ対応)
      * 
      * @param {string} joinName 結合名(name[,num])
+     * @param {Window} win Windowオブジェクト
      * @returns {HTMLElement|null} エレメント
      */
-    getElementByJoinName: (joinName) => {
+    getElementByJoinName: (joinName, win = window) => {
         let name = joinName;
         let num = 0;
         if (typeof name !== 'string') return null;
@@ -40,7 +61,7 @@ const web = {
         }
 
         // エレメントを取得
-        const elms = document.getElementsByName(name);
+        const elms = win.document.getElementsByName(name);
         if (elms.length <= num) return null;
         return elms[num];
     },
@@ -51,12 +72,13 @@ const web = {
      * @returns {string|null} エレメントの値
      */
     getValueByElement: (element) => {
-        if (element instanceof HTMLInputElement) return element.value;
-        if (element instanceof HTMLButtonElement) return element.innerText;
-        if (element instanceof HTMLSelectElement) return element.value;
-        if (element instanceof HTMLTextAreaElement) return element.value;
-        if (element instanceof HTMLSpanElement) return element.innerText;
-        if (element instanceof HTMLLabelElement) return element.innerText;
+        const nodeName = element.nodeName.toLowerCase();
+        if (nodeName === 'input') return element.value;
+        if (nodeName === 'button') return element.innerText;
+        if (nodeName === 'select') return element.value;
+        if (nodeName === 'textarea') return element.value;
+        if (nodeName === 'span') return element.innerText;
+        if (nodeName === 'label') return element.innerText;
         return null;
     },
     /**
@@ -66,12 +88,13 @@ const web = {
      * @param {string} value 値
      */
     setValueByElement: (element, value) => {
-        if (element instanceof HTMLInputElement) element.value = value;
-        if (element instanceof HTMLButtonElement) element.innerText = value;
-        if (element instanceof HTMLSelectElement) element.value = value;
-        if (element instanceof HTMLTextAreaElement) element.value = value;
-        if (element instanceof HTMLSpanElement) element.innerText = value;
-        if (element instanceof HTMLLabelElement) element.innerText = value;
+        const nodeName = element.nodeName.toLowerCase();
+        if (nodeName === 'input') element.value = value;
+        if (nodeName === 'button') element.innerText = value;
+        if (nodeName === 'select') element.value = value;
+        if (nodeName === 'textarea') element.value = value;
+        if (nodeName === 'span') element.innerText = value;
+        if (nodeName === 'label') element.innerText = value;
     },
     /**
      * フォーカス移動(結合名へ対応)
@@ -84,8 +107,8 @@ const web = {
 
         // エレメントの種類に応じて、select/focus
         elm.focus();
-        if (elm instanceof HTMLInputElement) elm.select();
-        if (elm instanceof HTMLTextAreaElement) elm.select();
+        const nodeName = elm.nodeName.toLowerCase();
+        if (nodeName === 'input') elm.select();
     },
     /**
      * 暗転処理
@@ -125,9 +148,8 @@ const web = {
 
         // イベント名を設定
         let eventName = elmTarget.name;
-        if (event.type !== 'click') {
+        if (event.type !== 'click')
             eventName += event.type.charAt(0).toUpperCase() + event.type.slice(1);
-        }
 
         // イベント発火
         const elmForm = elmTarget.form;
@@ -250,10 +272,21 @@ const web = {
      */
     ajaxErrorHandler: null,
     /**
+     * Windowオブジェクトかどうか
+     * 
+     * @version 0.20.00
+     * @param {any} obj オブジェクト
+     * @returns {boolean} 結果
+     */
+    isWindow: (obj) => {
+        return Object.prototype.toString.call(obj) === '[object Window]';
+    },
+    /**
      * 見えるかどうか
      * 
      * @version 0.06.00
      * @param {HTMLElement} element エレメント
+     * @param {Window} win ウィンドウオブジェクト
      * @returns {boolean} 結果
      */
     isVisible: (element, win = window) => {
@@ -274,24 +307,24 @@ const web = {
      * 
      * @since 0.06.00
      * @param {HTMLElement} element エレメント
+     * @param {Window} win ウィンドウオブジェクト
      * @returns {boolean} 結果
      */
-    isMovable: (element) => {
+    isMovable: (element, win = window) => {
         // 非表示
-        if (!self.isVisible(element)) return false;
+        if (!self.isVisible(element, win)) return false;
+
+        const nodeName = element.nodeName.toLowerCase();
 
         // フォーム部品エレメント
-        if (element instanceof HTMLInputElement ||
-            element instanceof HTMLButtonElement ||
-            element instanceof HTMLSelectElement ||
-            element instanceof HTMLTextAreaElement) {
+        if (['input', 'button', 'select', 'textarea'].includes(nodeName)) {
             // 使用不可
             if (element.disabled) return false;
             return true;
         }
 
         // アンカーエレメント
-        if (element instanceof HTMLAnchorElement)
+        if (nodeName === 'a')
             return true;
 
         return false;
@@ -410,6 +443,134 @@ const web = {
             return false;
 
         return true;
+    },
+    /**
+     * 子ウィンドウを登録
+     * 
+     * @param {Window} childWindow 子ウィンドウ
+     */
+    addChildWindow: (childWindow) => {
+        // 既に閉じられているウィンドウを削除
+        self.childWindows = self.childWindows.filter(_window => !_window.closed);
+
+        // 登録
+        if (self.childWindows.filter(_window => _window === childWindow).length == 0)
+            self.childWindows.push(childWindow);
+    },
+    /**
+     * 子画面を開く
+     * 
+     * @since 0.20.00
+     * @param {string} url URL
+     * @param {?{[key: string]: (string|{0: string, 1:int})}} params パラメータリスト
+     * @param {boolean} isFrame インラインフレームかどうか
+     * @param {?string} width サブ画面の幅
+     * @param {?string} height サブ画面の高さ
+     */
+    openChildScreen: (url, params = null, isFrame = true, width = null, height = null) => {
+        // パラメータ
+        const _params = {};
+        if (params !== null) for (let key in params) {
+            const param = params[key];
+            const _param = Array.isArray(param) ? param : [param, null];
+            _params[key] = self.getJoinName(_param[0], _param[1]);
+        }
+
+        // パラメータ付きURL
+        const urlWithParam = self.makeUrlWithParam(url, _params);
+
+        if (isFrame) {
+            // インラインフレームの場合
+            /** @var {HTMLIframeElement} */
+            const elm = document.querySelector('#subScreen > iframe');
+
+            // 大きさを変更
+            if (width !== null)
+                elm.style.width = 'min(' + width + ', 95vw';
+            if (height !== null)
+                elm.style.height = 'min(' + height + ', 95vh';
+
+            // 開く
+            elm.src = urlWithParam;
+        } else {
+            // 別ウィンドウの場合
+
+            // 大きさを変更
+            const setting = {
+                'width' : width ?? '500px',
+                'height': height ?? '500px'
+            };
+            const _setting = [];
+            for (const key in setting)
+                _setting.push(key + '=' + setting[key]);
+
+            // 開く
+            const childWindow = window.open(urlWithParam, 'sub', _setting.join(','));
+
+            // 親ウィンドウの終了に合わせて、子ウィンドウを閉じるように登録
+            self.addChildWindow(childWindow);
+        }
+    },
+    /**
+     * 全ての子ウィンドウを閉じる
+     * 
+     * @since 0.20.00
+     */
+    closeChildWindows: () => {
+        self.childWindows.forEach((childWindow) => {
+            childWindow.close();
+        });
+    },
+    /**
+     * 親画面を取得
+     * 
+     * @since 0.20.00
+     * @returns {?Window} 親画面
+     */
+    getParentScreen: () => {
+        return window !== parent ? parent : opener;
+    },
+    /**
+     * 子画面より、親画面へ値を設定
+     * 
+     * @since 0.20.00
+     * @param {?string} joinName 結合名
+     * @param {?string} value 値
+     * @param {boolean} isMove 移動するかどうか
+     */
+    setValueFromChildScreen: (joinName, value, isMove = false) => {
+        if (joinName === null) return;
+        if (value === null) return;
+
+        // 対象エレメントを取得
+        const parentScreen = self.getParentScreen();
+        const elm = self.getElementByJoinName(joinName, parentScreen);
+        if (elm === null) return;
+
+        // 値を設定
+        self.setValueByElement(elm, value);
+
+        // フォーカス移動
+        if (isMove && self.isMovable(elm, parentScreen))
+            elm.focus();
+    },
+    /**
+     * 子画面を閉じる
+     * 
+     * @since 0.20.00
+     */
+    closeChildScreen: () => {
+        const parentScreen = self.getParentScreen();
+        if (parentScreen === parent) {
+            // インラインフレームの場合
+            const elm = parentScreen.document.querySelector('#subScreen > iframe');
+            elm.removeAttribute('src');
+            elm.removeAttribute('style');
+        }
+        if (parentScreen === opener) {
+            // 別ウィンドウの場合
+            close();
+        }
     },
     /**
      * 開始日時を設定

@@ -6,6 +6,7 @@
 // 0.00.00 2024/01/23 作成。
 // 0.04.00 2024/02/10 オートコミットがfalseの場合、何かクエリを実行すると、
 //                    トランザクションが開始するため対処。
+// 0.20.00 2024/04/23 クエリ関連の失敗時、エラーログへSQLステートメントを出力するように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/DbStatement.php';
@@ -19,7 +20,8 @@ use Throwable;
 /**
  * DBクラス(PDOベース)
  * 
- * @version 0.04.00
+ * @since 0.00.00
+ * @version 0.20.00
  */
 class DbBase extends PDO {
     // ---------------------------------------------------------------------------------------------
@@ -94,7 +96,12 @@ class DbBase extends PDO {
         try {
             $result = parent::query($query, $fetchMode, ...$fetch_mode_args);
         } catch (PDOException $ex) {
-            if ($this->isDebug) var_dump($query);
+            error_log(sprintf('[SQL]%s[MODE]%s[ARGS]%s',
+                $query,
+                $fetchMode ?? 'Null',
+                json_encode($fetch_mode_args, JSON_UNESCAPED_UNICODE)
+            ));
+            if ($this->isDebug) var_dump($query, $fetchMode, $fetch_mode_args);
             $this->throwException('クエリ実行中に失敗しました。', $ex);
         }
         $this->addQueryHistory($log, $query, $result !== false);
@@ -113,6 +120,7 @@ class DbBase extends PDO {
         try {
             $result = parent::exec($statement);
         } catch (PDOException $ex) {
+            error_log(sprintf('[SQL]%s', $statement));
             if ($this->isDebug) var_dump($statement);
             $this->throwException('クエリ実行中に失敗しました。', $ex);
         }
@@ -132,7 +140,11 @@ class DbBase extends PDO {
         try {
             $result = parent::prepare($query, $options);
         } catch (PDOException $ex) {
-            if ($this->isDebug) var_dump($query);
+            error_log(sprintf('[SQL]%s[OPTION]%s',
+                $query,
+                json_encode($options, JSON_UNESCAPED_UNICODE)
+            ));
+            if ($this->isDebug) var_dump($query, $options);
             $this->throwException('プリペアドステートメント取得中に失敗しました。', $ex);
         }
         return $result;

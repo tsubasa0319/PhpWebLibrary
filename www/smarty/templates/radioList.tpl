@@ -1,23 +1,23 @@
-{if $type|default:null === null}
+{if !isset($type)}
 <span {attributes items=[
-    'id'    => $id|default:null,
+    'id'    => $id|default:false,
     'class' => [
         'radioList',
-        $class|default:null
+        $class|default:false
     ],
     'style' => [
-        'width' => $width|default:null
+        'width' => $width|default:false
     ]
 ]}>
 {foreach from=$list key=$key item=$item}
     <label><input {attributes items=[
         'type'     => 'radio',
-        'name'     => $name|default:null,
-        'value'    => $item.value|default:null,
-        'checked'  => $item.value|default:null === $value|default:null,
-        'disabled' => $disabled|default:null,
-        'tabindex' => $tabindex|default:null
-    ]}>{$item.text|default:''}</label>
+        'name'     => $name|default:false,
+        'value'    => $item.value|default:'',
+        'checked'  => $item.value|default:'' === $value|default:'',
+        'disabled' => $disabled|default:false,
+        'tabindex' => $tabindex|default:false
+    ]}>{$item.label|default:''}</label>
 {/foreach}
 </span>
 {/if}

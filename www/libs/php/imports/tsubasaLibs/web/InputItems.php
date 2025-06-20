@@ -12,16 +12,21 @@
 // 0.18.00 2024/03/30 入力テーブルに対応。
 // 0.18.01 2024/04/02 入力テーブルに関わる処理を、InputTableRowへ分離。
 // 0.18.03 2024/04/09 入力チェックを実装。
+// 0.19.00 2024/04/16 対応する入力項目の型に、ブール型/十進数型/日付型/タイムスタンプ型を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/InputItemBase.php';
 require_once __DIR__ . '/InputItemInteger.php';
 require_once __DIR__ . '/InputItemString.php';
+require_once __DIR__ . '/InputItemBoolean.php';
+require_once __DIR__ . '/InputItemDecimal.php';
+require_once __DIR__ . '/InputItemDate.php';
+require_once __DIR__ . '/InputItemTimeStamp.php';
 /**
  * 入力項目リストクラス
  * 
  * @since 0.00.00
- * @version 0.18.03
+ * @version 0.19.00
  */
 class InputItems {
     // ---------------------------------------------------------------------------------------------
@@ -52,6 +57,9 @@ class InputItems {
     }
     // ---------------------------------------------------------------------------------------------
     // メソッド
+    public function getEvent(): Events {
+        return $this->events;
+    }
     /**
      * 項目リストを取得
      * 
@@ -67,27 +75,10 @@ class InputItems {
 
         return $this->items;
     }
+    // ---------------------------------------------------------------------------------------------
+    // メソッド(イベント前処理)
     /**
-     * GETメソッドより値を設定
-     */
-    public function setFromGet() {
-        foreach ($this->getItems() as $var)
-            $var->setFromGet();
-    }
-    /**
-     * POSTメソッドより値を設定
-     */
-    public function setFromPost() {
-        foreach ($this->getItems() as $var) {
-            if ($var->isReadOnly) {
-                $var->setFromSession($this->events->session->unit);
-                continue;
-            }
-            $var->setFromPost();
-        }
-    }
-    /**
-     * 画面単位セッションより値を設定
+     * 画面単位セッションより設定
      * 
      * @since 0.03.00
      */
@@ -95,14 +86,36 @@ class InputItems {
         foreach ($this->getItems() as $var)
             $var->setFromSession($this->events->session->unit);
     }
+    // ---------------------------------------------------------------------------------------------
+    // メソッド(イベント処理)
+    /**
+     * GETメソッドより値を設定
+     */
+    public function setFromGet() {
+        // 確認画面の場合は、設定しない
+        if ($this->events->isConfirm) return;
+
+        foreach ($this->getItems() as $item)
+            $item->setFromGet();
+    }
+    /**
+     * POSTメソッドより値を設定
+     */
+    public function setFromPost() {
+        // 確認画面の場合は、設定しない
+        if ($this->events->isConfirm) return;
+        
+        foreach ($this->getItems() as $item)
+            $item->setFromPost();
+    }
     /**
      * Web出力用にWeb値を設定
      * 
      * 主にhtmlspecialcharsによるエスケープ処理を行います。
      */
     public function setForWeb() {
-        foreach ($this->getItems() as $var)
-            $var->setForWeb();
+        foreach ($this->getItems() as $item)
+            $item->setForWeb();
     }
     /**
      * セッション出力用にセッション値を設定
@@ -110,29 +123,27 @@ class InputItems {
      * @since 0.03.00
      */
     public function setForSession() {
-        foreach ($this->getItems() as $var) {
-            if (!$this->events->isConfirm and !$var->isReadOnly) continue;
-            $var->setForSession($this->events->session->unit);
-        }
+        foreach ($this->getItems() as $item)
+            $item->setForSession();
     }
     /**
      * エラー項目を登録
      */
     public function addErrorNames() {
-        foreach ($this->getItems() as $var)
-            if ($var->isError())
-                $this->events->errorNames[] = $var->getName();
+        foreach ($this->getItems() as $item)
+            if ($item->isError())
+                $this->events->errorNames[] = $item->getName();
     }
     /**
      * Smarty用にWeb値リストを取得
      * 
      * @since 0.01.00
-     * @return string[] Web値リスト
+     * @return array{value:string, label:string}[] Web値リスト
      */
     public function getForSmarty(): array {
         $values = [];
-        foreach ($this->getItems() as $id => $var)
-            $values[$id] = $var->webValue;
+        foreach ($this->getItems() as $id => $item)
+            $values[$id] = $item->getForSmarty();
         return $values;
     }
     /**
@@ -142,9 +153,9 @@ class InputItems {
      */
     public function setFocus() {
         if ($this->events->focusName !== null) return;
-        foreach ($this->getItems() as $var) {
-            if (!$var->isFocus) continue;
-            $this->events->focusName = $var->getName();
+        foreach ($this->getItems() as $item) {
+            if (!$item->isFocus) continue;
+            $this->events->focusName = $item->getName();
             return;
         }
     }
@@ -156,9 +167,9 @@ class InputItems {
      */
     public function getError(): array {
         $names = [];
-        foreach ($this->getItems() as $var)
-            if ($var->isError())
-                $names[] = $var->getName();
+        foreach ($this->getItems() as $item)
+            if ($item->isError())
+                $names[] = $item->getName();
         return $names;
     }
     /**
@@ -178,10 +189,11 @@ class InputItems {
      */
     public function checkFromWeb(): bool {
         $result = true;
-        foreach ($this->getItems() as $var) {
-            if ($var->checkFromWeb()) continue;
+        foreach ($this->getItems() as $item) {
+            if ($item->checkFromWeb()) continue;
             $result = false;
-            $this->events->addMessage($var->errorId, ...$var->errorParams);
+            if ($item->errorId !== '-')
+                $this->events->addMessage($item->errorId, ...$item->errorParams);
         }
         return $result;
     }
@@ -197,6 +209,12 @@ class InputItems {
             if (!$item->check())
                 $result = false;
         return $result;
+    }
+    // ---------------------------------------------------------------------------------------------
+    // メソッド(イベント後処理)
+    public function setToSession(SessionUnit $unit) {
+        foreach ($this->getItems() as $item)
+            $item->setToSession($unit);
     }
     // ---------------------------------------------------------------------------------------------
     // 内部処理

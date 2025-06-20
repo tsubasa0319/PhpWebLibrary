@@ -11,6 +11,7 @@
    0.08.00 2024/02/27 セレクトリスト/ラジオボタンを追加。
    0.14.00 2024/03/14 見出しh1を追加。
    0.15.00 2024/03/15 flexのよく使う処理をクラス化。
+   0.18.02 2024/04/04 テーブルを追加。
 ------------------------------------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------------------------------- */
 /* 変数定義 */
@@ -162,6 +163,71 @@ input[type="button"]:not(:disabled):hover,
 input[type="submit"]:not(:disabled):hover,
 button:not(:disabled):hover {
     cursor: pointer;
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* テーブル */
+/* 全体 */
+table {
+    border-collapse: collapse;
+}
+
+table > tbody > tr > th,
+table > tbody > tr > td {
+    padding: 0;
+}
+
+/* ヘッダ行 */
+table.list.general > tbody > tr > th {
+    text-align: left;
+    background-color: silver;
+}
+
+table.list.general > tbody:has(> tr:first-child > th):not(:has(> tr:nth-child(2) > th))
+    > tr:first-child > th {
+    border-top: 1px black solid;
+}
+
+table.list.general > tbody:has(> tr:first-child > th):not(:has(> tr:nth-child(2) > th))
+    > tr:first-child > th {
+    border-bottom: 1px black solid;
+}
+
+/* 行の高さ */
+table.list.general > tbody > tr > th,
+table.list.general > tbody > tr > td {
+    height: 22px;
+}
+
+/* 偶数の明細行 */
+table.list.general > tbody:not(:has(> tr:first-child > th))
+    > tr:nth-child(2n):not(.selected) > td,
+table.list.general > tbody:has(> tr:first-child > th):not(:has(> tr:nth-child(2) > th))
+    > tr:nth-child(2n+1):not(.selected) > td,
+table.list.general > tbody:has(> tr:first-child > th):has(> tr:nth-child(2) > th)
+    > tr:nth-child(2n+2):not(.selected) > td {
+    background-color: lightgray;
+}
+
+/* 選択行 */
+table.list > tbody > tr.selected > td {
+    background-color: lightgreen;
+}
+
+/* 明細上の入力項目 */
+/* テキストボックス */
+table.list.general input[type="text"] {
+    height: 18px;
+}
+
+table.list.general input[type="text"]:not(:disabled):not(.error) {
+    background-color: rgba(255, 255, 255, 0.6);
+}
+
+/* ボタン */
+table.list.general input[type="button"],
+table.list.general button {
+    height: 22px;
 }
 
 /* ---------------------------------------------------------------------------------------------- */

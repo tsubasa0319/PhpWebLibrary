@@ -6,13 +6,15 @@
 // 0.03.00 2024/02/07 作成。
 // 0.04.00 2024/02/10 空の場合や、1日以上経過した場合も削除するように対応。
 //                    現セッションを削除した場合も新規発行するように対応。
+// 0.18.00 2024/03/30 データの設定/取得/追加メソッドを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use DateTime, DateInterval, Exception;
 /**
  * 画面単位セッションクラス
  * 
- * @version 0.04.00
+ * @since 0.03.00
+ * @version 0.18.00
  */
 class SessionUnit {
     // ---------------------------------------------------------------------------------------------
@@ -34,6 +36,68 @@ class SessionUnit {
     public function __construct() {
         $this->setInit();
         $this->setInfoFromSession();
+    }
+    // ---------------------------------------------------------------------------------------------
+    // メソッド
+    /**
+     * セッションより値を取得
+     * 
+     * @param string $name 名前
+     * @param mixed $key キー値
+     * @return mixed 値
+     */
+    public function getData(string $name, $key = null) {
+        if (!isset($this->data[$name])) return null;
+
+        $values = $this->data[$name];
+        if (!is_array($values) and ($key ?? 0) !== 0) return null;
+
+        // 単一データの場合
+        if (!is_array($values) or $key === null) {
+            return $values;
+        }
+
+        // 複数データの場合
+        if (!isset($values[$key])) return null;
+        return $values[$key];
+    }
+    /**
+     * セッションへ値を設定
+     * 
+     * @param string $name 名前
+     * @param mixed $value 値
+     * @param mixed $key キー値
+     */
+    public function setData(string $name, $value, $key = null) {
+        // 新規登録
+        if (!isset($this->data[$name])) {
+            $this->data[$name] = $key === null ? $value : [$key => $value];
+            return;
+        }
+
+        // 上書き、追加
+        $values =& $this->data[$name];
+        if ($key === null) {
+            $values = $value;
+        } else {
+            if (!is_array($values))
+                $values = [0 => $values];
+            $values[$key] = $value;
+        }
+    }
+    /**
+     * セッションの配列データへ値を追加
+     * 
+     * @param string $name 名前
+     * @param mixed $value 値
+     */
+    public function addData(string $name, $value) {
+        if (!isset($this->data[$name]))
+            $this->data[$name] = [];
+        if (!is_array($this->data[$name]))
+            $this->data[$name] = [$this->data[$name]];
+
+        $this->data[$name][] = $value;
     }
     // ---------------------------------------------------------------------------------------------
     // 内部処理

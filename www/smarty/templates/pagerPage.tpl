@@ -1,0 +1,1 @@
+<span>{$table.infos.page} / {$table.infos.maxPage}</span>

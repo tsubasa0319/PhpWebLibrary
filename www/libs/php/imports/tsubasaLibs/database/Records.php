@@ -27,7 +27,7 @@ class Records extends ArrayLike {
     // メソッド(オーバーライド)
     public function offsetSet(mixed $offset, mixed $value): void {
         if ($offset !== null and !is_int($offset))
-            trigger_error('offset is not an integer tyle', E_USER_ERROR);
+            trigger_error('offset is not an integer type', E_USER_ERROR);
         if ($value !== null and !($value instanceof Record))
             trigger_error('value must be an instance of Record', E_USER_ERROR);
         

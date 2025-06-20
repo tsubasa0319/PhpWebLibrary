@@ -11,12 +11,14 @@
 //                    出力専用の場合、セッションより取得しないように変更。
 //                    入力専用の場合、セッションへ保管しないように変更。
 //                    出力専用/読取専用の場合、入力チェックしないように変更。
+// 0.18.00 2024/03/30 配列型のGETメソッド/POSTメソッドに対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 /**
  * 入力項目ベースクラス
  * 
- * @version 0.04.00
+ * @since 0.00.00
+ * @version 0.18.00
  */
 class InputItemBase {
     // ---------------------------------------------------------------------------------------------
@@ -25,6 +27,8 @@ class InputItemBase {
     const CSS_CLASS_ERROR = 'error';
     // ---------------------------------------------------------------------------------------------
     // プロパティ
+    /** @var InputItems 入力項目リスト */
+    protected $items;
     /** @var string 項目名 */
     public $name;
     /** @var string ラベル名 */
@@ -66,7 +70,13 @@ class InputItemBase {
     public $errorParams;
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
-    public function __construct(string $name, ?string $label = null) {
+    /**
+     * @param InputItems $items 入力項目リスト
+     * @param string $name name属性値(HTML)
+     * @param ?string $label 項目名
+     */
+    public function __construct(InputItems $items, string $name, ?string $label = null) {
+        $this->items = $items;
         $this->name = $name;
         $this->label = $label ?? $name;
         $this->setInit();
@@ -75,29 +85,51 @@ class InputItemBase {
     // メソッド
     /**
      * Web値を設定(POSTメソッドより)
+     * 
+     * @param ?int $index 要素番号
      */
-    public function setFromPost() {
+    public function setFromPost(?int $index = null) {
+        $post = new Post();
+        if (!$post->check($this->name, $index)) return;
         if ($this->isOutputOnly) return;
-        $this->webValue = isset($_POST[$this->name]) ? $_POST[$this->name] : '';
+
+        $this->webValue = $post->get($this->name, $index);
         $this->setValueFromWeb();
     }
     /**
      * Web値を設定(GETメソッドより)
+     * 
+     * @param ?int $index 要素番号
      */
-    public function setFromGet() {
+    public function setFromGet(?int $index = null) {
+        $get = new Get();
+        if (!$get->check($this->name, $index)) return;
         if ($this->isOutputOnly) return;
-        $this->webValue = isset($_GET[$this->name]) ? $_GET[$this->name] : '';
+
+        $this->webValue = $get->get($this->name, $index);
         $this->setValueFromWeb();
     }
     /**
-     * Web値を設定(画面単位セッションより)
+     * セッション値を設定(画面単位セッションより)
      * 
      * @since 0.03.00
+     * @param SessionUnit $unit 画面単位セッション
      */
     public function setFromSession(SessionUnit $unit) {
         if ($this->isOutputOnly) return;
-        $this->sessionValue = isset($unit->data[$this->name]) ? $unit->data[$this->name] : null;
-        $this->setValueFromSession();
+
+        $this->sessionValue = $unit->getData($this->name);
+        $this->setValueFromSessionValue();
+    }
+    /**
+     * セッション値を設定(画面単位セッションのテーブルより)
+     * 
+     * @since 0.18.00
+     * @param mixed $sessionValue セッション値
+     */
+    public function setFromTable($sessionValue) {
+        $this->sessionValue = $sessionValue;
+        $this->setValueFromSessionValue();
     }
     /**
      * 入力チェック(最小限のみ)
@@ -128,19 +160,20 @@ class InputItemBase {
      */
     public function setForWeb() {
         $this->webValue = '';
-        if ($this->isInputOnly) return;
+        if ($this->isInputOnly and !$this->isError()) return;
         $this->setWebValueFromValue();
     }
     /**
      * セッション値を設定(セッション用)
      * 
      * @since 0.03.00
-     * @param SessionUnit $unit
+     * @param SessionUnit $unit 画面単位セッション
      */
     public function setForSession(SessionUnit $unit) {
         $this->sessionValue = null;
         if ($this->isInputOnly) return;
-        $this->setSessionValueFromValue($unit);
+        $this->setSessionValueFromValue();
+        $unit->setData($this->name, $this->sessionValue);
     }
     /**
      * フォーカス移動
@@ -158,6 +191,18 @@ class InputItemBase {
      */
     public function isError(): bool {
         return $this->errorId !== null;
+    }
+    /**
+     * name属性値を取得
+     * 
+     * @since 0.18.00
+     * @return string name属性値
+     */
+    public function getName(): string {
+        if ($this->items->getTable() === null)
+            return $this->name;
+        
+        return sprintf('%s[],%s', $this->name, $this->items->getRowCountInPage());
     }
     // ---------------------------------------------------------------------------------------------
     // 内部処理
@@ -185,14 +230,18 @@ class InputItemBase {
      * 
      * @since 0.03.00
      */
-    protected function setValueFromSession() {}
+    protected function setValueFromSessionValue() {
+        $this->value = $this->sessionValue;
+    }
     /**
      * セッション値を設定(値より)
      * 
      * @since 0.03.00
      * @param SessionUnit $unit 画面単位セッション
      */
-    protected function setSessionValueFromValue(SessionUnit $unit) {}
+    protected function setSessionValueFromValue() {
+        $this->sessionValue = $this->value;
+    }
     /**
      * Web値チェック
      * 

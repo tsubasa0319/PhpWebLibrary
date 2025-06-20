@@ -4,6 +4,7 @@
 //
 // History:
 // 0.16.00 2024/03/23 作成。
+// 0.18.00 2024/03/30 初期化を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\type;
 use ArrayAccess, Iterator, Countable;
@@ -12,7 +13,7 @@ use Stringable;
  * 配列型クラス
  * 
  * @since 0.16.00
- * @version 0.16.00
+ * @version 0.18.00
  */
 class ArrayLike implements ArrayAccess, Iterator, Countable {
     // ---------------------------------------------------------------------------------------------
@@ -131,5 +132,16 @@ class ArrayLike implements ArrayAccess, Iterator, Countable {
      */
     public function count(): int {
         return count($this->datas);
+    }
+    // ---------------------------------------------------------------------------------------------
+    // メソッド(追加)
+    /**
+     * 初期化
+     * 
+     * @since 0.18.00
+     */
+    public function clear() {
+        $this->datas = [];
+        $this->rewind();
     }
 }

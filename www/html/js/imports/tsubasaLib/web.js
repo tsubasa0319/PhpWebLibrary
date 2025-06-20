@@ -7,6 +7,7 @@
 // 0.06.00 2024/02/22 見えるかどうか、移動可能かどうか、Enterキーによるタブ移動処理を追加。
 // 0.07.00 2024/02/22 Ajax送信時、実行時間を算出するように対応。
 // 0.08.01 2024/02/28 Enterキーによるタブ移動にて、ボタンであっても移動するように変更。
+// 0.18.02 2024/04/04 送信処理時、イベント値を設定できるように対応。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import Ajax from "./Ajax.js";
@@ -101,9 +102,10 @@ const web = {
      * 送信処理(Submit以外のイベント用)
      * 
      * @param {Event} event イベント
+     * @param {?string} value イベント値
      * @return {boolean} 成否
      */
-    send: (event) => {
+    send: (event, value = null) => {
         if (event.type === 'submit') {
             alert('二重送信になるため、処理を中断します。');
             return false;
@@ -134,6 +136,8 @@ const web = {
         const elmButton = document.createElement('button');
         elmButton.type = 'submit';
         elmButton.name = eventName;
+        if (value !== null)
+            elmButton.value = value;
         elmButton.style.display = 'none';
         elmForm.append(elmButton);
         elmButton.click();

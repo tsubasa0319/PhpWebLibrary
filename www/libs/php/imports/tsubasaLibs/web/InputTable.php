@@ -7,6 +7,7 @@
 // 0.18.01 2024/04/03 行クラスをInputTableRowへ変更。
 // 0.18.02 2024/04/04 行を検索/選択/追加/削除を実装。入力チェックを頁外に対しても行うように変更。
 // 0.18.03 2024/04/09 入力チェックを実装。
+// 0.19.00 2024/04/16 セッションへ設定する処理のメソッド名を変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/../type/ArrayLike.php';
@@ -16,7 +17,7 @@ use tsubasaLibs\type\ArrayLike;
  * 入力テーブルクラス
  * 
  * @since 0.18.00
- * @version 0.18.03
+ * @version 0.19.00
  */
 class InputTable extends ArrayLike {
     // ---------------------------------------------------------------------------------------------
@@ -39,7 +40,7 @@ class InputTable extends ArrayLike {
         $this->setInit();
     }
     // ---------------------------------------------------------------------------------------------
-    // メソッド(追加)
+    // メソッド(追加、基本)
     /**
      * 新規の行を取得
      * 
@@ -56,7 +57,7 @@ class InputTable extends ArrayLike {
      * @return ?InputTableRow 行
      */
     public function searchRow(InputItems $items): ?InputTableRow {
-        foreach ($this as $row) {
+        foreach ($this->getVisibleRows() as $row) {
             if ($row->isTarget($items))
                 return $row;
         }
@@ -113,7 +114,7 @@ class InputTable extends ArrayLike {
      */
     public function getVisibleRows(): array {
         $rows = [];
-        foreach ($this as $row)
+        foreach (clone $this as $row)
             if ($row->isVisible)
                 $rows[] = $row;
         return $rows;
@@ -135,25 +136,20 @@ class InputTable extends ArrayLike {
         return null;
     }
     /**
-     * 頁内行番号より行を選択
+     * 現在頁の全ての行を取得
      * 
-     * @since 0.18.02
-     * @param ?int $numInPage 頁内行番号(nullの場合は解除)
-     * @return ?InputTableRow 選択した行
+     * @return InputTableRow[] 行リスト
      */
-    public function selectRowByNumInPage(?int $numInPage): ?InputTableRow {
-        // nullの場合は、選択解除
-        if ($numInPage === null) {
-            foreach ($this as $row)
-                $row->isSelected = false;
-            return null;
-        }
+    public function getRowsInCurrentPage(): array{
+        $rows = $this->getVisibleRows();
+        $start = $this->unitRowCount * $this->pageCount;
 
-        $row = $this->getRowByNumInPage($numInPage);
-        if ($row === null) return null;
-
-        $row->select();
-        return $row;
+        $pageRows = [];
+        for ($i = $start; $i < $start + $this->unitRowCount; $i++)
+            if ($i < count($rows))
+                $pageRows[] = $rows[$i];
+        
+        return $pageRows;
     }
     /**
      * 頁内行番号より行を削除
@@ -167,115 +163,6 @@ class InputTable extends ArrayLike {
 
         $row->delete();
         return true;
-    }
-    /**
-     * GETメソッドより値を設定
-     */
-    public function setFromGet() {
-        // データを表示するもののみへ絞り込み
-        $rows = $this->getVisibleRows();
-
-        $start = $this->unitRowCount * $this->pageCount;
-        for ($num = $start; $num < $start + $this->unitRowCount; $num++) {
-            if ($num >= count($rows)) continue;
-
-            $row = $rows[$num];
-            foreach ($row->getItems() as $var)
-                $var->setFromGet($num - $start);
-        }
-    }
-    /**
-     * POSTメソッドより値を設定
-     */
-    public function setFromPost() {
-        // データを表示するもののみへ絞り込み
-        $rows = $this->getVisibleRows();
-
-        $start = $this->unitRowCount * $this->pageCount;
-        for ($num = $start; $num < $start + $this->unitRowCount; $num++) {
-            if ($num >= count($rows)) continue;
-
-            $row = $rows[$num];
-            foreach ($row->getItems() as $var)
-                $var->setFromPost($num - $start);
-        }
-    }
-    /**
-     * セッションへ設定
-     * 
-     * @param string $name 入力テーブルID
-     * @param SessionUnit $unit 画面単位セッション
-     */
-    public function setSession(string $name, SessionUnit $unit) {
-        $list = [];
-        
-        // データ
-        $datas = [];
-        foreach ($this as $row) {
-            $values = [];
-            foreach ($row->getItems() as $_name => $var) {
-                $values[$_name] = $var->value;
-            }
-            $datas[] = $values;
-        }
-        $list['datas'] = $datas;
-
-        // 行情報
-        $rowInfos = [];
-        foreach ($this as $row) {
-            $infos = [];
-            $infos['isVisible'] = $row->isVisible;
-            $infos['isSelected'] = $row->isSelected;
-            $infos['isAdded'] = $row->isAdded;
-            $rowInfos[] = $infos;
-        }
-        $list['rowInfos'] = $rowInfos;
-
-        // 頁情報
-        $infos = [];
-        $infos['page'] = $this->pageCount;
-        $list['infos'] = $infos;
-
-        $unit->setData($name, $list);
-    }
-    /**
-     * セッションより取得
-     * 
-     * @param string $name 入力テーブルID
-     * @param SessionUnit $unit 画面単位セッション
-     */
-    public function getSession(string $name, SessionUnit $unit) {
-        $rowNames = array_keys($this->getNewRow()->getItems());
-
-        $list = $unit->getData($name);
-        if ($list === null) return;
-
-        // データ
-        $datas = $list['datas'];
-        foreach ($datas as $values) {
-            if (!is_array($values)) continue;
-            $items = $this->getNewRow();
-            foreach (($values ?? []) as $_name => $sessionValue) {
-                if (!in_array($_name, $rowNames, true)) continue;
-
-                /** @var InputItemBase */
-                $var = $items->$_name;
-                $var->setFromTable($sessionValue);
-            }
-            $this[] = $items;
-        }
-
-        // 行情報
-        foreach ($list['rowInfos'] as $i => $infos) {
-            $row = $this->offsetGet($i);
-            $row->isVisible = $infos['isVisible'];
-            $row->isSelected = $infos['isSelected'];
-            $row->isAdded = $infos['isAdded'];
-        }
-
-        // 頁情報
-        $infos = $list['infos'];
-        $this->pageCount = $infos['page'];
     }
     /**
      * 1頁あたりの行数を取得
@@ -300,19 +187,6 @@ class InputTable extends ArrayLike {
         $this->pageCount++;
         if ($this->pageCount < 0) $this->pageCount = 0;
         if ($this->pageCount > $this->getMaxPageCount()) $this->pageCount = $this->getMaxPageCount();
-    }
-    /**
-     * エラーが発生した頁へ遷移
-     * 
-     * @return bool 遷移したかどうか
-     */
-    public function errorPage(): bool {
-        foreach ($this as $row) {
-            if (!$row->isError()) continue;
-            $this->setPageCount($row->getPageCount());
-            return true;
-        }
-        return false;
     }
     /**
      * 頁数を変更
@@ -340,6 +214,67 @@ class InputTable extends ArrayLike {
     public function getMaxPageCount(): int {
         return intdiv(count($this->getVisibleRows()) - 1, $this->unitRowCount);
     }
+    // ---------------------------------------------------------------------------------------------
+    // メソッド(追加、イベント前処理)
+    /**
+     * 画面単位セッションより設定
+     * 
+     * @param string $name 入力テーブルID
+     * @param SessionUnit $unit 画面単位セッション
+     */
+    public function setFromSession(string $name, SessionUnit $unit) {
+        $list = $unit->getData('InputTable', $name);
+        if ($list === null) return;
+
+        // 項目IDリスト
+        $rowNames = array_keys($this->getNewRow()->getItems());
+
+        // 初期化
+        $this->clear();
+
+        // データ
+        $datas = $list['datas'];
+        foreach ($datas as $values) {
+            if (!is_array($values)) continue;
+
+            // 行を新規作成
+            $items = $this->getNewRow();
+            foreach ($values as $_name => $sessionValue) {
+                if (!in_array($_name, $rowNames, true)) continue;
+
+                /** @var InputItemBase */
+                $var = $items->$_name;
+                $var->setFromTable($sessionValue);
+            }
+            $this[] = $items;
+        }
+
+        // 行情報
+        foreach ($list['rowInfos'] as $i => $infos) {
+            $row = $this->offsetGet($i);
+            $row->isVisible = $infos['isVisible'];
+            $row->isSelected = $infos['isSelected'];
+            $row->isAdded = $infos['isAdded'];
+        }
+
+        // 頁情報
+        $infos = $list['infos'];
+        $this->pageCount = $infos['page'];
+    }
+    /**
+     * GETメソッドより値を設定
+     */
+    public function setFromGet() {
+        foreach ($this->getRowsInCurrentPage() as $row)
+            $row->setFromGet();
+    }
+    /**
+     * POSTメソッドより値を設定
+     */
+    public function setFromPost() {
+        foreach ($this->getRowsInCurrentPage() as $row)
+            $row->setFromPost();
+    }
     /**
      * 入力チェック(最小限のみ)
      * 
@@ -351,11 +286,14 @@ class InputTable extends ArrayLike {
         // データを表示するもののみへ絞り込み
         $rows = $this->getVisibleRows();
 
+        // 現在頁の範囲
         $start = $this->unitRowCount * $this->pageCount;
         $end = $start + $this->unitRowCount - 1;
-        for ($num = 0; $num < count($rows); $num++) {
-            $row = $rows[$num];
-            if ($num >= $start and $num <= $end) {
+
+        // 全ての行をループ
+        for ($i = 0; $i < count($rows); $i++) {
+            $row = $rows[$i];
+            if ($i >= $start and $i <= $end) {
                 // 頁内
                 if (!$row->checkFromWeb())
                     $result = false;
@@ -367,6 +305,8 @@ class InputTable extends ArrayLike {
         }
         return $result;
     }
+    // ---------------------------------------------------------------------------------------------
+    // メソッド(追加、イベント処理)
     /**
      * 入力チェック
      * 
@@ -375,48 +315,31 @@ class InputTable extends ArrayLike {
      */
     public function check(): bool {
         $result = true;
-        foreach ($this as $row)
+        foreach (clone $this as $row)
             if (!$row->check())
                 $result = false;
         return $result;
     }
     /**
-     * Smarty用にWeb値リストを取得
+     * 頁内行番号より行を選択
      * 
-     * @return array<string, string>[] Web値リスト
+     * @since 0.18.02
+     * @param ?int $numInPage 頁内行番号(nullの場合は解除)
+     * @return ?InputTableRow 選択した行
      */
-    public function getForSmarty(): array {
-        $values = [];
-
-        // データを表示するもののみへ絞り込み
-        $rows = $this->getVisibleRows();
-
-        // データ
-        $datas = [];
-        $selectedKey = null;
-        $start = $this->unitRowCount * $this->pageCount;
-        for ($i = $start; $i < $start + $this->unitRowCount; $i++) {
-            if ($i >= count($rows)) break;
-
-            $row = $rows[$i];
-            $datas[] = $row->getForSmarty();
-
-            // 選択キー
-            if ($row->isSelected)
-                $selectedKey = $i - $start;
+    public function selectRowByNumInPage(?int $numInPage): ?InputTableRow {
+        // nullの場合は、選択解除
+        if ($numInPage === null) {
+            foreach ($this as $row)
+                $row->isSelected = false;
+            return null;
         }
-        $values['datas'] = $datas;
 
-        // 頁情報
-        $infos = [];
-        $infos['page'] = $this->getPageCount() + 1;
-        $infos['maxPage'] = $this->getMaxPageCount() + 1;
-        $infos['isPrev'] = $infos['page'] > 1;
-        $infos['isNext'] = $infos['page'] < $infos['maxPage'];
-        $infos['selectedKey'] = $selectedKey;
-        $values['infos'] = $infos;
+        $row = $this->getRowByNumInPage($numInPage);
+        if ($row === null) return null;
 
-        return $values;
+        $row->select();
+        return $row;
     }
     /**
      * 前頁へ遷移イベント
@@ -494,6 +417,94 @@ class InputTable extends ArrayLike {
         $this->deleteRowByNumInPage($rowNum);
 
         return true;
+    }
+    // ---------------------------------------------------------------------------------------------
+    // メソッド(追加、イベント後処理)
+    /**
+     * エラーが発生した頁へ遷移
+     * 
+     * @return bool 遷移したかどうか
+     */
+    public function errorPage(): bool {
+        foreach (clone $this as $row) {
+            if (!$row->isError()) continue;
+            $this->setPageCount($row->getPageCount());
+            return true;
+        }
+        return false;
+    }
+    /**
+     * セッションへ設定
+     * 
+     * @param string $name 入力テーブルID
+     * @param SessionUnit $unit 画面単位セッション
+     */
+    public function setToSession(string $name, SessionUnit $unit) {
+        $list = [];
+        
+        // データ
+        $datas = [];
+        foreach (clone $this as $row) {
+            $values = [];
+            foreach ($row->getItems() as $_name => $var) {
+                $values[$_name] = $var->sessionValue;
+            }
+            $datas[] = $values;
+        }
+        $list['datas'] = $datas;
+
+        // 行情報
+        $rowInfos = [];
+        foreach (clone $this as $row) {
+            $infos = [];
+            $infos['isVisible'] = $row->isVisible;
+            $infos['isSelected'] = $row->isSelected;
+            $infos['isAdded'] = $row->isAdded;
+            $rowInfos[] = $infos;
+        }
+        $list['rowInfos'] = $rowInfos;
+
+        // 頁情報
+        $infos = [];
+        $infos['page'] = $this->pageCount;
+        $list['infos'] = $infos;
+
+        $unit->setData('InputTable', $list, $name);
+    }
+    /**
+     * Smarty用にWeb値リストを取得
+     * 
+     * @return array<string, string>[] Web値リスト
+     */
+    public function getForSmarty(): array {
+        $values = [];
+
+        // データを現在頁のみへ絞り込み
+        $rows = $this->getRowsInCurrentPage();
+
+        // データ
+        $datas = [];
+        $selectedKey = null;
+        for ($i = 0; $i < count($rows); $i++) {
+            $row = $rows[$i];
+            $datas[] = $row->getForSmarty();
+
+            // 選択キー
+            if ($row->isSelected)
+                $selectedKey = $i;
+        }
+        $values['datas'] = $datas;
+
+        // 頁情報
+        $infos = [];
+        $infos['page'] = $this->getPageCount() + 1;
+        $infos['maxPage'] = $this->getMaxPageCount() + 1;
+        $infos['isPrev'] = $infos['page'] > 1;
+        $infos['isNext'] = $infos['page'] < $infos['maxPage'];
+        $infos['selectedKey'] = $selectedKey;
+        $values['infos'] = $infos;
+
+        return $values;
     }
     // ---------------------------------------------------------------------------------------------
     // 内部処理(追加)

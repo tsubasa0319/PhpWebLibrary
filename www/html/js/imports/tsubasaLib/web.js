@@ -8,6 +8,8 @@
 // 0.07.00 2024/02/22 Ajax送信時、実行時間を算出するように対応。
 // 0.08.01 2024/02/28 Enterキーによるタブ移動にて、ボタンであっても移動するように変更。
 // 0.18.02 2024/04/04 送信処理時、イベント値を設定できるように対応。
+// 0.19.00 2024/04/16 Enterキーによるタブ移動にて、全角入力を受けるテキストボックスは移動しないように変更。
+//                    Enterキーによる誤動作防止を追加。テキストボックス上でフォーム送信しないように対応。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import Ajax from "./Ajax.js";
@@ -303,6 +305,12 @@ const web = {
     enterToTabMove: (event) => {
         if (event.code !== 'Enter') return true;
 
+        // テキストボックスは、元のイベントを続行
+        if (event.target instanceof HTMLInputElement && [
+            'email', 'number', 'search', 'tel', 'text', 'url'
+        ].includes(event.target.type))
+            return true;
+
         // テキストエリアは、元のイベントを続行
         if (event.target instanceof HTMLTextAreaElement)
             return true;
@@ -383,9 +391,25 @@ const web = {
         // フォーカス移動
         nextElm.focus();
         if (nextElm instanceof HTMLInputElement) nextElm.select();
-        if (nextElm instanceof HTMLTextAreaElement) nextElm.select();
 
         return false;
+    },
+    /**
+     * Enterキーによる誤動作防止処理
+     * 
+     * @since 0.19.00
+     * @param {KeyboardEvent} event エレメント
+     */
+    preventMistakeByEnter: (event) => {
+        if (event.code !== 'Enter') return true;
+
+        // テキストボックスは、元のイベントを中断
+        if (event.target instanceof HTMLInputElement && [
+            'email', 'number', 'search', 'tel', 'text', 'url'
+        ].includes(event.target.type))
+            return false;
+
+        return true;
     },
     /**
      * 開始日時を設定

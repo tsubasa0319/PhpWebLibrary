@@ -4,13 +4,15 @@
 //
 // History:
 // 0.08.00 2024/02/27 作成。
+// 0.19.00 2024/04/16 Smartyでは空文字とNull値を区別しないので対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use Smarty;
 /**
  * Smartyプラグインクラス
  * 
- * @version 0.08.00
+ * @since 0.08.00
+ * @version 0.19.00
  */
 class SmartyPlugins {
     // ---------------------------------------------------------------------------------------------
@@ -85,9 +87,10 @@ class SmartyPlugins {
                 return static::hashToString($value);
             }
         }
-        // null/空文字は除外
-        if ($value === null) return null;
-        if ($value === '') return null;
+        // Null
+        if ($value === null) return '';
+        // false
+        if ($value === false) return null;
         return (string)$value;
     }
     /**

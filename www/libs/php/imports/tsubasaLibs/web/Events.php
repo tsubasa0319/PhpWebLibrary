@@ -19,11 +19,14 @@
 // 0.11.00 2024/03/08 データ型のクラス名を変更。
 // 0.18.00 2024/03/30 入力テーブルに対応。
 // 0.18.02 2024/04/04 ArrayLikeをforeachループ時、cloneするように変更。
+// 0.19.00 2024/04/16 セッションより取得をイベント前処理で行うように統一。
+//                    選択リストをセッション保管に対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
 require_once __DIR__ . '/Get.php';
 require_once __DIR__ . '/Post.php';
+require_once __DIR__ . '/SelectList.php';
 require_once __DIR__ . '/InputItems.php';
 require_once __DIR__ . '/InputTable.php';
 require_once __DIR__ . '/Menu.php';
@@ -34,7 +37,7 @@ use tsubasaLibs\database\DbBase;
  * イベントクラス
  * 
  * @since 0.00.00
- * @version 0.18.02
+ * @version 0.19.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -201,11 +204,19 @@ class Events {
      * @since 0.18.00
      */
     protected function eventBefore() {
+        // セッションより取得
         foreach (get_object_vars($this) as $name => $var) {
-            if ($var instanceof InputTable) {
-                // セッションより取得
-                $var->getSession($name, $this->session->unit);
-            }
+            // 入力情報
+            if ($var instanceof InputItems)
+                $var->setFromSession($this->session->unit);
+
+            // 入力テーブル
+            if ($var instanceof InputTable)
+                $var->setFromSession($name, $this->session->unit);
+            
+            // 選択リスト
+            if ($var instanceof SelectList)
+                $var->setFromSession($name, $this->session->unit);
         }
     }
     /**
@@ -220,21 +231,34 @@ class Events {
     protected function eventAfter() {
         // 各入力値をWeb出力用にエスケープ処理、フォーカス設定
         foreach (get_object_vars($this) as $name => $var) {
+            // 入力情報
             if ($var instanceof InputItems) {
                 $var->setForWeb();
                 $var->setForSession();
                 $var->addErrorNames();
                 $var->setFocus();
+                $var->setToSession($this->session->unit);
             }
+
+            // 入力テーブル
             if ($var instanceof InputTable) {
+                // エラーが発生した頁へ遷移
                 $isError = $var->errorPage();
+
+                // 全行をループ(頁外も含む)
                 foreach (clone $var as $row) {
                     $row->setForWeb();
+                    $row->setForSession();
                     $row->addErrorNames();
                     if (!$isError)
                         $row->setFocus();
                 }
-                $var->setSession($name, $this->session->unit);
+                $var->setToSession($name, $this->session->unit);
+            }
+
+            // 選択リスト
+            if ($var instanceof SelectList) {
+                $var->setToSession($name, $this->session->unit);
             }
         }
     }

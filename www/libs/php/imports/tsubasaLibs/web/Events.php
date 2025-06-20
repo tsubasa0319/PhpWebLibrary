@@ -17,10 +17,14 @@
 //                    入力項目のWeb出力時のエスケープ処理を自動化。
 // 0.05.00 2024/02/20 Ajaxに対応。
 // 0.11.00 2024/03/08 データ型のクラス名を変更。
+// 0.18.00 2024/03/30 入力テーブルに対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
+require_once __DIR__ . '/Get.php';
+require_once __DIR__ . '/Post.php';
 require_once __DIR__ . '/InputItems.php';
+require_once __DIR__ . '/InputTable.php';
 require_once __DIR__ . '/Menu.php';
 require_once __DIR__ . '/Message.php';
 use tsubasaLibs\type;
@@ -28,7 +32,8 @@ use tsubasaLibs\database\DbBase;
 /**
  * イベントクラス
  * 
- * @version 0.11.00
+ * @since 0.00.00
+ * @version 0.18.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -89,6 +94,7 @@ class Events {
         if (!$this->logout()) {
             if (!$this->isAjax) {
                 // 通常イベント
+                $this->eventBefore();
                 $this->event();
                 $this->eventAfter();
             } else {
@@ -189,6 +195,19 @@ class Events {
         return false;
     }
     /**
+     * イベント前処理
+     * 
+     * @since 0.18.00
+     */
+    protected function eventBefore() {
+        foreach (get_object_vars($this) as $name => $var) {
+            if ($var instanceof InputTable) {
+                // セッションより取得
+                $var->getSession($name, $this->session->unit);
+            }
+        }
+    }
+    /**
      * イベント処理
      */
     protected function event() {}
@@ -199,10 +218,23 @@ class Events {
      */
     protected function eventAfter() {
         // 各入力値をWeb出力用にエスケープ処理、フォーカス設定
-        foreach (get_object_vars($this) as $id => $var) {
-            if (!($var instanceof InputItems)) continue;
-            $var->setForWeb();
-            $var->setFocus();
+        foreach (get_object_vars($this) as $name => $var) {
+            if ($var instanceof InputItems) {
+                $var->setForWeb();
+                $var->setForSession();
+                $var->addErrorNames();
+                $var->setFocus();
+            }
+            if ($var instanceof InputTable) {
+                $isError = $var->errorPage();
+                foreach ($var as $row) {
+                    $row->setForWeb();
+                    $row->addErrorNames();
+                    if (!$isError)
+                        $row->setFocus();
+                }
+                $var->setSession($name, $this->session->unit);
+            }
         }
     }
     /**

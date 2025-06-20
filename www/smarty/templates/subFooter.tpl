@@ -16,8 +16,5 @@
             <input type="hidden" id="status" value="{$general.status}" disabled>
             <input type="hidden" name="startTime" value="{$general.startTime}">
         </form>
-        <div id="subScreen" class="subScreen" onclick="frame.closeSubScreen(event);">
-            <iframe></iframe>
-        </div>
     </body>
 </html>

@@ -21,6 +21,7 @@
 // 0.18.02 2024/04/04 ArrayLikeをforeachループ時、cloneするように変更。
 // 0.19.00 2024/04/16 セッションより取得をイベント前処理で行うように統一。
 //                    選択リストをセッション保管に対応。
+// 0.20.00 2024/04/23 イベントエラーを実装。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
@@ -37,7 +38,7 @@ use tsubasaLibs\database\DbBase;
  * イベントクラス
  * 
  * @since 0.00.00
- * @version 0.19.00
+ * @version 0.20.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -99,11 +100,13 @@ class Events {
             if (!$this->isAjax) {
                 // 通常イベント
                 $this->eventBefore();
-                $this->event();
+                if (!$this->event())
+                    $this->eventError();
                 $this->eventAfter();
             } else {
                 // Ajaxイベント
-                $this->event();
+                if (!$this->event())
+                    $this->eventError();
                 $this->eventAfterForAjax();
             }
         }
@@ -223,6 +226,15 @@ class Events {
      * イベント処理
      */
     protected function event() {}
+    /**
+     * イベントエラー
+     * 
+     * @since 0.20.00
+     */
+    protected function eventError() {
+        header('HTTP', true, 500);
+        exit;
+    }
     /**
      * イベント後処理
      * 

@@ -8,6 +8,7 @@
 // 0.10.00 2024/03/08 DB情報無しのインスタンスを取得できるように対応。
 // 0.16.00 2024/03/23 レコード取得の予定と実行を追加。
 // 0.18.02 2024/04/04 ArrayLikeをforeachループ時、cloneするように変更。
+// 0.20.00 2024/04/23 Like検索にバグがあったので修正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -21,7 +22,7 @@ require_once __DIR__ . '/advance/TableCamelCase.php';
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.18.02
+ * @version 0.20.00
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -715,7 +716,7 @@ class Table {
         array_pop($values);
         $whereEquations = [];
         // 最終項目以外は、一致条件
-        $equations = $this->getWhereEqSql($values);
+        $equations = $this->getWhereEqSql(...$values);
         if ($equations !== false) $whereEquations[] = $equations;
         // 最終項目のみ、LIKE条件
         $keyItems = $this->indexKey->getKeyItems();
@@ -867,7 +868,7 @@ class Table {
      * @param mixed ...$values 値リスト
      * @return array{item: Item, value: mixed} バインドリスト
      */
-    protected function getWhereLikeBinds($values): array {
+    protected function getWhereLikeBinds(...$values): array {
         return $this->getWhereEqBinds(...$values);
     }
     /**

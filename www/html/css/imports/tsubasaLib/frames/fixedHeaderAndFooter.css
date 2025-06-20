@@ -6,6 +6,7 @@
    0.01.00 2024/02/05 作成。
    0.04.00 2024/02/10 ボタンの高さを調整。
    0.15.00 2024/03/15 画面全体の領域を使用クラスを追加。
+   0.17.00 2024/03/26 メイン領域の左右に2pxのマージンを追加。
 ------------------------------------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------------------------------- */
 /* 変数定義 */
@@ -38,6 +39,8 @@ body > form:first-child > header button {
 #main {
     margin-top: var(--tsubasaLib-header-height);
     margin-bottom: var(--tsubasaLib-footer-height);
+    margin-left: 2px;
+    margin-right: 2px;
     max-height: calc(100vh - var(--tsubasaLib-header-height) - var(--tsubasaLib-footer-height));
     overflow-x: hidden;
     overflow-y: auto;

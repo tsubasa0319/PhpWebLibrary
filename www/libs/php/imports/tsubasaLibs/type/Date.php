@@ -6,6 +6,7 @@
 // 0.00.00 2024/01/23 作成。
 // 0.04.00 2024/02/10 比較処理にて、自身のクラスのルールで比較するように変更。
 // 0.11.00 2024/03/08 データ型のクラス名を変更。
+// 0.22.00 2024/05/17 静的メソッドに、インスタンスを生成を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\type;
 use Stringable;
@@ -13,7 +14,8 @@ use DateTime, DateTimeZone;
 /**
  * 日付型クラス
  * 
- * @version 0.11.00
+ * @since 0.00.00
+ * @version 0.22.00
  */
 class Date implements Stringable {
     // ---------------------------------------------------------------------------------------------
@@ -186,5 +188,20 @@ class Date implements Stringable {
      */
     public function toDateTime() {
         return new DateTime((string)$this, $this->datetime->getTimezone());
+    }
+    // ---------------------------------------------------------------------------------------------
+    // 静的メソッド
+    /**
+     * インスタンスを生成
+     * 
+     * @param string|DateTime|Stringable $date 日付
+     * @param DateTimeZone $timezone タイムゾーン
+     * @return ?static 自身のインスタンス
+     */
+    static public function createInstance(
+        string|DateTime|Stringable $date = 'now', ?DateTimeZone $timezone = null
+    ): ?static {
+        if ($date === '') return null;
+        return new static($date, $timezone);
     }
 }

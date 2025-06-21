@@ -5,13 +5,15 @@
 // History:
 // 0.00.00 2024/01/23 作成。
 // 0.10.00 2024/03/08 継承元がDB情報無しに対応したため、合わせる。
+// 0.22.00 2024/05/17 新規レコードを取得時、レコード(変更前)をnullへ変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/Record.php';
 /**
  * テーブルステートメントクラス
  * 
- * @version 0.10.00
+ * @since 0.00.00
+ * @version 0.22.00
  */
 class TableStatement extends DbStatement {
     // ---------------------------------------------------------------------------------------------
@@ -55,6 +57,7 @@ class TableStatement extends DbStatement {
         /** @var Record */
         $record = new $this->recordClass($this);
         $record->setNothing();
+        $record->previousRecord = null;
         return $record;
     }
 }

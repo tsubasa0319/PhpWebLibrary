@@ -5,12 +5,14 @@
 // History:
 // 0.01.00 2024/02/05 作成。
 // 0.01.01 2024/02/06 TOPへ遷移するリンクを修正。
+// 0.22.00 2024/05/17 システム管理者権限を定数化。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 /**
  * メニュークラス
  * 
- * @version 0.01.01
+ * @since 0.01.00
+ * @version 0.22.00
  */
 class Menu {
     // ---------------------------------------------------------------------------------------------
@@ -49,7 +51,7 @@ class Menu {
         $groups = [];
         foreach ($this->groups as $group) {
             if (count(array_filter($this->userRoles, fn($role) =>
-                $role === 'admin' or in_array($role, $group['roles'], true)
+                $role === Events::ROLE_SYSTEM_ADMINISTRATOR or in_array($role, $group['roles'], true)
             )) > 0)
                 $groups[] = $group;
         }

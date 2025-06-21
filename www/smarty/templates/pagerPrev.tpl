@@ -5,3 +5,4 @@
     'onclick' => 'general.web.send(event)',
     'disabled' => !$table.infos.isPrev|default:false
 ]}>{$text|default:'◀'}</button>
+<input type="hidden" name="prevPageButtonName" value="{$name|default:'lstPrevPage'}">

@@ -14,6 +14,7 @@
 //                    別画面に対してエレメントの種類を判定する可能性がある場合は、instanceofを使わないように変更。
 // 0.21.00 2024/04/24 エレメントに対して値を取得/設定できる対象に、preを追加。
 // 0.22.00 2024/05/17 送信処理時、未選択のエレメントも対象に含まれるように対応。
+// 0.22.01 2024/05/17 PageUp/PageDownキーによる次頁/前頁へ移動処理を追加。
 // -------------------------------------------------------------------------------------------------
 import forArray from "./forArray.js";
 import checker from "./checker.js";
@@ -22,7 +23,7 @@ import Ajax from "./Ajax.js";
  * Web処理
  * 
  * @since 0.05.00
- * @version 0.22.00
+ * @version 0.22.01
  */
 const web = {
     /**
@@ -393,15 +394,8 @@ const web = {
     enterToTabMove: (event) => {
         if (event.code !== 'Enter') return true;
 
-        // テキストボックスは、元のイベントを続行
-        if (event.target instanceof HTMLInputElement && [
-            'email', 'number', 'search', 'tel', 'text', 'url'
-        ].includes(event.target.type))
-            return true;
-
-        // テキストエリアは、元のイベントを続行
-        if (event.target instanceof HTMLTextAreaElement)
-            return true;
+        // 変換確定時は、元のイベントを続行
+        if (event.isComposing) return true;
 
         // タブ移動と同等の処理を行う
         // 自身または移動可能なエレメントを取得
@@ -410,7 +404,11 @@ const web = {
         const query = [];
         if (event.target instanceof HTMLElement)
             query.push(event.target.nodeName.toLowerCase());
-        query.push('input:not(:disabled):not(:read-only):not([tabindex="-1"])');
+        query.push('input:not(:read-only):not(:disabled):not([tabindex="-1"])');
+        query.push('input[type="checkbox"]:not(:disabled):not([tabindex="-1"])');
+        query.push('input[type="radio"]:not(:disabled):not([tabindex="-1"])');
+        query.push('input[type="button"]:not(:disabled):not([tabindex="-1"])');
+        query.push('input[type="submit"]:not(:disabled):not([tabindex="-1"])');
         query.push('button:not(:disabled):not([tabindex="-1"])');
         query.push('select:not(:disabled):not([tabindex="-1"])');
         query.push('textarea:not(:disabled):not(:read-only):not([tabindex="-1"])');
@@ -487,6 +485,7 @@ const web = {
      * 
      * @since 0.19.00
      * @param {KeyboardEvent} event エレメント
+     * @returns {boolean} イベントを続行するかどうか
      */
     preventMistakeByEnter: (event) => {
         if (event.code !== 'Enter') return true;
@@ -495,6 +494,40 @@ const web = {
         if (event.target instanceof HTMLInputElement && [
             'email', 'number', 'search', 'tel', 'text', 'url'
         ].includes(event.target.type))
+            return false;
+
+        return true;
+    },
+    /**
+     * PageUp/PageDownキーによる次頁/前頁へ移動処理
+     * 
+     * @since 0.22.01
+     * @param {KeyboardEvent} event 
+     * @returns {boolean} イベントを続行するかどうか
+     */
+    pageUpDownToChange: (event) => {
+        if (!['PageUp', 'PageDown'].includes(event.code)) return true;
+
+        if (Array.from(document.querySelectorAll(
+            event.code === 'PageUp' ? '[name="nextPageButtonName"]' : '[name="prevPageButtonName"]'
+        )).some(elmName => {
+            if (!(elmName instanceof HTMLInputElement)) return false;
+
+            // 対象ボタンを取得
+            const elmButtons = document.getElementsByName(elmName.value);
+            if (elmButtons.length == 0) return false;
+            const elmButton = elmButtons[0];
+            if (!(elmButton instanceof HTMLInputElement) &&
+                !(elmButton instanceof HTMLButtonElement))
+                return false;
+            if (!['button', 'submit'].includes(elmButton.type)) return false;
+
+            // クリックできるかどうか
+            if (window.getComputedStyle(elmButton).disabled) return false;
+
+            elmButton.click();
+            return true;
+        }))
             return false;
 
         return true;

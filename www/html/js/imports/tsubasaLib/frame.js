@@ -8,6 +8,7 @@
 // 0.19.00 2024/04/16 キー押下時処理に、誤動作防止を追加。
 // 0.20.00 2024/04/23 サブ画面を閉じる、頁非表示時処理を追加。
 // 0.22.00 2024/05/17 フォーム送信時、未選択項目を送信するように対応。
+// 0.22.01 2024/05/17 キー押下時処理に、PageUp/PageDownキーによる次頁/前頁へ移動処理を追加。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import web from "./web.js";
@@ -15,7 +16,7 @@ import web from "./web.js";
  * フレーム処理
  * 
  * @since 0.05.00
- * @version 0.22.00
+ * @version 0.22.01
  */
 const frame = {
     /**
@@ -56,7 +57,11 @@ const frame = {
      * @returns {boolean} イベントを続行するかどうか
      */
     body_keydown: (event) => {
-        return web.enterToTabMove(event) && web.preventMistakeByEnter(event);
+        return (
+            web.enterToTabMove(event) &&
+            web.preventMistakeByEnter(event) &&
+            web.pageUpDownToChange(event)
+        );
     },
     /**
      * エラー処理

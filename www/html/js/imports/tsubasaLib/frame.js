@@ -9,6 +9,7 @@
 // 0.20.00 2024/04/23 サブ画面を閉じる、頁非表示時処理を追加。
 // 0.22.00 2024/05/17 フォーム送信時、未選択項目を送信するように対応。
 // 0.22.01 2024/05/17 キー押下時処理に、PageUp/PageDownキーによる次頁/前頁へ移動処理を追加。
+// 0.23.00 2024/05/18 サブ画面を閉じる時、停止したタブ移動を再開するように変更。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import web from "./web.js";
@@ -16,7 +17,7 @@ import web from "./web.js";
  * フレーム処理
  * 
  * @since 0.05.00
- * @version 0.22.01
+ * @version 0.23.00
  */
 const frame = {
     /**
@@ -60,7 +61,8 @@ const frame = {
         return (
             web.enterToTabMove(event) &&
             web.preventMistakeByEnter(event) &&
-            web.pageUpDownToChange(event)
+            web.pageUpDownToChange(event) &&
+            web.escapeToCloseWindow(event)
         );
     },
     /**
@@ -194,13 +196,17 @@ const frame = {
      * @param {Event} event イベント
      */
     closeSubScreen: (event) => {
-        const elms = event.target.children;
-        const length = elms.length;
-        for (let i = 0; i < length; i++)
-            if (['IFRAME', 'IMG'].includes(elms[i].tagName)) {
-                elms[i].removeAttribute('src');
-                elms[i].removeAttribute('style');
+        if (!event.target.hasChildNodes) return;
+
+        web.restartTabMove();
+        /** @type {NodeListOf<HTMLElement>} */
+        const elms = event.target.childNodes;
+        elms.forEach(elm => {
+            if (['iframe', 'img'].includes(elm.nodeName.toLowerCase())) {
+                elm.removeAttribute('src');
+                elm.removeAttribute('style');
             }
+        });
     }
 }
 const self = frame;

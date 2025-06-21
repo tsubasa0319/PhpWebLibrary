@@ -11,7 +11,7 @@
         <script defer src="{$general.js}"></script>
     </head>
     <body onload="frame.body_load(event);" onpagehide="frame.body_pagehide(event);" onkeydown="return frame.body_keydown(event);">
-        <form method="post" onsubmit="frame.form_submit(event);" disabled>
+        <form method="post" onsubmit="frame.form_submit(event);">
             <header>
                 <section id="bodyHeaderInfo">
                     <div>

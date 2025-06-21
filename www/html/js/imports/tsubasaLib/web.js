@@ -16,6 +16,7 @@
 // 0.22.00 2024/05/17 送信処理時、未選択のエレメントも対象に含まれるように対応。
 // 0.22.01 2024/05/17 PageUp/PageDownキーによる次頁/前頁へ移動処理を追加。
 // 0.22.02 2024/05/17 子画面を開く時、受取先が未指定の場合に"undefined"として送信してしまうため修正。
+// 0.23.00 2024/05/18 インラインフレームにより子画面を開く時、親画面に対してタブ移動を停止するように変更。
 // -------------------------------------------------------------------------------------------------
 import forArray from "./forArray.js";
 import checker from "./checker.js";
@@ -24,7 +25,7 @@ import Ajax from "./Ajax.js";
  * Web処理
  * 
  * @since 0.05.00
- * @version 0.22.01
+ * @version 0.23.00
  */
 const web = {
     /**
@@ -390,12 +391,13 @@ const web = {
      * Enterキーによるタブ移動処理
      * 
      * @since 0.06.00
-     * @param {KeyboardEvent} event エレメント
+     * @param {KeyboardEvent} event イベント
+     * @returns {boolean} イベントを続行するかどうか
      */
     enterToTabMove: (event) => {
         if (event.code !== 'Enter') return true;
 
-        // 変換確定時は、元のイベントを続行
+        // 変換中は、元のイベントを続行
         if (event.isComposing) return true;
 
         // タブ移動と同等の処理を行う
@@ -485,11 +487,14 @@ const web = {
      * Enterキーによる誤動作防止処理
      * 
      * @since 0.19.00
-     * @param {KeyboardEvent} event エレメント
+     * @param {KeyboardEvent} event イベント
      * @returns {boolean} イベントを続行するかどうか
      */
     preventMistakeByEnter: (event) => {
         if (event.code !== 'Enter') return true;
+
+        // 変換中は、元のイベントを続行
+        if (event.isComposing) return true;
 
         // テキストボックスは、元のイベントを中断
         if (event.target instanceof HTMLInputElement && [
@@ -508,6 +513,9 @@ const web = {
      */
     pageUpDownToChange: (event) => {
         if (!['PageUp', 'PageDown'].includes(event.code)) return true;
+
+        // 変換中は、元のイベントを続行
+        if (event.isComposing) return true;
 
         if (Array.from(document.querySelectorAll(
             event.code === 'PageUp' ? '[name="nextPageButtonName"]' : '[name="prevPageButtonName"]'
@@ -534,6 +542,28 @@ const web = {
         return true;
     },
     /**
+     * エスケープキーによりウィンドウを閉じる
+     * 
+     * プログラムにより開いたウィンドウのみが対象です。
+     * 
+     * @since 0.23.00
+     * @param {KeyboardEvent} event イベント
+     * @returns {boolean} イベントを続行するかどうか
+     */
+    escapeToCloseWindow: (event) => {
+        if (event.code !== 'Escape') return true;
+
+        // 変換中は、元のイベントを続行
+        if (event.isComposing) return true;
+
+        if (self.hasParentScreen()) {
+            self.closeChildScreen();
+            return false;
+        }
+        
+        return true;
+    },
+    /**
      * 子ウィンドウを登録
      * 
      * @param {Window} childWindow 子ウィンドウ
@@ -550,13 +580,14 @@ const web = {
      * 子画面を開く
      * 
      * @since 0.20.00
+     * @param {?Event} event イベント
      * @param {string} url URL
      * @param {?{[key: string]: (string|{0: string, 1:int})}} params パラメータリスト
      * @param {boolean} isFrame インラインフレームかどうか
      * @param {?string} width サブ画面の幅
      * @param {?string} height サブ画面の高さ
      */
-    openChildScreen: (url, params = null, isFrame = true, width = null, height = null) => {
+    openChildScreen: (event = null, url = '', params = null, isFrame = true, width = null, height = null) => {
         // パラメータ
         const _params = {};
         if (params !== null) for (let key in params) {
@@ -582,6 +613,9 @@ const web = {
 
             // 開く
             elm.src = urlWithParam;
+
+            // 一時的にタブ移動を停止
+            self.stopTabMove();
         } else {
             // 別ウィンドウの場合
 
@@ -600,6 +634,12 @@ const web = {
             // 親ウィンドウの終了に合わせて、子ウィンドウを閉じるように登録
             self.addChildWindow(childWindow);
         }
+
+        // イベント発生元のエレメントをマーキング
+        /** @type {?HTMLElement} */
+        const elmTarget = event.target;
+        if (elmTarget !== null)
+            elmTarget.setAttribute('subscreenopener', '');
     },
     /**
      * 全ての子ウィンドウを閉じる
@@ -619,6 +659,15 @@ const web = {
      */
     getParentScreen: () => {
         return window !== parent ? parent : opener;
+    },
+    /**
+     * 親画面があるかどうか
+     * 
+     * @since 0.23.00
+     * @returns {bool} 成否
+     */
+    hasParentScreen: () => {
+        return self.getParentScreen() !== null;
     },
     /**
      * 子画面より、親画面へ値を設定
@@ -653,6 +702,7 @@ const web = {
         const parentScreen = self.getParentScreen();
         if (parentScreen === parent) {
             // インラインフレームの場合
+            self.restartTabMove(parentScreen);
             const elm = parentScreen.document.querySelector('#subScreen > iframe');
             elm.removeAttribute('src');
             elm.removeAttribute('style');
@@ -660,7 +710,69 @@ const web = {
         if (parentScreen === opener) {
             // 別ウィンドウの場合
             close();
+            parentScreen.focus();
         }
+
+        // 開いたイベント元のエレメントへフォーカス移動
+        if (parentScreen !== null) {
+            const elm = parentScreen.document.querySelector('[subscreenopener]');
+            if (elm !== null) {
+                elm.removeAttribute('subscreenopener');
+                elm.focus();
+            }
+        }
+    },
+    /**
+     * タブ移動を停止
+     * 
+     * 全てのタブ移動が可能なエレメントにtabindex="-1"を追加します。  
+     * ただし、iframeの中身までは干渉しません。
+     * 
+     * @since 0.23.00
+     * @param {?HTMLElement} elm 
+     * @param {?Window} win
+     */
+    stopTabMove: (elm = null, win = null) => {
+        win = win ?? window;
+        if (elm === null) {
+            self.stopTabMove(win.document.body, win);
+            return;
+        }
+
+        if ([
+            'input', 'button', 'select', 'textarea', 'a'
+        ].includes(elm.nodeName.toLowerCase())) {
+            if (elm.disabled || elm.tabIndex == -1) return;
+
+            const tabIndex = elm.tabIndex;
+            elm.tabIndex = -1;
+            elm.setAttribute('settabindex', tabIndex);
+            return;
+        }
+
+        // 子ノード
+        if (elm.hasChildNodes) elm.childNodes.forEach(
+            elmChild => self.stopTabMove(elmChild)
+        );
+    },
+    /**
+     * タブ移動を再開
+     * 
+     * 停止したタブ移動を再開します。  
+     * ただし、iframeの中身までは干渉しません。
+     * 
+     * @since 0.23.00
+     * @param {?Window} win
+     */
+    restartTabMove: (win = null) => {
+        win = win ?? window;
+        win.document.querySelectorAll('[settabindex]').forEach(elm => {
+            const tabIndex = elm.getAttribute('settabindex');
+            elm.removeAttribute('settabindex');
+            elm.tabIndex = tabIndex
+            if (tabIndex == 0)
+                elm.removeAttribute('tabindex');
+        });
     },
     /**
      * 開始日時を設定

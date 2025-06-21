@@ -7,6 +7,7 @@
 // 0.04.00 2024/02/10 オートコミットがfalseの場合、何かクエリを実行すると、
 //                    トランザクションが開始するため対処。
 // 0.20.00 2024/04/23 クエリ関連の失敗時、エラーログへSQLステートメントを出力するように対応。
+// 0.22.00 2024/05/17 クエリ関連の失敗時、エラーログへ"Query failed !"の文字列を出力するように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/DbStatement.php';
@@ -21,7 +22,7 @@ use Throwable;
  * DBクラス(PDOベース)
  * 
  * @since 0.00.00
- * @version 0.20.00
+ * @version 0.22.00
  */
 class DbBase extends PDO {
     // ---------------------------------------------------------------------------------------------
@@ -96,7 +97,7 @@ class DbBase extends PDO {
         try {
             $result = parent::query($query, $fetchMode, ...$fetch_mode_args);
         } catch (PDOException $ex) {
-            error_log(sprintf('[SQL]%s[MODE]%s[ARGS]%s',
+            error_log(sprintf('Query failed ! [SQL]%s[MODE]%s[ARGS]%s',
                 $query,
                 $fetchMode ?? 'Null',
                 json_encode($fetch_mode_args, JSON_UNESCAPED_UNICODE)
@@ -120,7 +121,7 @@ class DbBase extends PDO {
         try {
             $result = parent::exec($statement);
         } catch (PDOException $ex) {
-            error_log(sprintf('[SQL]%s', $statement));
+            error_log(sprintf('Query failed ! [SQL]%s', $statement));
             if ($this->isDebug) var_dump($statement);
             $this->throwException('クエリ実行中に失敗しました。', $ex);
         }
@@ -140,7 +141,7 @@ class DbBase extends PDO {
         try {
             $result = parent::prepare($query, $options);
         } catch (PDOException $ex) {
-            error_log(sprintf('[SQL]%s[OPTION]%s',
+            error_log(sprintf('Query failed ! [SQL]%s[OPTION]%s',
                 $query,
                 json_encode($options, JSON_UNESCAPED_UNICODE)
             ));

@@ -9,6 +9,8 @@
 // 0.16.00 2024/03/23 レコード取得の予定と実行を追加。
 // 0.18.02 2024/04/04 ArrayLikeをforeachループ時、cloneするように変更。
 // 0.20.00 2024/04/23 Like検索にバグがあったので修正。
+// 0.22.00 2024/05/17 新規レコード取得時、余計なクエリを実行しないように対応。
+//                    複数のレコードを削除、インデックスキーによる削除を実装。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -22,7 +24,7 @@ require_once __DIR__ . '/advance/TableCamelCase.php';
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.20.00
+ * @version 0.22.00
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -83,6 +85,12 @@ class Table {
     /**
      * 選択クエリ
      * 
+     * SELECT * FROM [Table]  
+     * WHERE  
+     * [IndexKey1] = ? AND  
+     * [IndexKey2] = ? AND  
+     * ...
+     * 
      * @param mixed ...$values 検索値
      * @return TableStatement|false テーブルステートメント
      */
@@ -99,6 +107,12 @@ class Table {
     }
     /**
      * 選択クエリ(より大きい)
+     * 
+     * SELECT * FROM [Table]  
+     * WHERE  
+     * ([IndexKey1] > ?) OR  
+     * ([IndexKey1] = ? AND [IndexKey2] > ?) OR  
+     * ...
      * 
      * @param mixed ...$values 検索値
      * @return TableStatement|false テーブルステートメント
@@ -117,6 +131,12 @@ class Table {
     /**
      * 選択クエリ(より小さい)
      * 
+     * SELECT * FROM [Table]  
+     * WHERE  
+     * ([IndexKey1] < ?) OR  
+     * ([IndexKey1] = ? AND [IndexKey2] < ?) OR  
+     * ...
+     * 
      * @param mixed ...$values 検索値
      * @return TableStatement|false テーブルステートメント
      */
@@ -133,6 +153,13 @@ class Table {
     }
     /**
      * 選択クエリ(以上)
+     * 
+     * SELECT * FROM [Table]  
+     * WHERE  
+     * ([IndexKey1] > ?) OR  
+     * ([IndexKey1] = ? AND [IndexKey2] > ?) OR  
+     * ...  
+     * ([IndexKey1] = ? AND ... [IndexKeyLast] >= ?)
      * 
      * @param mixed ...$values 検索値
      * @return TableStatement|false テーブルステートメント
@@ -151,6 +178,13 @@ class Table {
     /**
      * 選択クエリ(以下)
      * 
+     * SELECT * FROM [Table]  
+     * WHERE  
+     * ([IndexKey1] < ?) OR  
+     * ([IndexKey1] = ? AND [IndexKey2] < ?) OR  
+     * ...  
+     * ([IndexKey1] = ? AND ... [IndexKeyLast] <= ?)
+     * 
      * @param mixed ...$values 検索値
      * @return TableStatement|false テーブルステートメント
      */
@@ -168,6 +202,12 @@ class Table {
     /**
      * 選択クエリ(IN演算子)
      * 
+     * SELECT * FROM [Table]  
+     * WHERE  
+     * ([IndexKey1] = ? AND [IndexKey2] = ? AND ...) OR  
+     * ([IndexKey1] = ? AND [IndexKey2] = ? AND ...) OR  
+     * ...
+     * 
      * @param mixed ...$valueLists 検索値リスト
      * @return TableStatement|false テーブルステートメント
      */
@@ -184,6 +224,17 @@ class Table {
     }
     /**
      * 選択クエリ(BETWEEN演算子)
+     * 
+     * SELECT * FROM [Table]  
+     * WHERE  
+     * (([IndexKey1] > ?) OR  
+     *  ([IndexKey1] = ? AND [IndexKey2] > ?) OR  
+     *  ...  
+     *  ([IndexKey1] = ? AND ... [IndexKeyLast] >= ?)) AND  
+     * (([IndexKey1] < ?) OR  
+     *  ([IndexKey1] = ? AND [IndexKey2] < ?) OR  
+     *  ...  
+     *  ([IndexKey1] = ? AND ... [IndexKeyLast] <= ?))
      * 
      * @param mixed $values1 検索値(始点)
      * @param mixed $values2 検索値(終点)
@@ -204,7 +255,14 @@ class Table {
      * 選択クエリ(LIKE演算子)
      * 
      * LIKE演算子が適用されるのは、最後の項目のみです。  
-     * それ以外の項目は、等号が適用されます。
+     * それ以外の項目は、等号が適用されます。  
+     *   
+     * SELECT * FROM [Table]  
+     * WHERE  
+     * [IndexKey1] = ? AND  
+     * [IndexKey2] = ? AND  
+     * ...  
+     * [IndexKeyLast] LIKE ?
      * 
      * @param mixed ...$values 検索値
      * @return TableStatement|false テーブルステートメント
@@ -226,14 +284,9 @@ class Table {
      * @return Record|false レコード
      */
     public function getNewRecord(): Record|false {
-        if ($this->db !== null) {
-            $stmt = $this->prepare('SELECT 1');
-        } else {
-            // DB情報が無い場合、prepareが使えないので、直接インスタンスを生成
-            /** @var TableStatement */
-            $stmt = $this->statementClass::getNoDbInstance();
-            $stmt->setTable($this);
-        }
+        /** @var TableStatement */
+        $stmt = $this->statementClass::getTempInstance($this->db);
+        $stmt->setTable($this);
         if ($stmt === false) return false;
         return $stmt->getNewRecord();
     }
@@ -249,6 +302,11 @@ class Table {
     /**
      * レコード追加
      * 
+     * INSERT INTO [Table]  
+     * ([Item1], [Item2], ...)  
+     * VALUES  
+     * (?, ?, ...)
+     * 
      * @param Record $record レコード
      * @return int|false 件数
      */
@@ -263,19 +321,42 @@ class Table {
     /**
      * レコード追加(複数)
      * 
+     * INSERT INTO [Table]  
+     * ([Item1], [Item2], ...)  
+     * VALUES  
+     * (?, ?, ...),  
+     * (?, ?, ...),  
+     * ...
+     * 
      * @param Record ...$records レコード
      * @return int|false 件数
      */
     public function inserts(Record ...$records): int|false {
         $items = $this->getInsertsItems(...$records);
         if ($items === false) return 0;
-        foreach (clone $records as $record) $record->setValuesForInsert();
+        foreach ($records as $record) $record->setValuesForInsert();
         $stmt = $this->prepare($this->getInsertsSql($items, ...$records));
         if ($stmt === false) return false;
         $this->bindInsertsValue($items, $stmt, ...$records);
         if (!$stmt->execute()) return false;
         return $stmt->rowCount();
     }
+    /**
+     * レコード追加(別のテーブルより)
+     * 
+     * INSERT INTO [Table] ([Item1], [Item2], ...)  
+     * SELECT [Item1], [Item2], ...  
+     * FROM [AnotherTable] AS tmp  
+     * LEFT JOIN [Table] AS tbl ON  
+     * tmp.[PrimaryKey1] = tbl.[PrimaryKey1] AND  
+     * tmp.[PrimaryKey2] = tbl.[PrimaryKey2] AND  
+     * ...  
+     * WHERE  
+     * tbl.[PrimaryKey1] IS NULL
+     * 
+     * @param static $tempTable 追加元のテーブル
+     * @return int|false 件数
+     */
     public function insertsFromTable(self $tempTable): int|false {
         $stmt = $this->prepare($this->getInsertsFromTableSql($tempTable));
         if ($stmt === false) return false;
@@ -285,6 +366,18 @@ class Table {
     }
     /**
      * レコード更新
+     * 
+     * 項目値がNothingになっていない項目を、更新対象とします。  
+     *   
+     * UPDATE [Table]  
+     * SET  
+     * [Item1] = ?,  
+     * [Item2] = ?,  
+     * ...  
+     * WHERE  
+     * [PrimaryKey1] = ? AND  
+     * [PrimaryKey2] = ? AND  
+     * ...
      * 
      * @param Record $record レコード
      * @return int|false 件数
@@ -304,7 +397,17 @@ class Table {
      * 
      * 更新する対象の項目は、第2パラメータに指定したレコードを見て判断します。  
      * 項目値がNothingになっていない項目を、更新対象とします。  
-     * 第2パラメータを省略した場合、全ての項目が更新対象となります。
+     * 第2パラメータを省略した場合、全ての項目が更新対象となります。  
+     *   
+     * UPDATE [Table] AS tbl  
+     * INNER JOIN [AnotherTable] AS tmp ON  
+     * tbl.[PrimaryKey1] = tmp.[PrimaryKey1] AND  
+     * tbl.[PrimaryKey2] = tmp.[PrimaryKey2] AND  
+     * ...  
+     * SET  
+     * tbl.[Item1] = tmp.[Item1],
+     * tbl.[Item2] = tmp.[Item2],
+     * ...
      * 
      * @param static $tempTable テーブル
      * @param ?Record $recordForTarget 対象とする項目を決定するためのレコード
@@ -322,13 +425,61 @@ class Table {
     /**
      * レコード削除
      * 
+     * DELETE FROM [Table]  
+     * WHERE  
+     * [PrimaryKey1] = ? AND  
+     * [PrimaryKey2] = ? AND  
+     * ...
+     * 
      * @param Record $record レコード
      * @return int|false 件数
      */
     public function delete(Record $record): int|false {
-        $stmt = $this->prepare($this->getDeleteSql($record));
+        $stmt = $this->prepare($this->getDeleteSql($this->getWherePrimaryKeyAllEqSql()));
         if ($stmt === false) return false;
         $this->bindDeleteValue($stmt, $record);
+        if (!$stmt->execute()) return false;
+        return $stmt->rowCount();
+    }
+    /**
+     * レコード削除(複数)
+     * 
+     * DELETE FROM [Table]  
+     * WHERE  
+     * ([PrimaryKey1] = ? AND [PrimaryKey2] = ? AND ...) OR  
+     * ([PrimaryKey1] = ? AND [PrimaryKey2] = ? AND ...) OR  
+     * ...
+     * 
+     * @since 0.22.00
+     * @param Record ...$records レコード
+     * @return int|false 件数
+     */
+    public function deletes(Record ...$records): int|false {
+        if (count($records) == 0) return 0;
+
+        $stmt = $this->prepare($this->getDeleteSql($this->getWherePrimaryKeyAllInSql(...$records)));
+        if ($stmt === false) return false;
+        $this->bindDeletesValue($stmt, ...$records);
+        if (!$stmt->execute()) return false;
+        return $stmt->rowCount();
+    }
+    /**
+     * レコード削除(一致)
+     * 
+     * DELETE FROM [Table]  
+     * WHERE  
+     * [IndexKey1] = ? AND  
+     * [IndexKey2] = ? AND  
+     * ...
+     * 
+     * @since 0.22.00
+     * @param mixed ...$values 検索値
+     * @return int|false 件数
+     */
+    public function deleteEq(...$values) {
+        $stmt = $this->prepare($this->getDeleteSql($this->getWhereEqSql(...$values)));
+        if ($stmt === false) return false;
+        $this->bindDeleteCompareValue($stmt, ...$this->getWhereEqBinds(...$values));
         if (!$stmt->execute()) return false;
         return $stmt->rowCount();
     }
@@ -473,6 +624,55 @@ class Table {
     protected function isChangedOnlyForUpdate(): bool {
         if (!($this->db->executor instanceof Executor)) return false;
         return $this->db->executor->isChangedOnly;
+    }
+    /**
+     * SQLステートメントを取得(WHERE句、主キー完全一致)
+     * 
+     * @return string|false SQLステートメント
+     */
+    protected function getWherePrimaryKeyAllEqSql(): string|false {
+        $keyItems = $this->primaryKey->getKeyItems();
+        $keyNum = count($keyItems);
+        // キーが無い場合
+        if ($keyNum == 0) return false;
+        // キーが有る場合
+        $whereEquations = [];
+        foreach ($keyItems as $keyItem) {
+            $sqlId = $this->getIdForSql($keyItem->item->id);
+            $whereEquations[] = sprintf('%s = ?', $sqlId);
+        }
+        return implode(' AND ', $whereEquations);
+    }
+    /**
+     * SQLステートメントを取得(WHERE句、主キー完全一致、In演算子)
+     * 
+     * @param Record ...$records レコード
+     * @return string|false SQLステートメント
+     */
+    protected function getWherePrimaryKeyAllInSql(...$records): string|false {
+        $keyItems = $this->primaryKey->getKeyItems();
+        $keyNum = count($keyItems);
+        $recordNum = count($records);
+        // 単一項目のリストの場合
+        if ($keyNum == 1) {
+            $sqlId = $this->getIdForSql($keyItems[0]->item->id);
+            $inList = [];
+            for ($i = 0; $i < $recordNum; $i++)
+                $inList[] = '?';
+            return sprintf('%s IN (%s)', $sqlId, implode(', ', $inList));
+        }
+        // それ以外の場合
+        $whereEquations = [];
+        $equationStr = null;
+        $equations = [];
+        foreach ($keyItems as $keyItem) {
+            $sqlId = $this->getIdForSql($keyItem->item->id);
+            $equations[] = sprintf('%s = ?', $sqlId);
+        }
+        $equationStr = sprintf('(%s)', implode(' AND ', $equations));
+        for ($i = 0; $i < $recordNum; $i++)
+            $whereEquations[] = $equationStr;
+        return implode(' OR ', $whereEquations);
     }
     /**
      * SQLステートメントを取得(WHERE句、一致)
@@ -992,7 +1192,7 @@ class Table {
         }
         $valuesStr = sprintf('(%s)', implode(', ', $values));
         $valuesList = [];
-        foreach (clone $records as $record) $valuesList[] = $valuesStr;
+        foreach ($records as $record) $valuesList[] = $valuesStr;
         return sprintf('INSERT INTO %s (%s) VALUES %s',
             $tableId, implode(', ', $itemIds), implode(', ', $valuesList));
     }
@@ -1010,7 +1210,7 @@ class Table {
         $executorIds = $this->getExecutorIds();
         $recordForExecutor = $this->getNewRecord();
         $recordForExecutor->setValuesForInsert();
-        foreach (clone $records as $record) {
+        foreach ($records as $record) {
             $rowNum++;
             // 通常項目
             foreach ($insertItems as $id => $item) {
@@ -1150,6 +1350,8 @@ class Table {
                     $changedEquations[] = sprintf('%s IS NULL OR %s <> ?', $sqlId, $sqlId);
                 }
             }
+            if (count($changedEquations) == 0)
+                $this->db->throwException('1つも項目に値を設定していません。');
             $whereEquations[] = sprintf('(%s)', implode(' OR ', $changedEquations));
         }
         return sprintf('UPDATE %s SET %s WHERE %s',
@@ -1311,18 +1513,17 @@ class Table {
     /**
      * SQLステートメントを取得(DELETE用)
      * 
+     * @param string|false $whereSql WHERE句
      * @return string SQLステートメント
      */
-    protected function getDeleteSql(): string {
+    protected function getDeleteSql($whereSql): string {
         $tableId = $this->getIdForSql($this->id);
-        $keyItems = $this->primaryKey->getKeyItems();
-        $whereEquations = [];
-        foreach ($keyItems as $keyItem) {
-            $id = $keyItem->item->id;
-            $whereEquations[] = sprintf('%s = ?', $this->getIdForSql($id));
-        }
-        return sprintf('DELETE FROM %s WHERE %s',
-            $tableId, implode(' AND ', $whereEquations));
+        if ($whereSql === false) return sprintf(
+            'DELETE FROM %s',
+            $tableId);
+        return sprintf(
+            'DELETE FROM %s WHERE %s',
+            $tableId, $whereSql);
     }
     /**
      * 値をバインド(DELETE用)
@@ -1336,11 +1537,50 @@ class Table {
         $recordForKey = $record->previousRecord ?? $record;
         foreach ($keyItems as $keyItem) {
             $id = $keyItem->item->id;
-            if (!$record->isInputted($id))
+            if (!$recordForKey->isInputted($id))
                 $this->db->throwException(sprintf('レコードにキー情報が不足しています。[%s]', $id));
             $value = $recordForKey->{$id};
             $type = $keyItem->item->type;
             $stmt->bindValue(++$num, $value, $type);
         }
+    }
+    /**
+     * 値をバインド(DELETE用、複数)
+     * 
+     * DELETE FROM [Table]  
+     * WHERE  
+     * ([Key1-1] = ? AND [Key1-2] = ? AND ...) OR  
+     * ([Key2-1] = ? AND [Key2-2] = ? AND ...) OR  
+     * ...
+     * 
+     * @param TableStatement $stmt テーブルステートメント
+     * @param Record ...$records レコード
+     */
+    protected function bindDeletesValue(TableStatement $stmt, Record ...$records) {
+        if (count($records) == 0) return;
+
+        $num = 0;
+        $keyItems = $this->primaryKey->getKeyItems();
+
+        foreach ($records as $record) {
+            $recordForKey = $record->previousRecord ?? $record;
+            foreach ($keyItems as $keyItem) {
+                $id = $keyItem->item->id;
+                if (!$recordForKey->isInputted($id))
+                    $this->db->throwException(sprintf('レコードにキー情報が不足しています。[%s]', $id));
+                $value = $recordForKey->{$id};
+                $type = $keyItem->item->type;
+                $stmt->bindValue(++$num, $value, $type);
+            }
+        }
+    }
+    /**
+     * 値をバインド(DELETE用、比較)
+     * 
+     * @param TableStatement $stmt テーブルステートメント
+     * @param array{item: Item, value: mixed} ...$binds バインドリスト
+     */
+    protected function bindDeleteCompareValue(TableStatement $stmt, ...$binds) {
+        $this->bindSelectValue($stmt, ...$binds);
     }
 }

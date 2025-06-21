@@ -1,27 +1,24 @@
 <?php
 // -------------------------------------------------------------------------------------------------
-// DB接続の例外クラス
+// Web処理の例外クラス
 //
 // History:
-// 0.00.00 2024/01/23 作成。
-// 0.22.00 2024/05/17 エラーログへ出力する処理を実装。
+// 0.22.00 2024/05/17 作成。
 // -------------------------------------------------------------------------------------------------
-namespace tsubasaLibs\database;
+namespace tsubasaLibs\web;
 use Exception, Throwable;
 /**
- * DB接続の例外クラス
+ * Web処理の例外クラス
  * 
- * @since 0.00.00
+ * @since 0.22.00
  * @version 0.22.00
  */
-class DbException extends Exception {
-    // ---------------------------------------------------------------------------------------------
-    // コンストラクタ/デストラクタ
+class WebException extends Exception {
     public function __construct(string $message, int $code = 0, Throwable $previous = null) {
         parent::__construct($message, $code, $previous);
 
         // 主メッセージ
-        error_log(sprintf('PHP DbException: %s in %s on line %s', $message, $this->file, $this->line));
+        error_log(sprintf('PHP WebException: %s in %s on line %s', $message, $this->file, $this->line));
 
         // スタックトレース(一番元のなったものを参照)
         $ex = $this;

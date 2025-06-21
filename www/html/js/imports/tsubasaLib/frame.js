@@ -7,6 +7,7 @@
 // 0.07.00 2024/02/22 フォーム送信時、実行時間を算出するように対応。
 // 0.19.00 2024/04/16 キー押下時処理に、誤動作防止を追加。
 // 0.20.00 2024/04/23 サブ画面を閉じる、頁非表示時処理を追加。
+// 0.22.00 2024/05/17 フォーム送信時、未選択項目を送信するように対応。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import web from "./web.js";
@@ -14,7 +15,7 @@ import web from "./web.js";
  * フレーム処理
  * 
  * @since 0.05.00
- * @version 0.20.00
+ * @version 0.22.00
  */
 const frame = {
     /**
@@ -149,6 +150,7 @@ const frame = {
      */
     form_submit: (event) => {
         web.setBlackout();
+        web.addUnselectedElementsBeforeSend();
         web.setStartTime();
     },
     /**

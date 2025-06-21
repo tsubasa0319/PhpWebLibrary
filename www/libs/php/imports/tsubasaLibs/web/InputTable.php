@@ -8,6 +8,8 @@
 // 0.18.02 2024/04/04 行を検索/選択/追加/削除を実装。入力チェックを頁外に対しても行うように変更。
 // 0.18.03 2024/04/09 入力チェックを実装。
 // 0.19.00 2024/04/16 セッションへ設定する処理のメソッド名を変更。
+// 0.22.00 2024/05/17 プロパティに、一括入力かどうか/重複できるかどうかを追加。
+//                    登録済チェック/存在する行のリストを取得を実装。行を変更イベントを実装。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/../type/ArrayLike.php';
@@ -17,7 +19,7 @@ use tsubasaLibs\type\ArrayLike;
  * 入力テーブルクラス
  * 
  * @since 0.18.00
- * @version 0.19.00
+ * @version 0.22.00
  */
 class InputTable extends ArrayLike {
     // ---------------------------------------------------------------------------------------------
@@ -28,6 +30,10 @@ class InputTable extends ArrayLike {
     protected $unitRowCount;
     /** @var int 現在の頁番号(0始まり) */
     protected $pageCount;
+    /** @var bool 一括入力かどうか */
+    protected $isBatchInput;
+    /** @var bool 重複できるかどうか */
+    protected $canDuplicates;
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
@@ -50,61 +56,76 @@ class InputTable extends ArrayLike {
         return new InputTableRow($this->events, $this);
     }
     /**
-     * 入力情報より検索
+     * 検索
      * 
      * @since 0.18.02
-     * @param InputItems $items 入力情報
+     * @param array<string, mixed> $values 検索値
+     * @param bool $isAllTargets 非表示も含めて全てかどうか
      * @return ?InputTableRow 行
      */
-    public function searchRow(InputItems $items): ?InputTableRow {
-        foreach ($this->getVisibleRows() as $row) {
-            if ($row->isTarget($items))
+    public function searchRow(array $values, bool $isAllTargets = false): ?InputTableRow {
+        $rows = $isAllTargets ? $this->getExistRows() : $this->getVisibleRows();
+        foreach ($rows as $row) {
+            if ($row->isTarget($values))
                 return $row;
         }
         return null;
     }
     /**
-     * 入力情報より行を追加
+     * 登録済チェック
      * 
-     * @since 0.18.02
-     * @param InputItems $add 追加用の入力情報
+     * @since 0.22.00
+     * @param array<string, mixed> $values 検索値
      * @return bool 成否
      */
-    public function addRow(InputItems $add): bool {
-        // 存在チェック
-        $new = $this->searchRow($add);
+    public function checkRegistered(array $values): bool {
+        return $this->searchRow($values, true) === null;
+    }
+    /**
+     * 行を追加
+     * 
+     * @since 0.18.02
+     * @param array<string, mixed> $values 追加値
+     * @return ?InputTableRow 対象行
+     */
+    public function addRow(array $values): ?InputTableRow {
+        // 存在チェック(削除予定も含む)
+        $row = null;
+        foreach (clone $this as $_row)
+            if ($_row->isTarget($values)) {
+                $row = $_row;
+                break;
+            }
 
         // 存在する
-        if ($new !== null) {
-            // 非表示の場合は、表示へ戻し、処理を続行
-            if (!$new->isVisible) {
-                $new->isVisible = true;
+        if ($row !== null) {
+            // 削除予定の場合は、予定を取消、処理を続行
+            if ($row->isPlanToDeleted) {
+                $row->isPlanToDeleted = false;
+                $row->isVisible = true;
             } else {
-                // 存在エラー
-                foreach ($add->getItems() as $item)
-                    $item->setError();
-                $this->events->addMessage(Message::ID_ALREADY_REGISTERED);
-                return false;
+                // 重複エラー
+                return null;
             }
         }
 
-        // 存在しなかった場合は、新規作成
+        // 存在しない
         $isNew = false;
-        if ($new === null) {
-            $new = $this->getNewRow();
-            $new->isAdded = true;
+        if ($row === null) {
+            // 新規作成
+            $row = $this->getNewRow();
+            $row->isAdded = true;
             $isNew = true;
         }
 
         // 入力情報を設定
-        if (!$new->checkForWebAdd($add)) return false;
-        $new->setForWebAdd($add);
+        $row->setValues($values);
 
         // 新規作成を実体化
         if ($isNew)
-            $this[] = $new;
+            $this[] = $row;
 
-        return true;
+        return $row;
     }
     /**
      * 表示する行のリストを取得
@@ -116,6 +137,19 @@ class InputTable extends ArrayLike {
         $rows = [];
         foreach (clone $this as $row)
             if ($row->isVisible)
+                $rows[] = $row;
+        return $rows;
+    }
+    /**
+     * 存在する行のリストを取得
+     * 
+     * @since 0.22.00
+     * @return InputTableRow[] 行リスト
+     */
+    public function getExistRows(): array {
+        $rows = [];
+        foreach (clone $this as $row)
+            if (!$row->isPlanToDeleted)
                 $rows[] = $row;
         return $rows;
     }
@@ -214,6 +248,15 @@ class InputTable extends ArrayLike {
     public function getMaxPageCount(): int {
         return intdiv(count($this->getVisibleRows()) - 1, $this->unitRowCount);
     }
+    /**
+     * 一括入力かどうかを取得
+     * 
+     * @since 0.22.00
+     * @return bool 一括入力かどうか
+     */
+    public function getIsBatchInput(): bool {
+        return $this->isBatchInput;
+    }
     // ---------------------------------------------------------------------------------------------
     // メソッド(追加、イベント前処理)
     /**
@@ -308,7 +351,7 @@ class InputTable extends ArrayLike {
     // ---------------------------------------------------------------------------------------------
     // メソッド(追加、イベント処理)
     /**
-     * 入力チェック
+     * 入力チェック(一括入力用)
      * 
      * @since 0.18.03
      * @return bool 成否
@@ -399,22 +442,84 @@ class InputTable extends ArrayLike {
      * @param InputItems $add 追加用の入力情報
      * @return bool 成否
      */
-    public function eventAddRow($add): bool {
+    public function eventAddRow(InputItems $add): bool {
         $add->setFromPost();
-        if (!$add->checkFromWeb()) return true;
 
-        $this->addRow($add);
+        // 入力チェック
+        if (!$add->checkFromWeb()) return true;
+        $values = $add->getValues();
+
+        // 登録済チェック
+        if (!$this->canDuplicates)
+            if (!$this->checkRegistered($values)) {
+                foreach ($add->getItems() as $item)
+                    $item->setError();
+                $this->events->addMessage(Message::ID_ALREADY_REGISTERED);
+                return true;
+            }
+
+        // 更新前チェック
+        if (!$this->isBatchInput)
+            if (!$add->check()) return true;
+
+        // 行を追加
+        $row = $this->addRow($values);
+        if ($row === null) return true;
+
+        // 更新
+        if (!$this->isBatchInput) {
+            $this->events->db->executor->isInput = true;
+            if ($row->isAdded) {
+                $isSuccessful = $row->updateForAdd();
+                // 失敗時、入力テーブルへ追加を取消
+                if (!$isSuccessful)
+                    $row->delete();
+                $row->isAdded = false;
+            } else {
+                $row->updateForEdit();
+            }
+        }
+
+        return true;
+    }
+    /**
+     * 行を変更イベント
+     * 
+     * @since 0.22.00
+     * @param int $rowNum 頁内行番号
+     * @return bool 成否
+     */
+    public function eventEditRow(int $rowNum): bool {
+        $row = $this->getRowByNumInPage($rowNum);
+        if ($row === null) {
+            $this->events->addMessage(Message::ID_EXCEPTION);
+            return false;
+        }
+
+        $row->setFromPost();
+        if (!$row->checkFromWeb()) return true;
+        if (!$row->check()) return true;
+
+        if (!$row->updateForEdit()) return false;
+
         return true;
     }
     /**
      * 行を削除イベント
      * 
      * @since 0.18.02
-     * @param ?int $rowNum 頁内行番号(nullの場合は解除)
+     * @param int $rowNum 頁内行番号
      * @return bool 成否
      */
     public function eventDeleteRow(int $rowNum): bool {
-        $this->deleteRowByNumInPage($rowNum);
+        $row = $this->getRowByNumInPage($rowNum);
+        if ($row === null) {
+            $this->events->addMessage(Message::ID_EXCEPTION);
+            return false;
+        }
+
+        if (!$row->updateForDelete()) return false;
+        $row->delete();
 
         return true;
     }
@@ -514,6 +619,8 @@ class InputTable extends ArrayLike {
     protected function setInit() {
         $this->unitRowCount = 50;
         $this->pageCount = 0;
+        $this->isBatchInput = false;
+        $this->canDuplicates = false;
     }
     /**
      * 入力情報より必須設定を外す

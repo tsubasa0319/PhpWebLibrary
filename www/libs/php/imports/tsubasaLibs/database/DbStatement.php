@@ -6,6 +6,7 @@
 // 0.00.00 2024/01/23 作成。
 // 0.10.00 2024/03/08 DB情報無しのインスタンスを取得できるように対応。
 // 0.20.00 2024/04/23 クエリ関連の失敗時、エラーログへSQLステートメントを出力するように対応。
+// 0.22.00 2024/05/15 クエリ関連の失敗時、エラーログへ"Query failed !"の文字列を出力するように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/ValueType.php';
@@ -14,7 +15,7 @@ use PDOStatement, PDOException;
  * DBステートメントクラス(PDOベース)
  * 
  * @since 0.00.00
- * @version 0.20.00
+ * @version 0.22.00
  */
 class DbStatement extends PDOStatement {
     // ---------------------------------------------------------------------------------------------
@@ -61,7 +62,7 @@ class DbStatement extends PDOStatement {
             $result = parent::execute($params);
         } catch (PDOException $ex) {
             if ($this->db->isDebug) var_dump($this->queryString, $this->bindedValues, $params);
-            error_log(sprintf('[SQL]%s[PARAM]%s[OPTION]%s',
+            error_log(sprintf('Query failed ! [SQL]%s[PARAM]%s[OPTION]%s',
                 $this->queryString,
                 json_encode($this->bindedValues, JSON_UNESCAPED_UNICODE),
                 json_encode($params, JSON_UNESCAPED_UNICODE)
@@ -73,19 +74,27 @@ class DbStatement extends PDOStatement {
     }
     // ---------------------------------------------------------------------------------------------
     // メソッド(追加)
+    /**
+     * 実行者を取得
+     * 
+     * @return ?Executor 実行者
+     */
     public function getExecutor(): ?Executor {
         return $this->db->executor;
     }
     // ---------------------------------------------------------------------------------------------
     // メソッド(追加、静的)
     /**
-     * DB情報無しのインスタンスを取得
+     * 一時利用のためのインスタンスを取得
      * 
-     * @since 0.10.00
+     * @since 0.22.00
+     * @param DbBase $db DBクラス
      * @return static DBステートメント
      */
-    static public function getNoDbInstance(): static {
-        return new static(null);
+    static public function getTempInstance(?DbBase $db): static {
+        $stmt = new static(null);
+        $stmt->db = $db;
+        return $stmt;
     }
     // ---------------------------------------------------------------------------------------------
     // 内部処理

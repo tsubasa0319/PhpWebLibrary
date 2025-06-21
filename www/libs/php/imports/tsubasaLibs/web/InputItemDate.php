@@ -4,6 +4,7 @@
 //
 // History:
 // 0.19.00 2024/04/16 作成。
+// 0.22.00 2024/05/17 未入力の場合に現在日時に変わってしまうので対処。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use tsubasaLibs\type;
@@ -11,7 +12,7 @@ use tsubasaLibs\type;
  * 入力項目クラス(日付型)
  * 
  * @since 0.19.00
- * @version 0.19.00
+ * @version 0.22.00
  */
 class InputItemDate extends InputItemBase {
     // ---------------------------------------------------------------------------------------------
@@ -78,6 +79,7 @@ class InputItemDate extends InputItemBase {
         $this->baseDate = null;
     }
     protected function setValueFromWebValue() {
+        if ($this->webValue === '') return null;
         $this->value = $this->getNewDate(match ($this->type) {
             static::TYPE_Y4MD => $this->mdToY4md($this->webValue),
             static::TYPE_Y2MD => $this->y2mdToY4md($this->webValue),

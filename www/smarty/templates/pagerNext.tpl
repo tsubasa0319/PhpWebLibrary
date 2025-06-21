@@ -5,3 +5,4 @@
     'onclick' => 'general.web.send(event)',
     'disabled' => !$table.infos.isNext|default:false
 ]}>{$text|default:'▶'}</button>
+<input type="hidden" name="nextPageButtonName" value="{$name|default:'lstNextPage'}">

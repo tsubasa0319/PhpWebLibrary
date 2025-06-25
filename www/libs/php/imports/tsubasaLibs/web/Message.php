@@ -9,13 +9,14 @@
 // 0.19.00 2024/04/16 字数範囲/値範囲/小数点以下の桁数/日付の型に対するエラーメッセージを追加。
 // 0.20.00 2024/04/23 一覧の上限オーバーの警告メッセージを追加。
 // 0.22.00 2024/05/17 登録完了/変更完了/削除完了のメッセージを追加。
+// 0.25.00 2024/05/21 HTTPリクエストエラーのメッセージを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 /**
  * メッセージクラス
  * 
  * @since 0.01.00
- * @version 0.22.00
+ * @version 0.25.00
  */
 class Message {
     // ---------------------------------------------------------------------------------------------
@@ -74,6 +75,8 @@ class Message {
     const ID_MAX_DEGITS_AFTER_POINT_ERROR = 'Err00018';
     /** メッセージID(不正な日付) */
     const ID_VALUE_INVALID_DATE = 'Err00019';
+    /** メッセージID(HTTPリクエストエラー) */
+    const ID_HTTP_REQUEST_ERROR = 'Err00020';
     /** メッセージID(例外) */
     const ID_EXCEPTION = 'Err00999';
     // ---------------------------------------------------------------------------------------------
@@ -105,6 +108,14 @@ class Message {
         foreach (array_filter($this->list, function ($message) use ($id) {
             return $message['id'] === $id;
         }) as $message) {
+            // HTTPリクエストエラー時、メッセージを取得
+            if ($message['id'] === static::ID_HTTP_REQUEST_ERROR) {
+                $code = count($params) > 0 ? (int)$params[0] : -1;
+                $httpStatusMessage = $this->getHttpStatusMessage($code);
+                if ($httpStatusMessage === null) break;
+
+                $params[] = $httpStatusMessage;
+            }
             // パラメータ数を調整
             $arr = explode('%s', $message['content']);
             while (count($arr) > count($params) + 1) $params[] = '';
@@ -181,7 +192,82 @@ class Message {
             ['id' => 'Err00017' , 'content' => '%sは、値を%s～%sで入力してください。'],
             ['id' => 'Err00018' , 'content' => '%sは、小数点以下を%s桁以下で入力してください。'],
             ['id' => 'Err00019' , 'content' => '%sは、値が不正な日付です。'],
+            ['id' => 'Err00020' , 'content' => 'HTTPリクエストエラーが発生しました。(%s)%s'],
             ['id' => 'Err00999' , 'content' => '予期せぬエラーが発生しました。']
         ];
+    }
+    /**
+     * HTTPステータスのメッセージを取得
+     * 
+     * @since 0.25.00
+     * @param int $code HTTPステータスコード
+     * @return ?string メッセージ
+     */
+    protected function getHttpStatusMessage(int $code): ?string {
+        return match ($code) {
+            0       => 'No Response',
+            100     => 'Continue',
+            101     => 'Switching Protocol',
+            102     => 'Processing',
+            103     => 'Early Hints',
+            200     => 'OK',
+            201     => 'Created',
+            202     => 'Accepted',
+            203     => 'Non-Authoritative Information',
+            204     => 'No Content',
+            205     => 'Reset Content',
+            206     => 'Partial Content',
+            207     => 'Multi-Status',
+            208     => 'Already Reported',
+            226     => 'IM Used',
+            300     => 'Multiple Choices',
+            301     => 'Moved Permanently',
+            302     => 'Found',
+            303     => 'See Other',
+            304     => 'Not Modified',
+            307     => 'Temporary Redirect',
+            308     => 'Permanent Redirect',
+            400     => 'Bad Request',
+            401     => 'Unauthorized',
+            402     => 'Payment Required',
+            403     => 'Forbidden',
+            404     => 'Not Found',
+            405     => 'Method Not Allowed',
+            406     => 'Not Acceptable',
+            407     => 'Proxy Authentication Required',
+            408     => 'Request Timeout',
+            409     => 'Conflict',
+            410     => 'Gone',
+            411     => 'Length Required',
+            412     => 'Precondition Failed',
+            413     => 'Payload Too Large',
+            414     => 'URI Too Long',
+            415     => 'Unsupported Media Type',
+            416     => 'Range Not Satisfiable',
+            417     => 'Expectation Failed',
+            418     => 'I\'m a teapot',
+            421     => 'Misdirected Request',
+            422     => 'Unprocessable Content',
+            423     => 'Locked',
+            424     => 'Failed Dependency',
+            425     => 'Too Early',
+            426     => 'Upgrade Required',
+            428     => 'Precondition Required',
+            429     => 'Too Many Requests',
+            431     => 'Request Header Fields Too Large',
+            451     => 'Unavailable For Legal Reasons',
+            500     => 'Internal Server Error',
+            501     => 'Not Implemented',
+            502     => 'Bad Gateway',
+            503     => 'Service Unavailable',
+            504     => 'Gateway Timeout',
+            505     => 'HTTP Version Not Supported',
+            506     => 'Variant Also Negotiates',
+            507     => 'Insufficient Storage',
+            508     => 'Loop Detected',
+            510     => 'Not Extended',
+            511     => 'Network Authentication Required',
+            default => null
+        };
     }
 }

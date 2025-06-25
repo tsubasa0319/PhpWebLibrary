@@ -8,7 +8,8 @@
 // 0.11.00 2024/03/08 データ型のクラス名を変更。
 // 0.11.01 2024/03/09 権限チェックエラー時、メッセージを返すように対応。
 // 0.13.00 2024/03/13 エラーメッセージを返すかどうか、ログ出力を追加。
-// 0.33.00 2024/04/23 開始ログ時に取得するパラメータ値に対して、ユニコード対応。
+// 0.20.00 2024/04/23 開始ログ時に取得するパラメータ値に対して、ユニコード対応。
+// 0.25.00 2024/05/21 権限チェック時、ホスト名をIPアドレスリストで照合するように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
@@ -18,7 +19,7 @@ use Stringable;
  * APIイベントクラス
  * 
  * @since 0.09.00
- * @version 0.33.00
+ * @version 0.25.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -49,12 +50,16 @@ class Events {
     // コンストラクタ/デストラクタ
     public function __construct() {
         $this->setErrorHandler();
+
         // 現在日時を取得
         $this->now = new type\TimeStamp();
+
         // DB接続
         $this->db = $this->getDb();
+
         // 初期設定
         $this->setInit();
+
         // ログファイルを開く
         if ($this->logFilePath !== null) {
             $this->logFilePointer = fopen($this->logFilePath, 'a');
@@ -62,12 +67,15 @@ class Events {
                 $this->error('Failed to open log file');
         }
         $this->startLog();
+
         // 権限チェック
         if (!$this->checkRole()) $this->roleError();
+
         // イベント
         if (!$this->event())
             $this->error('Event processing failed');
         $this->eventAfter();
+
         // ログファイルを閉じる
         $this->endLog();
         fclose($this->logFilePointer);
@@ -133,9 +141,11 @@ class Events {
             $this->errorMessage = 'Failed to get Remote-Host: No such parameter in request header';
             return false;
         }
+        $host = explode(':', $this->remoteHost)[0];
+
         // リモートホスト名と、リモートIPアドレスの整合チェック
-        $remoteIp = gethostbyname($this->remoteHost);
-        if ($remoteIp !== $_SERVER['REMOTE_ADDR']) {
+        $ips = $this->getIpsByHost($host);
+        if (!in_array($_SERVER['REMOTE_ADDR'], $ips, true)) {
             $isOk = false;
             // 開発環境からのアクセスはOK
             if (preg_match('/\A172\.18\.4\.[0-9]{1,3}\z/', $_SERVER['REMOTE_ADDR']))
@@ -151,7 +161,6 @@ class Events {
             }
         }
         // 許可したリモートホスト名かどうか
-        $host = explode(':', $this->remoteHost)[0];
         if ($this->allowHosts !== null and !in_array($host, $this->allowHosts, true)) {
             $this->errorMessage = sprintf(
                 '%s is not allowed', $this->remoteHost
@@ -159,6 +168,16 @@ class Events {
             return false;
         }
         return true;
+    }
+    /**
+     * ホスト名別のIPアドレスリストを取得
+     * 
+     * @since 0.25.00
+     * @param string $host ホスト名
+     * @return string[]
+     */
+    protected function getIpsByHost(string $host): array {
+        return [];
     }
     /**
      * 権限チェックエラー

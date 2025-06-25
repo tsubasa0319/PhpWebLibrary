@@ -6,13 +6,15 @@
 // 0.09.00 2024/03/06 作成。
 // 0.11.01 2024/03/09 通信エラー時、警告を返すように対応。
 // 0.11.02 2024/03/09 ユーザエージェントが空文字ではWAFを通れないため対処。
+// 0.25.00 2024/05/21 エラー処理を専用メソッドへ分離。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use CurlHandle;
 /**
  * cURLクラス
  * 
- * @version 0.11.02
+ * @since 0.09.00
+ * @version 0.25.00
  */
 class Curl {
     // ---------------------------------------------------------------------------------------------
@@ -75,7 +77,7 @@ class Curl {
     /**
      * 送信データを設定
      * 
-     * @param string $data 送信データ
+     * @param array<string, mixed> $data 送信データ
      */
     public function setData($data) {
         $this->data = $data;
@@ -136,9 +138,7 @@ class Curl {
 
         // エラーかどうか
         if ($info['http_code'] !== 200) {
-            trigger_error(sprintf(
-                'cURL error: HTTP %s', $info['http_code']
-            ), E_USER_NOTICE);
+            $this->error();
             $response = false;
         }
 
@@ -178,5 +178,19 @@ class Curl {
         $this->data = null;
         $this->isReturnTransfer = true;
         $this->receiveData = null;
+    }
+    /**
+     * エラー処理
+     * 
+     * @since 0.25.00
+     */
+    protected function error() {
+        $info = $this->getInfo();
+        trigger_error(sprintf(
+            'cURL error: HTTP %s By %s (%s)',
+            $info['http_code'],
+            $info['url'],
+            json_encode($this->data, JSON_UNESCAPED_UNICODE)
+        ), E_USER_NOTICE);
     }
 }

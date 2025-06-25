@@ -6,6 +6,7 @@
 // 0.28.00 2024/06/26 作成。
 // 0.28.02 2024/06/27 例外処理を実装。
 // 0.28.03 2024/07/04 文字列出力を改良。既定ヘッダ出力を実装。
+// 0.28.04 2024/07/06 グリッド線を描画後、線のスタイルが破線になってしまうため修正。各種設定の保存/復元を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\pdf;
 require_once __DIR__ . '/PdfException.php';
@@ -16,7 +17,7 @@ if (!class_exists(BaseClass::class)) require __DIR__ . '/#phpdoc/Tcpdf.php';
  * TCPDFクラス
  * 
  * @since 0.28.00
- * @version 0.28.03
+ * @version 0.28.04
  */
 class Tcpdf extends BaseClass {
     // ---------------------------------------------------------------------------------------------
@@ -66,25 +67,28 @@ class Tcpdf extends BaseClass {
         $calign = 'T', $valign = 'M', $rtloff = false
     ) {
         // TCPDFの仕様では、中央寄せ/右寄せが不十分なので改良
+
         // 変更前を保存
-        $textrendermode = $this->textrendermode;
-        $textstrokewidth = $this->textstrokewidth;
-        $cell_padding = $this->getCellPaddings();
+        $backupTextRenderingMode = $this->saveTextRenderingMode();
+        $backupCellPadding = $this->saveCellPadding();
+
+        // セル幅とX座標を調整
+        $width = $this->GetStringWidth($txt);
+        if ($align === 'C') $x -= $width / 2;
+        if ($align === 'R') $x -= $width;
+
         // 描画
         $this->setTextRenderingMode($fstroke, $ffill, $fclip);
         $this->setCellPadding(0);
         $this->setXY($x, $y, $rtloff);
-        $width = in_array($align, ['C', 'R']) ? 0.0000001 : 0;  // 0の場合、右へ自動拡張してしまうため
         $this->Cell(
             $width, 0, $txt, $border, $ln, $align, $fill, $link, $stretch,
             $ignore_min_height, $calign, $valign
         );
-		// 変更前へ復元
-    	$this->textrendermode = $textrendermode;
-        $this->textstrokewidth = $textstrokewidth;
-        $this->setCellPaddings(
-            $cell_padding['L'], $cell_padding['T'], $cell_padding['R'], $cell_padding['B']
-        );
+
+		// 復元
+        $this->restoreTextRenderingMode($backupTextRenderingMode);
+        $this->restoreCellPadding($backupCellPadding);
     }
     public function Output($name = 'doc.pdf', $dest = 'I') {
         // 出力前処理
@@ -109,15 +113,6 @@ class Tcpdf extends BaseClass {
     }
     // ---------------------------------------------------------------------------------------------
     // メソッド(追加)
-    /**
-     * 長さの単位を取得
-     * 
-     * @since 0.28.03
-     * @return string 長さの単位
-     */
-    public function getPageUnit(): string {
-        return $this->pdfunit;
-    }
     /**
      * ヘッダを自動設定するかどうかを変更
      * 
@@ -197,10 +192,8 @@ class Tcpdf extends BaseClass {
      */
     public function printTitle() {
         // 変更前を保存
-        $pdfunit = $this->getPageUnit();
-        $FontFamily = $this->getFontFamily();
-        $FontStyle = $this->getFontStyle();
-        $FontSizePt = $this->getFontSizePt();
+        $backupPageUnit = $this->savePageUnit();
+        $backupFont = $this->saveFont();
 
         // 長さの単位を変更
         $this->setPageUnit('mm');
@@ -210,9 +203,9 @@ class Tcpdf extends BaseClass {
         $this->setFont(static::FONT_MS_MINCHO, 'B', 18);
         $this->Text($posX, 10, $this->title, 0, false, true, 0, 0, 'C');
 
-        // 変更前へ復元
-        $this->setPageUnit($pdfunit);
-        $this->setFont($FontFamily, $FontStyle, $FontSizePt);
+        // 復元
+        $this->restorePageUnit($backupPageUnit);
+        $this->restoreFont($backupFont);
     }
     /**
      * テスト環境であることを出力
@@ -221,12 +214,9 @@ class Tcpdf extends BaseClass {
      */
     public function printTest() {
         // 変更前を保存
-        $pdfunit = $this->getPageUnit();
-        $FontFamily = $this->getFontFamily();
-        $FontStyle = $this->getFontStyle();
-        $FontSizePt = $this->getFontSizePt();
-        $TextColor = $this->TextColor;
-        $fgcolor = $this->fgcolor;
+        $backupPageUnit = $this->savePageUnit();
+        $backupFont = $this->saveFont();
+        $backupTextColor = $this->saveTextColor();
 
         // 長さの単位を変更
         $this->setPageUnit('mm');
@@ -237,12 +227,10 @@ class Tcpdf extends BaseClass {
         $this->setTextColor(255, 0, 0);
         $this->Text($posX, 20, 'テスト環境', 0, false, true, 0, 0, 'C');
 
-        // 変更前へ復元
-        $this->setPageUnit($pdfunit);
-        $this->setFont($FontFamily, $FontStyle, $FontSizePt);
-        $this->TextColor = $TextColor;
-        $this->fgcolor = $fgcolor;
-        $this->ColorFlag = ($this->FillColor != $this->TextColor);
+        // 復元
+        $this->restorePageUnit($backupPageUnit);
+        $this->restoreFont($backupFont);
+        $this->restoreTextColor($backupTextColor);
     }
     /**
      * 既定のヘッダを出力
@@ -252,10 +240,8 @@ class Tcpdf extends BaseClass {
      */
     public function printDefaultHeader(?int $pageNum = null, ?int $maxPageNum = null) {
         // 変更前を保存
-        $pdfunit = $this->getPageUnit();
-        $FontFamily = $this->getFontFamily();
-        $FontStyle = $this->getFontStyle();
-        $FontSizePt = $this->getFontSizePt();
+        $backupPageUnit = $this->savePageUnit();
+        $backupFont = $this->saveFont();
 
         // 長さの単位を変更
         $this->setPageUnit('mm');
@@ -302,9 +288,9 @@ class Tcpdf extends BaseClass {
             $this->Text(22, 15, implode(' ', $texts));
         }
 
-        // 変更前へ復元
-        $this->setPageUnit($pdfunit);
-        $this->setFont($FontFamily, $FontStyle, $FontSizePt);
+        // 復元
+        $this->restorePageUnit($backupPageUnit);
+        $this->restoreFont($backupFont);
     }
     /**
      * グリッド線を出力
@@ -312,24 +298,45 @@ class Tcpdf extends BaseClass {
      * @since 0.28.03
      */
     public function printGridLines() {
+        // 変更前を保存
+        $backupPageUnit = $this->savePageUnit();
+        $backupStyle = $this->saveLineStyle();
+        $backupFont = $this->saveFont();
+        $backupTextColor = $this->saveTextColor();
+        $autoPageBreak = $this->getAutoPageBreak();
+
+        // 自動改頁を中断
+        $this->setAutoPageBreak(false);
+
+        // 長さの単位を変更
+        $this->setPageUnit('mm');
+
+        // スタイル
         $style1 = ['color' => [192, 192, 192]];
         $style2 = ['color' => [192, 192, 192], 'dash' => '2'];
+
+        // フォント
+        $this->setFont(static::FONT_MS_GOTHIC, '', 8);
+        $this->setTextColor(192, 192, 192);
+
         // 全体
         $pageWidth = $this->getPageWidth();
         $pageHeight = $this->getPageHeight();
         $this->Rect(10, 10, $pageWidth - 20, $pageHeight - 20, '', ['all' => $style1]);
 
         // 1cm間隔の実線
-        $posX = 20;
+        $posX = 10;
         $times = 0;
         while ($times++ < 100 and $posX < $pageWidth - 10) {
-            $this->Line($posX, 10, $posX, $pageHeight - 10, $style1);
+            if ($posX > 10) $this->Line($posX, 10, $posX, $pageHeight - 10, $style1);
+            $this->Text($posX, 7, $posX, 0, false, true, 0, 0, 'C');
             $posX += 10;
         }
-        $posY = 20;
+        $posY = 10;
         $times = 0;
         while ($times++ < 100 and $posY < $pageHeight - 10) {
-            $this->Line(10, $posY, $pageWidth - 10, $posY, $style1);
+            if ($posY > 10) $this->Line(10, $posY, $pageWidth - 10, $posY, $style1);
+            $this->Text(10, $posY, $posY, 0, false, true, 0, 0, 'R', false, '', 0, false, 'M');
             $posY += 10;
         }
 
@@ -346,6 +353,177 @@ class Tcpdf extends BaseClass {
             $this->Line(10, $posY, $pageWidth - 10, $posY, $style2);
             $posY += 10;
         }
+
+        // 復元
+        $this->restorePageUnit($backupPageUnit);
+        $this->restoreLineStyle($backupStyle);
+        $this->restoreFont($backupFont);
+        $this->restoreTextColor($backupTextColor);
+        $this->setAutoPageBreak($autoPageBreak);
+    }
+    /**
+     * 長さの単位を保存
+     * 
+     * @since 0.28.04
+     * @return array{pdfunit:string}
+     */
+    public function savePageUnit(): array {
+        return [
+            'pdfunit' => $this->pdfunit
+        ];
+    }
+    /**
+     * 長さの単位を復元
+     * 
+     * @since 0.28.04
+     * @param array{pdfunit:string} $backup 保存値
+     */
+    public function restorePageUnit(array $backup) {
+        $this->pdfunit = $backup['pdfunit'];
+    }
+    /**
+     * フォントを保存
+     * 
+     * @since 0.28.04
+     * @return array{FontFamily:string, FontStyle:string, CurrentFont:array, FontSizePt:int}
+     */
+    public function saveFont(): array {
+        return [
+            'FontFamily'  => $this->FontFamily,
+            'FontStyle'   => $this->FontStyle,
+            'CurrentFont' => $this->CurrentFont,
+            'FontSizePt'  => $this->FontSizePt,
+        ];
+    }
+    /**
+     * フォントを復元
+     * 
+     * @since 0.28.04
+     * @param array{FontFamily:string, FontStyle:string, CurrentFont:array, FontSizePt:int} $backup 保存値
+     */
+    public function restoreFont(array $backup) {
+        $this->FontFamily = $backup['FontFamily'];
+        $this->FontStyle = $backup['FontStyle'];
+        $this->CurrentFont = $backup['CurrentFont'];
+        if ($this->FontSizePt !== $backup['FontSizePt'])
+            $this->setFontSize($backup['FontSizePt']);
+    }
+    /**
+     * テキストの色を保存
+     * 
+     * @since 0.28.04
+     * @return array{TextColor:string, fgcolor:array<string,int>}
+     */
+    public function saveTextColor(): array {
+        return [
+            'TextColor' => $this->TextColor,
+            'fgcolor'   => $this->fgcolor
+        ];
+    }
+    /**
+     * テキストの色を復元
+     * 
+     * @since 0.28.04
+     * @param array{TextColor:string, fgcolor:array<string,int>} $backup 保存値
+     */
+    public function restoreTextColor(array $backup) {
+        $this->TextColor = $backup['TextColor'];
+        $this->fgcolor = $backup['fgcolor'];
+        $this->ColorFlag = $this->FillColor !== $this->TextColor;
+    }
+    /**
+     * テキストの描画方法を保存
+     * 
+     * @since 0.28.04
+     * @return array{textrendermode:int, textstrokewidth:int}
+     */
+    public function saveTextRenderingMode(): array {
+        return [
+            'textrendermode'  => $this->textrendermode,
+            'textstrokewidth' => $this->textstrokewidth
+        ];
+    }
+    /**
+     * テキストの描画方法を復元
+     * 
+     * @since 0.28.04
+     * @param array{textrendermode:int, textstrokewidth:int} $backup 保存値
+     */
+    public function restoreTextRenderingMode(array $backup) {
+        $this->textrendermode = $backup['textrendermode'];
+        $this->textstrokewidth = $backup['textstrokewidth'];
+    }
+    /**
+     * セルの内側余白を保存
+     * 
+     * @since 0.28.04
+     * @return array{cell_padding:array<string,int>}
+     */
+    public function saveCellPadding(): array {
+        return [
+            'cell_padding' => $this->cell_padding
+        ];
+    }
+    /**
+     * セルの内側余白を復元
+     * 
+     * @since 0.28.04
+     * @param array{cell_padding:array<string,int>} $backup 保存値
+     */
+    public function restoreCellPadding(array $backup) {
+        $this->cell_padding = $backup['cell_padding'];
+    }
+    /**
+     * 描画の色を保存
+     * 
+     * @since 0.28.04
+     * @return array{DrawColor:string, strokecolor:array<string,int>}
+     */
+    public function saveDrawColor(): array {
+        return [
+            'DrawColor'   => $this->DrawColor,
+            'strokecolor' => $this->strokecolor
+        ];
+    }
+    /**
+     * 描画の色を復元
+     * 
+     * @since 0.28.04
+     * @param array{DrawColor:string, strokecolor:array<string,int>} $backup 保存値
+     */
+    public function restoreDrawColor(array $backup) {
+        $this->DrawColor = $backup['DrawColor'];
+        $this->strokecolor = $backup['strokecolor'];
+    }
+    /**
+     * 線のスタイルを保存
+     * 
+     * @since 0.28.04
+     * @return array{LineWidth:int|float, linestyleWidth:string, linestyleCap:string, linestyleJoin:string, linestyleDash:string, drawColor:array}
+     */
+    public function saveLineStyle(): array {
+        return [
+            'LineWidth'      => $this->LineWidth,
+            'linestyleWidth' => $this->linestyleWidth,
+            'linestyleCap'   => $this->linestyleCap,
+            'linestyleJoin'  => $this->linestyleJoin,
+            'linestyleDash'  => $this->linestyleDash,
+            'drawColor'      => $this->saveDrawColor()
+        ];
+    }
+    /**
+     * 線のスタイルを復元
+     * 
+     * @since 0.28.04
+     * @param array{LineWidth:int|float, linestyleWidth:string, linestyleCap:string, linestyleJoin:string, linestyleDash:string, drawColor:array} $backup 保存値
+     */
+    public function restoreLineStyle(array $backup) {
+        $this->LineWidth = $backup['LineWidth'];
+        $this->linestyleWidth = $backup['linestyleWidth'];
+        $this->linestyleCap = $backup['linestyleCap'];
+        $this->linestyleJoin = $backup['linestyleJoin'];
+        $this->linestyleDash = $backup['linestyleDash'];
+        $this->restoreDrawColor($backup['drawColor']);
     }
     /**
      * 例外をエラーログへ出力
@@ -374,6 +552,7 @@ class Tcpdf extends BaseClass {
         $this->isTest = false;
         $this->setPrintHeader(false);
         $this->setPrintFooter(false);
-        $this->setFont(static::FONT_MS_GOTHIC, '');
+        $this->setAutoPageBreak(false);
+        $this->setFont(static::FONT_MS_GOTHIC, '', 11);
     }
 }

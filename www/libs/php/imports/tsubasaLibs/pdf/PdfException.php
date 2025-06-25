@@ -1,24 +1,22 @@
 <?php
 // -------------------------------------------------------------------------------------------------
-// DB接続の例外クラス
+// PDF処理の例外クラス
 //
 // History:
-// 0.00.00 2024/01/23 作成。
-// 0.22.00 2024/05/17 エラーログへ出力する処理を実装。
-// 0.28.02 2024/06/27 メイン処理を共通化。
+// 0.28.02 2024/06/27 作成。
 // -------------------------------------------------------------------------------------------------
-namespace tsubasaLibs\database;
+namespace tsubasaLibs\pdf;
 require_once __DIR__ . '/../common/Exception.php';
 use tsubasaLibs\common;
 /**
- * DB接続の例外クラス
+ * PDF処理の例外クラス
  * 
- * @since 0.00.00
+ * @since 0.28.02
  * @version 0.28.02
  */
-class DbException extends common\Exception {
+class PdfException extends common\Exception {
     // ---------------------------------------------------------------------------------------------
     // 定数(オーバーライド)
     /** 例外名 */
-    const EXCEPTION_NAME = 'DbException';
+    const EXCEPTION_NAME = 'PdfException';
 }

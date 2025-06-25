@@ -7,6 +7,7 @@
 // 0.28.02 2024/06/27 例外処理を実装。
 // 0.28.03 2024/07/04 文字列出力を改良。既定ヘッダ出力を実装。
 // 0.28.04 2024/07/06 グリッド線を描画後、線のスタイルが破線になってしまうため修正。各種設定の保存/復元を追加。
+// 0.28.05 2024/07/12 文字列出力が連続出力の場合、中央寄せ/右寄せで移動したX座標を出力後に戻すよう対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\pdf;
 require_once __DIR__ . '/PdfException.php';
@@ -17,7 +18,7 @@ if (!class_exists(BaseClass::class)) require __DIR__ . '/#phpdoc/Tcpdf.php';
  * TCPDFクラス
  * 
  * @since 0.28.00
- * @version 0.28.04
+ * @version 0.28.05
  */
 class Tcpdf extends BaseClass {
     // ---------------------------------------------------------------------------------------------
@@ -71,6 +72,7 @@ class Tcpdf extends BaseClass {
         // 変更前を保存
         $backupTextRenderingMode = $this->saveTextRenderingMode();
         $backupCellPadding = $this->saveCellPadding();
+        $backupX = $x;
 
         // セル幅とX座標を調整
         $width = $this->GetStringWidth($txt);
@@ -85,6 +87,11 @@ class Tcpdf extends BaseClass {
             $width, 0, $txt, $border, $ln, $align, $fill, $link, $stretch,
             $ignore_min_height, $calign, $valign
         );
+
+        // 次の行へ連続して出力する場合、X座標の調整を戻す
+        if ($ln == 2)
+            if (in_array($align, ['C', 'R'], true))
+                $this->setX($backupX, $rtloff);
 
 		// 復元
         $this->restoreTextRenderingMode($backupTextRenderingMode);
@@ -251,7 +258,7 @@ class Tcpdf extends BaseClass {
 
         // 頁
         if ($pageNum !== null and $maxPageNum !== null) {
-            $posX = $this->getPageWidth() - 50;
+            $posX = -50;
             $this->setFont(static::FONT_MS_GOTHIC, '', 9);
             $this->Text($posX, 10, 'PAGE:');
             $posX += 24.5;
@@ -264,7 +271,7 @@ class Tcpdf extends BaseClass {
 
         // 現在日時
         if ($this->now !== null) {
-            $posX = $this->getPageWidth() - 50;
+            $posX = -50;
             $this->setFont(static::FONT_MS_GOTHIC, '', 9);
             $this->Text($posX, 15, 'TIME:');
             $posX += 9;

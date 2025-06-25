@@ -10,6 +10,7 @@ require_once __DIR__ . '/KeyItem.php';
 /**
  * レコードキークラス
  * 
+ * @since 0.00.00
  * @version 0.00.00
  */
 class Key {

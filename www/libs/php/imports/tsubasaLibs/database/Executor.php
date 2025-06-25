@@ -12,6 +12,7 @@ use Stringable;
 /**
  * 実行者クラス
  * 
+ * @since 0.00.00
  * @version 0.04.00
  */
 class Executor {

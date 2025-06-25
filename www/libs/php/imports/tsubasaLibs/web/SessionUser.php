@@ -17,6 +17,7 @@ use DateTime, DateInterval;
 /**
  * ログインユーザクラス
  * 
+ * @since 0.00.00
  * @version 0.04.00
  */
 class SessionUser {

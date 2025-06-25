@@ -7,6 +7,7 @@
 /**
  * Ajaxクラス
  * 
+ * @since 0.05.00
  * @version 0.05.00
  */
 export default class Ajax {

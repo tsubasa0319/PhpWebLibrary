@@ -9,6 +9,7 @@ namespace tsubasaLibs\database;
 /**
  * レコードキー項目クラス
  * 
+ * @since 0.00.00
  * @version 0.00.00
  */
 class KeyItem {

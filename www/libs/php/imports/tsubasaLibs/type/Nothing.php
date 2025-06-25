@@ -10,6 +10,7 @@ namespace tsubasaLibs\type;
 /**
  * Nothing型クラス
  * 
+ * @since 0.00.00
  * @version 0.11.00
  */
 class Nothing {}

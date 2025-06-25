@@ -14,6 +14,8 @@
             <input type="hidden" id="focusName" value="{$general.focusName}" disabled>
             <input type="hidden" id="errorNames" value="{$general.errorNames}" disabled>
             <input type="hidden" id="status" value="{$general.status}" disabled>
+            <input type="hidden" id="callSubProgramId" value="{$general.callSubProgramId}" disabled>
+            <input type="hidden" id="callType" value="{$general.callType}" disabled>
             <input type="hidden" name="startTime" value="{$general.startTime}">
         </form>
     </body>

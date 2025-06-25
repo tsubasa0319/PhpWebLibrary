@@ -12,8 +12,8 @@
 //                    登録済チェック/存在する行のリストを取得を実装。行を変更イベントを実装。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
-require_once __DIR__ . '/../type/ArrayLike.php';
 require_once __DIR__ . '/InputTableRow.php';
+require_once __DIR__ . '/../type/ArrayLike.php';
 use tsubasaLibs\type\ArrayLike;
 /**
  * 入力テーブルクラス

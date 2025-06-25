@@ -13,7 +13,7 @@
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
-use tsubasaLibs\database\DbBase;
+use tsubasaLibs\database;
 use Stringable;
 /**
  * APIイベントクラス
@@ -26,7 +26,7 @@ class Events {
     // プロパティ
     /** @var type\TimeStamp 現在日時 */
     protected $now;
-    /** @var DbBase|false DB */
+    /** @var database\DbBase|false DB */
     protected $db;
     /** @var ?string[] 許可するホスト名リスト */
     protected $allowHosts;
@@ -104,7 +104,7 @@ class Events {
     /**
      * DBを取得
      */
-    protected function getDb(): DbBase|false {
+    protected function getDb(): database\DbBase|false {
         return false;
     }
     /**

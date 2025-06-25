@@ -18,6 +18,9 @@
 		{
 			"name": "www/libs/php/imports",
 			"path": "../../www/libs/php/imports"
+		},
+		{
+			"path": "../../bat"
 		}
 	],
 	"settings": {
@@ -80,6 +83,10 @@
 		"editor.suggest.showConstructors": false,
 		"path-autocomplete.pathMappings": {
 			"/": "${folder}/../../../www/html"
+		},
+		"[bat]": {
+			"files.encoding": "shiftjis",
+			"files.eol": "\r\n"
 		}
 	},
 	"launch": {

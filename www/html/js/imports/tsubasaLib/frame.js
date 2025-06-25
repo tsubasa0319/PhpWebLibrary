@@ -10,6 +10,7 @@
 // 0.22.00 2024/05/17 フォーム送信時、未選択項目を送信するように対応。
 // 0.22.01 2024/05/17 キー押下時処理に、PageUp/PageDownキーによる次頁/前頁へ移動処理を追加。
 // 0.23.00 2024/05/18 サブ画面を閉じる時、停止したタブ移動を再開するように変更。
+// 0.26.01 2024/06/22 起動時処理にサブプログラム呼び出しを追加。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import web from "./web.js";
@@ -17,7 +18,7 @@ import web from "./web.js";
  * フレーム処理
  * 
  * @since 0.05.00
- * @version 0.23.00
+ * @version 0.26.01
  */
 const frame = {
     /**
@@ -33,6 +34,7 @@ const frame = {
         web.setExecuteTime();
         self.display();
         self.setFocus();
+        self.callSubProgram();
     },
     /**
      * 起動時処理(機能専用)
@@ -149,6 +151,30 @@ const frame = {
             return;
         }
         web.setFocus(elmFocusName.value);
+    },
+    /**
+     * サブプログラム呼び出し
+     * 
+     * @since 0.26.01
+     */
+    callSubProgram: () => {
+        const elmProgramId = document.getElementById('callSubProgramId');
+        const elmType = document.getElementById('callType');
+        const elmSessionId = document.getElementsByName('UNIT_SESSION_ID')[0];
+        if (
+            !(elmProgramId instanceof HTMLInputElement) ||
+            !(elmType instanceof HTMLInputElement) ||
+            !(elmSessionId instanceof HTMLInputElement)
+        ) {
+            console.error('サブプログラムの呼び出しに失敗しました。')
+            return;
+        }
+
+        if (elmProgramId.value === '') return;
+        
+        const url = './' + elmProgramId.value + '/?' +
+            'UNIT_SESSION_ID=' + encodeURIComponent(elmSessionId.value);
+        location.href = url;
     },
     /**
      * フォーム送信時

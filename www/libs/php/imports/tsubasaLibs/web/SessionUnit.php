@@ -8,6 +8,7 @@
 //                    現セッションを削除した場合も新規発行するように対応。
 // 0.18.00 2024/03/30 データの設定/取得/追加メソッドを追加。
 // 0.19.00 2024/04/16 セッションより値を削除するメソッドを追加。
+// 0.26.01 2024/06/22 画面単位セッションIDをGETメソッドからも取得できるように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use DateTime, DateInterval, Exception;
@@ -15,14 +16,14 @@ use DateTime, DateInterval, Exception;
  * 画面単位セッションクラス
  * 
  * @since 0.03.00
- * @version 0.18.00
+ * @version 0.26.01
  */
 class SessionUnit {
     // ---------------------------------------------------------------------------------------------
     // 定数
     /** @var string セッション配列の要素名 */
     const ID = 'unit';
-    /** @var string 画面単位セッション配列の要素名を持つPOST名 */
+    /** @var string 画面単位セッション配列の要素名を持つGET/POST名 */
     const UNIT_SESSION_ID = 'UNIT_SESSION_ID';
     // ---------------------------------------------------------------------------------------------
     // プロパティ
@@ -174,9 +175,11 @@ class SessionUnit {
      * セッションより情報設定
      */
     protected function setInfoFromSession() {
-        $unitId = isset($_POST[static::UNIT_SESSION_ID]) ?
-            $_POST[static::UNIT_SESSION_ID] :
-            null;
+        $unitId = match (true) {
+            isset($_POST[static::UNIT_SESSION_ID]) => $_POST[static::UNIT_SESSION_ID],
+            isset($_GET[static::UNIT_SESSION_ID])  => $_GET[static::UNIT_SESSION_ID],
+            default => null
+        };
         if ($unitId === null or !isset($this->session[$unitId]))
             $unitId = $this->makeUnit();
         $this->unitId = $unitId;

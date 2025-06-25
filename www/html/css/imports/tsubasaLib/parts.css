@@ -19,6 +19,7 @@
                       頁切替のスタイルを追加。
    0.21.00 2024/04/24 ブロックに対して、下寄せ用のクラスを実装。
    0.22.00 2024/05/17 更新ボタン/警告付き更新ボタンを追加。高さの標準値を25pxへ変更。
+   0.24.00 2024/05/18 マウス操作によるフォーカスも囲むように対応。
 ------------------------------------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------------------------------- */
 /* 変数定義 */
@@ -267,6 +268,54 @@ button:not(:disabled):hover {
     cursor: pointer;
 }
 
+input[type="button"]:focus,
+input[type="submit"]:focus,
+button:focus {
+    outline: 0;
+    position: relative;
+}
+
+input[type="button"]:focus::after,
+input[type="submit"]:focus::after,
+button:focus::after {
+    content: '';
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    margin: -2px;
+    border-radius: 2px;
+    border: 2px solid black;
+}
+
+/* Firefoxのみ */
+@-moz-document url-prefix() {
+    input[type="button"]:focus::after,
+    input[type="submit"]:focus::after,
+    button:focus::after {
+        margin: -3px;
+        border-radius: 4px;
+        border-color: blue;
+    }
+
+    input[type="button"]:focus::before,
+    input[type="submit"]:focus::before,
+    button:focus::before {
+        content: '';
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        margin: -7px;
+        border-radius: 7px;
+        border: 2px lightgray solid;
+    }
+}
+
 /* 更新ボタン */
 input[type="button"]:not(:disabled).update,
 input[type="submit"]:not(:disabled).update,
@@ -293,6 +342,33 @@ button.link {
     font-family: var(--tsubasaLib-font-family);
     font-size: var(--tsubasaLib-font-size);
     color: blue;
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* アンカー */
+a:focus {
+    outline: 0;
+    position: relative;
+}
+
+a:focus::after {
+    content: '';
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    margin: -2px;
+    border-radius: 2px;
+    border: 2px solid black;
+}
+
+/* Firefoxのみ */
+@-moz-document url-prefix() {
+    a:focus::after {
+        border-color: blue;
+    }
 }
 
 /* ---------------------------------------------------------------------------------------------- */

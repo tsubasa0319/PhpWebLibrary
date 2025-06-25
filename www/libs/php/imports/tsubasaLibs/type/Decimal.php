@@ -11,6 +11,7 @@ use Stringable;
 /**
  * 十進数型クラス
  * 
+ * @since 0.00.00
  * @version 0.11.00
  */
 class Decimal implements Stringable {

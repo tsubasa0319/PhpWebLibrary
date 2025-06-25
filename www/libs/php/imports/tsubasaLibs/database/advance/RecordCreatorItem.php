@@ -15,6 +15,7 @@ use tsubasaLibs\type;
 /**
  * レコードへ項目追加(作成ログ)
  * 
+ * @since 0.00.00
  * @version 0.11.00
  */
 trait RecordCreatorItem {

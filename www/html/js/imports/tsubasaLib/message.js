@@ -9,6 +9,7 @@ import web from "./web.js";
 /**
  * メッセージ処理
  * 
+ * @since 0.05.00
  * @version 0.05.00
  */
 const message = {

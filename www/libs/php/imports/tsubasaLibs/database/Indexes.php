@@ -9,6 +9,7 @@ namespace tsubasaLibs\database;
 /**
  * インデックスリストクラス
  * 
+ * @since 0.00.00
  * @version 0.00.00
  */
 class Indexes {

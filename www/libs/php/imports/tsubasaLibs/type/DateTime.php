@@ -14,6 +14,7 @@ use DateTime as _DateTime, DateTimeZone;
 /**
  * 日時型クラス
  * 
+ * @since 0.00.00
  * @version 0.11.00
  */
 class DateTime extends Date {

@@ -7,6 +7,7 @@
 /**
  * チェック処理
  * 
+ * @since 0.05.00
  * @version 0.05.00
  */
 const checker = {

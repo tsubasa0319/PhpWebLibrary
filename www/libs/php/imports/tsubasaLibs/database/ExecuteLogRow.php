@@ -10,6 +10,7 @@ use DateTime;
 /**
  * 実行ログ行クラス
  * 
+ * @since 0.00.00
  * @version 0.00.00
  */
 class ExecuteLogRow {

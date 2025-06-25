@@ -13,6 +13,7 @@ require_once __DIR__ . '/advance/ItemsUpdaterItem.php';
 /**
  * 項目定義リストクラス
  * 
+ * @since 0.00.00
  * @version 0.00.00
  */
 class Items {

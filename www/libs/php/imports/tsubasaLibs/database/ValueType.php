@@ -13,6 +13,7 @@ use DateTime;
 /**
  * データ型の共通処理
  * 
+ * @since 0.00.00
  * @version 0.11.00
  */
 class ValueType {

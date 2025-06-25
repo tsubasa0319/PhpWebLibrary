@@ -9,6 +9,7 @@ namespace tsubasaLibs\database;
 /**
  * 予約語(Microsoft SQL Server)
  * 
+ * @since 0.00.00
  * @version 0.00.00
  */
 class ReservedWordsMssql {

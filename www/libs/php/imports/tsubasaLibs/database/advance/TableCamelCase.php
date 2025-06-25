@@ -12,6 +12,7 @@ namespace tsubasaLibs\database\advance;
 /**
  * テーブルID/項目IDをキャメルケースとして処理
  * 
+ * @since 0.00.00
  * @version 0.11.00
  */
 trait TableCamelCase {

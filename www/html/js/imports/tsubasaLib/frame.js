@@ -11,6 +11,7 @@
 // 0.22.01 2024/05/17 キー押下時処理に、PageUp/PageDownキーによる次頁/前頁へ移動処理を追加。
 // 0.23.00 2024/05/18 サブ画面を閉じる時、停止したタブ移動を再開するように変更。
 // 0.26.01 2024/06/22 起動時処理にサブプログラム呼び出しを追加。
+// 0.28.00 2024/06/26 サブプログラム呼び出しを帳票出力に対応。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import web from "./web.js";
@@ -18,7 +19,7 @@ import web from "./web.js";
  * フレーム処理
  * 
  * @since 0.05.00
- * @version 0.26.01
+ * @version 0.28.00
  */
 const frame = {
     /**
@@ -174,7 +175,10 @@ const frame = {
         
         const url = './' + elmProgramId.value + '/?' +
             'UNIT_SESSION_ID=' + encodeURIComponent(elmSessionId.value);
-        location.href = url;
+        if (elmType.value === 'export')
+            location.href = url;
+        if (elmType.value === 'print')
+            open(url);
     },
     /**
      * フォーム送信時

@@ -12,6 +12,8 @@
 // 0.22.00 2024/05/17 新規レコード取得時、余計なクエリを実行しないように対応。
 //                    複数のレコードを削除、インデックスキーによる削除を実装。
 // 0.35.00 2024/08/31 レコード追加/更新/削除によるエラーメッセージ生成と、処理結果メッセージ生成を実装。
+// 0.37.00 2024/09/11 全レコード削除/テーブルを空にする処理を追加。
+//                    全レコード版の他テーブルよりINSERTを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -26,7 +28,7 @@ require_once __DIR__ . '/advance/TableCamelCase.php';
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.35.00
+ * @version 0.37.00
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -423,8 +425,11 @@ class Table {
     }
 
     /**
-     * レコード追加(別のテーブルより)
+     * レコード追加(別のテーブルより、キー重複分は除外)
      * 
+     * テンポラリテーブルには使用できません。  
+     * Can't reopen tableエラーになります。  
+     *   
      * INSERT INTO [Table] ([Item1], [Item2], ...)  
      * SELECT [Item1], [Item2], ...  
      * FROM [AnotherTable] AS tmp  
@@ -441,6 +446,30 @@ class Table {
     public function insertsFromTable(self $tempTable): int|false {
         // プリペアドステートメント
         $stmt = $this->prepare($this->getInsertsFromTableSql($tempTable));
+        if ($stmt === false) return false;
+
+        // バインド
+        $this->bindInsertsFromTableValue($stmt);
+
+        // 実行
+        if (!$stmt->execute()) return false;
+        return $stmt->rowCount();
+    }
+
+    /**
+     * レコード追加(別のテーブルより、全レコード)
+     * 
+     * INSERT INTO [Table] ([Item1], [Item2], ...)  
+     * SELECT [Item1], [Item2], ...  
+     * FROM [AnotherTable] AS tmp
+     * 
+     * @since 0.37.00
+     * @param static $tempTable 追加元のテーブル
+     * @return int|false 件数
+     */
+    public function insertAllFromTable(self $tempTable): int|false {
+        // プリペアドステートメント
+        $stmt = $this->prepare($this->getInsertAllFromTableSql($tempTable));
         if ($stmt === false) return false;
 
         // バインド
@@ -495,6 +524,9 @@ class Table {
      * 更新する対象の項目は、第2パラメータに指定したレコードを見て判断します。  
      * 項目値がNothingになっていない項目を、更新対象とします。  
      * 第2パラメータを省略した場合、全ての項目が更新対象となります。  
+     *   
+     * テンポラリテーブルには使用できません。  
+     * Can't reopen tableエラーになります。  
      *   
      * UPDATE [Table] AS tbl  
      * INNER JOIN [AnotherTable] AS tmp ON  
@@ -604,6 +636,47 @@ class Table {
         // 実行
         if (!$stmt->execute()) return false;
         return $stmt->rowCount();
+    }
+
+    /**
+     * 全レコード削除
+     * 
+     * DELETE FROM [Table]
+     * 
+     * @since 0.37.00
+     * @return int|false 件数
+     */
+    public function deleteAll() {
+        // プリペアードステートメント
+        $stmt = $this->prepare($this->getDeleteSql(false));
+        if ($stmt === false) return false;
+
+        // 実行
+        if (!$stmt->execute()) return false;
+        return $stmt->rowCount();
+    }
+
+    /**
+     * テーブルを空にする
+     * 
+     * ロールバックできず、自動採番もリセットされますが、  
+     * 高速な処理を期待することができます。  
+     *   
+     * DROP権限が必要です。
+     *   
+     * TRUNCATE TABLE [Table]
+     * 
+     * @since 0.37.00
+     * @return bool 成否
+     */
+    public function truncate() {
+        // プリペアードステートメント
+        $stmt = $this->prepare($this->getTruncateSql());
+        if ($stmt === false) return false;
+
+        // 実行
+        if (!$stmt->execute()) return false;
+        return true;
     }
 
     /**
@@ -1543,7 +1616,7 @@ class Table {
     }
 
     /**
-     * SQLステートメントを取得(INSERT用、別のテーブルより)
+     * SQLステートメントを取得(INSERT用、別のテーブルより、キー重複分は除外)
      * 
      * @param static $tempTable 別のテーブル
      * @return string SQLステートメント
@@ -1600,11 +1673,76 @@ class Table {
     }
 
     /**
-     * 値をバインド(INSERT用、別のテーブルより)
+     * 値をバインド(INSERT用、別のテーブルより、キー重複分は除外)
      * 
      * @param TableStatement テーブルステートメント
      */
     protected function bindInsertsFromTableValue(TableStatement $stmt) {
+        $itemsArray = $this->items->getItemsArray();
+        $record = $this->getNewRecord();
+        $record->setValuesForInsert();
+        $num = 0;
+        foreach ($itemsArray as $id => $item) {
+            if (!$record->isInputted($id)) continue;
+            $value = $record->{$id};
+            $type = $item->type;
+            $stmt->bindValue(++$num, $value, $type);
+        }
+    }
+
+    /**
+     * SQLステートメントを取得(INSERT用、別のテーブルより、全レコード)
+     * 
+     * @since 0.37.00
+     * @param static $tempTable 別のテーブル
+     * @return string SQLステートメント
+     */
+    protected function getInsertAllFromTableSql(self $tempTable): string {
+        $tableId = $this->getIdForSql($this->id);
+        $tempTableId = $this->getIdForSql($tempTable->id);
+        $itemsArray = $this->items->getItemsArray();
+        $tempItemIds = array_keys($tempTable->items->getItemsArray());
+        $executorIds = $this->getExecutorIds();
+        $record = $this->getNewRecord();
+        $record->setValuesForInsert();
+
+        // 更新先の項目リスト
+        $insertToItemIds = [];
+        foreach (array_keys($itemsArray) as $id) {
+            if (in_array($id, $executorIds, true)) {
+                if (!$record->isInputted($id)) continue;
+            } else {
+                if (!in_array($id, $tempItemIds)) continue;
+            }
+            $insertToItemIds[] = $this->getIdForSql($id);
+        }
+
+        // 更新元の項目リスト
+        $insertFromItemIds = [];
+        foreach ($insertToItemIds as $sqlId) {
+            $id = $this->getIdForVar($sqlId);
+            if (in_array($id, $executorIds, true)) {
+                $insertFromItemIds[] = '?';
+                continue;
+            }
+            $insertFromItemIds[] = sprintf('tmp.%s', $sqlId);
+        }
+
+        return sprintf(
+            'INSERT INTO %s (%s) ' .
+            'SELECT %s FROM %s AS tmp',
+            $tableId, implode(', ', $insertToItemIds),
+            implode(', ', $insertFromItemIds), $tempTableId
+        );
+    }
+
+    /**
+     * 値をバインド(INSERT用、別のテーブルより、全レコード)
+     * 
+     * @since 0.37.00
+     * @param TableStatement テーブルステートメント
+     */
+    protected function bindInsertAllFromTableValue(TableStatement $stmt) {
         $itemsArray = $this->items->getItemsArray();
         $record = $this->getNewRecord();
         $record->setValuesForInsert();
@@ -1964,5 +2102,19 @@ class Table {
      */
     protected function bindDeleteCompareValue(TableStatement $stmt, ...$binds) {
         $this->bindSelectValue($stmt, ...$binds);
+    }
+
+    /**
+     * SQLステートメントを取得(TRUNCATE用)
+     * 
+     * @return string SQLステートメント
+     */
+    protected function getTruncateSql(): string {
+        // テーブルID
+        $tableId = $this->getIdForSql($this->id);
+
+        return sprintf(
+            'TRUNCATE TABLE %s',
+            $tableId);
     }
 }

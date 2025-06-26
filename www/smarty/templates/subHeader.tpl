@@ -4,14 +4,12 @@
         <meta charset="utf-8">
         <title>{$general.title}</title>
         <link rel="stylesheet" href="{$general.css}">
-        <script type="module" src="/js/imports/tsubasaLibs/webLoader.js"></script>
+        <script type="module" src="/js/libs/webLoader.js"></script>
         <script type="module" src="/js/subScreen/webLoader.js"></script>
-        <script defer src="/js/frame.js"></script>
-        <script defer src="/js/general.js"></script>
         <script defer src="{$general.js}"></script>
     </head>
-    <body onload="frame.body_load(event);" onkeydown="return frame.body_keydown(event);">
-        <form method="post" onsubmit="frame.form_submit(event);">
+    <body onload="libs.frame.body_load(event);" onkeydown="return libs.frame.body_keydown(event);">
+        <form method="post" onsubmit="libs.frame.form_submit(event);">
             <header>
                 <section id="bodyHeaderInfo" class="subScreen">
                     <div>

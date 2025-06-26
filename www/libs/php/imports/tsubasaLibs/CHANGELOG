@@ -1,3 +1,4 @@
+0.31.01 2024/08/08 15:52:04 APIイベントにて、x-www-form-urlencodedの時、POST値が配列の場合に文字セット変換に失敗していたので修正。
 0.31.00 2024/08/08 11:56:20
 [変更]
 APIイベントにて、コンテンツタイプをapplication/x-www-form-urlencoded、application/jsonに対応。

@@ -12,6 +12,7 @@
 // 0.25.00 2024/05/21 権限チェック時、ホスト名をIPアドレスリストで照合するように変更。
 // 0.31.00 2024/08/08 コンテンツタイプをapplication/x-www-form-urlencoded、application/jsonに対応。
 //                    文字セットをUTF-8、Windows-31J、EUC-JPに対応。
+// 0.31.01 2024/08/08 x-www-form-urlencodedの時、POST値が配列の場合に文字セット変換に失敗していたので修正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
@@ -22,7 +23,7 @@ use Stringable;
  * APIイベントクラス
  * 
  * @since 0.09.00
- * @version 0.31.00
+ * @version 0.31.01
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -295,14 +296,8 @@ class Events {
 
         // 文字セットを変換
         $charset = $this->convertCharsetForPhp($this->charset);
-        if ($charset !== null and $charset !== $defaultCharset) {
-            foreach ($this->_post as $key => $val) {
-                $this->_post[$key] = mb_convert_encoding(
-                    stripslashes($val),
-                    $defaultCharset, $charset
-                );
-            }
-        }
+        if ($charset !== null and $charset !== $defaultCharset)
+            $this->_post = $this->convertDataForPost($this->_post, $defaultCharset, $charset);
     }
 
     /**
@@ -371,11 +366,43 @@ class Events {
     }
 
     /**
+     * データ変換(POST用)
+     * 
+     * @since 0.31.01
+     * @param mixed $data データ
+     * @param string $toCharset 変換後の文字セット
+     * @param string $fromCharset データの文字セット
+     * @return mixed 文字セットを変換したデータ
+     */
+    protected function convertDataForPost($data, $toCharset, $fromCharset) {
+        switch (true) {
+            case is_array($data) and array_values($data) === $data:
+                // 配列型の場合
+                $convertData = [];
+                foreach ($data as $val)
+                    $convertData[] = $this->convertDataForPost($val, $toCharset, $fromCharset);
+                return $convertData;
+
+            case is_array($data) and array_values($data) !== $data:
+                // 連想配列型の場合
+                $convertData = [];
+                foreach ($data as $key => $val)
+                    $convertData[$key] = $this->convertDataForPost($val, $toCharset, $fromCharset);
+                return $convertData;
+
+            default:
+                // 値型の場合
+                return is_string($data) ?
+                    mb_convert_encoding($data, $toCharset, $fromCharset) : $data;
+        }
+    }
+
+    /**
      * データ変換(JSON用)
      * 
      * @param mixed $data データ
      * @param string $charset データの文字セット
-     * @param mixed JSON形式へエンコードできるように変換したデータ
+     * @return mixed JSON形式へエンコードできるように変換したデータ
      */
     protected function convertDataForJson($data, $charset) {
         switch (true) {

@@ -11,6 +11,7 @@
 // 0.19.00 2024/04/16 プロパティ(0を表示するかどうか/カンマ区切りするかどうか/最小値/最大値)を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
+
 /**
  * 入力項目クラス(整数型)
  * 
@@ -30,13 +31,17 @@ class InputItemInteger extends InputItemBase {
     public $minValue;
     /** @var ?int 最大値 */
     public $maxValue;
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(オーバーライド)
+    // 値を初期化
     public function clearValue() {
         $this->value = 0;
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理(オーバーライド)
+    // 初期設定
     protected function setInit() {
         parent::setInit();
         $this->displayZero = false;
@@ -44,14 +49,20 @@ class InputItemInteger extends InputItemBase {
         $this->minValue = null;
         $this->maxValue = null;
     }
+
+    // 値を設定(Web値より)
     protected function setValueFromWebValue() {
         $this->value = (int)str_replace(',', '', $this->webValue);
     }
+
+    // Web値へ変換し取得(値より)
     protected function getWebValueFromValue(): string {
         if ($this->value === 0)
             return $this->displayZero ? '0' : '';
         return $this->separateCommas ? number_format($this->value) : (string)$this->value;
     }
+
+    // 値チェック
     protected function checkValue(string $value): bool {
         if (!parent::checkValue($value)) return false;
         if ($value === '') return true;

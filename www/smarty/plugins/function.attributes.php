@@ -7,6 +7,7 @@
 // -------------------------------------------------------------------------------------------------
 require_once 'base/web/SmartyPlugins.php';
 use base\web\SmartyPlugins;
+
 function smarty_function_attributes($params, &$smarty) {
     return SmartyPlugins::attributes($params, $smarty);
 }

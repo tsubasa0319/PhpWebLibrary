@@ -9,6 +9,7 @@
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/SessionUser.php';
 require_once __DIR__ . '/SessionUnit.php';
+
 /**
  * セッションクラス
  * 
@@ -21,6 +22,7 @@ class Session {
     public $user;
     /** @var SessionUnit 画面単位セッション */
     public $unit;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct() {
@@ -29,6 +31,7 @@ class Session {
         $this->user = $this->getUser();
         $this->unit = $this->getUnit();
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -39,6 +42,7 @@ class Session {
     protected function getUser(): SessionUser {
         return new SessionUser();
     }
+
     /**
      * 画面単位セッションを取得
      * 

@@ -13,6 +13,7 @@ require_once __DIR__ . '/advance/RecordCreatorItem.php';
 require_once __DIR__ . '/advance/RecordInputterItem.php';
 require_once __DIR__ . '/advance/RecordUpdaterItem.php';
 use tsubasaLibs\type;
+
 /**
  * レコードクラス
  * 
@@ -28,6 +29,7 @@ class Record {
     protected $failedItems;
     /** @var static レコード(変更前) */
     public $previousRecord;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
@@ -36,16 +38,21 @@ class Record {
     public function __construct(TableStatement $stmt) {
         // fetchの際、プロパティへ値を設定後、この処理を通る
         $this->stmt = $stmt;
+
         // 受け取りに失敗した項目を再設定(ステートメントで定義した項目IDの変換を利用)
         foreach ($this->failedItems ?? [] as $name => $value) $this->{$name} = $value;
         $this->failedItems = [];
+
         // 値を変換
         $this->convertValues();
+
         // 計算項目を設定
         $this->setComputedValues();
+
         // 変更前へ設定
         $this->previousRecord = clone $this;
     }
+
     // ---------------------------------------------------------------------------------------------
     // マジックメソッド
     public function __set($name, $value) {
@@ -59,6 +66,7 @@ class Record {
             $this->failedItems[$name] = $value;
         }
     }
+
     public function __clone() {
         foreach (get_object_vars($this) as $name => $value) {
             if (!is_object($value)) continue;
@@ -67,6 +75,7 @@ class Record {
             $this->{$name} = clone $value;
         }
     }
+
     public function __debugInfo() {
         $vars = [];
         $excludeItems = ['failedItems', 'previousRecord'];
@@ -81,6 +90,7 @@ class Record {
             $vars[$name] = $this->{$name};
         return $vars;
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -98,6 +108,7 @@ class Record {
         $this->setComputedValues();
         return $this;
     }
+
     /**
      * 他のレコードより値を受け取り
      * 
@@ -113,6 +124,7 @@ class Record {
         $this->setComputedValues();
         return $this;
     }
+
     /**
      * 実行者を設定(INSERT用)
      * 
@@ -126,6 +138,7 @@ class Record {
         $this->setUpdaterValues($executor);
         return $this;
     }
+
     /**
      * 実行者を設定(UPDATE用)
      * 
@@ -138,6 +151,7 @@ class Record {
         $this->setUpdaterValues($executor);
         return $this;
     }
+
     /**
      * リフレッシュ
      * 
@@ -148,6 +162,7 @@ class Record {
         $this->setComputedValues();
         return $this;
     }
+
     /**
      * 全ての項目にNothingを設定
      * 
@@ -161,6 +176,7 @@ class Record {
         }
         return $this;
     }
+
     /**
      * 指定した項目が入力されているか
      * 
@@ -175,6 +191,7 @@ class Record {
         if ($this->{$id} instanceof type\Nothing) return false;
         return true;
     }
+
     /**
      * インデックスキーのキー値リストを取得
      * 
@@ -188,6 +205,7 @@ class Record {
             $values[] = $this->{$keyItem->item->id};
         return $values;
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -200,6 +218,7 @@ class Record {
         if (!($this->stmt instanceof TableStatement)) return $id;
         return $this->stmt->table->getIdForVar($id);
     }
+
     /**
      * 全ての項目値を変換(DB→クラス)
      */
@@ -210,6 +229,7 @@ class Record {
             $this->convertValue($name, $item->type);
         }
     }
+
     /**
      * 項目値を変換(DB→クラス)
      * 
@@ -220,10 +240,12 @@ class Record {
         if (!property_exists($this, $id)) return;
         ValueType::convertForRecord($this->{$id}, $type);
     }
+
     /**
      * 計算項目を設定
      */
     protected function setComputedValues() {}
+
     /**
      * Nothing型を取得
      * 
@@ -232,18 +254,21 @@ class Record {
     protected function getNothing(): type\Nothing {
         return new type\Nothing();
     }
+
     /**
      * 作成者を設定
      * 
      * @param database\Executor $executor 実行者
      */
     protected function setCreatorValues(Executor $executor) {}
+
     /**
      * 入力者を設定
      * 
      * @param database\Executor $executor 実行者
      */
     protected function setInputterValues(Executor $executor) {}
+
     /**
      * 更新者を設定(INSERT用)
      * 

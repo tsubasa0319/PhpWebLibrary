@@ -11,6 +11,7 @@
 namespace tsubasaLibs\type;
 use Stringable;
 use DateTime, DateTimeZone;
+
 /**
  * 日付型クラス
  * 
@@ -22,6 +23,7 @@ class Date implements Stringable {
     // プロパティ
     /** @var DateTime 日時 */
     protected $datetime;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
@@ -40,19 +42,23 @@ class Date implements Stringable {
             substr($date, 0, 4), substr($date, 4, 2), substr($date, 6));
         $this->datetime = new DateTime($date, $timezone);
     }
+
     // ---------------------------------------------------------------------------------------------
     // マジックメソッド
     public function __clone() {
         $this->datetime = clone $this->datetime;
     }
+
     public function __toString() {
         return $this->datetime->format('Y/m/d');
     }
+
     public function __debugInfo() {
         return [
             'value' => (string)$this
         ];
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -61,18 +67,21 @@ class Date implements Stringable {
     public function getYear() {
         return (int)$this->datetime->format('Y');
     }
+
     /**
      * 月を取得
      */
     public function getMonth() {
         return (int)$this->datetime->format('m');
     }
+
     /**
      * 日を取得
      */
     public function getDay() {
         return (int)$this->datetime->format('d');
     }
+
     /**
      * 曜日を取得
      * 
@@ -81,6 +90,7 @@ class Date implements Stringable {
     public function getWeek() {
         return (int)$this->datetime->format('w');
     }
+
     /**
      * 日付を変更
      * 
@@ -97,6 +107,7 @@ class Date implements Stringable {
             $day ?? $this->getDay());
         return $this;
     }
+
     /**
      * 年を変更
      * 
@@ -106,6 +117,7 @@ class Date implements Stringable {
     public function setYear(int $year) {
         return $this->setDate($year);
     }
+
     /**
      * 月を変更
      * 
@@ -115,6 +127,7 @@ class Date implements Stringable {
     public function setMonth(int $month) {
         return $this->setDate(null, $month);
     }
+
     /**
      * 日を変更
      * 
@@ -124,6 +137,7 @@ class Date implements Stringable {
     public function setDay(int $day) {
         return $this->setDate(null, null, $day);
     }
+
     /**
      * 曜日を変更
      * 
@@ -137,6 +151,7 @@ class Date implements Stringable {
         if ($days < 0) $days += 7;
         return $this->setDate(null, null, $this->getDay() + $days);
     }
+
     /**
      * 月末へ変更
      * 
@@ -145,6 +160,7 @@ class Date implements Stringable {
     public function setLastDayOfMonth() {
         return $this->setDate(null, $this->getMonth() + 1, 0);
     }
+
     /**
      * 年を加算
      * 
@@ -154,6 +170,7 @@ class Date implements Stringable {
     public function addYears(int $years) {
         return $this->setDate($this->getYear() + $years);
     }
+
     /**
      * 月を加算
      * 
@@ -163,6 +180,7 @@ class Date implements Stringable {
     public function addMonths(int $months) {
         return $this->setDate(null, $this->getMonth() + $months);
     }
+
     /**
      * 日を加算
      * 
@@ -172,6 +190,7 @@ class Date implements Stringable {
     public function addDays(int $days) {
         return $this->setDate(null, null, $this->getDay() + $days);
     }
+
     /**
      * 比較
      * 
@@ -183,14 +202,16 @@ class Date implements Stringable {
         $_that = new static($that);
         return (string)$this <=> (string)$_that;
     }
+
     /**
      * DateTimeインスタンスへ変換
      */
     public function toDateTime() {
         return new DateTime((string)$this, $this->datetime->getTimezone());
     }
+
     // ---------------------------------------------------------------------------------------------
-    // 静的メソッド
+    // メソッド(静的)
     /**
      * インスタンスを生成
      * 

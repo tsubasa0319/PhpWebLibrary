@@ -7,6 +7,7 @@
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 use PDOStatement;
+
 class DbStatement extends PDOStatement {
     // ---------------------------------------------------------------------------------------------
     // メソッド
@@ -23,6 +24,7 @@ class DbStatement extends PDOStatement {
     ): bool {
         return false;
     }
+
     /**
      * 実行
      * 
@@ -32,6 +34,7 @@ class DbStatement extends PDOStatement {
     public function execute(array|null $params = null): bool {
         return false;
     }
+
     /**
      * 次のレコードを取得
      * 
@@ -46,6 +49,7 @@ class DbStatement extends PDOStatement {
     ): mixed {
         return false;
     }
+
     /**
      * 全てのレコードを取得
      * 

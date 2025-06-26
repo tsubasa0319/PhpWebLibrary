@@ -7,9 +7,11 @@
 // 0.16.00 2024/03/23 クラス名を訂正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
+
 class TableStatement extends DbStatement {
     // ---------------------------------------------------------------------------------------------
     // メソッド
+    // 次のレコードを取得
     /**
      * @return Record|false 見つかればレコード、見つからなければfalse
      */
@@ -19,6 +21,8 @@ class TableStatement extends DbStatement {
     ): mixed {
         return false;
     }
+
+    // 全てのレコードを取得
     /**
      * @return Record[] 見つかればレコード配列、見つからなければfalse
      */

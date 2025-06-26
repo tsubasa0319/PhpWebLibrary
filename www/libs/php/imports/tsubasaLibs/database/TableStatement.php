@@ -9,6 +9,7 @@
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/Record.php';
+
 /**
  * テーブルステートメントクラス
  * 
@@ -22,6 +23,7 @@ class TableStatement extends DbStatement {
     protected $recordClass;
     /** @var Table テーブル */
     public $table;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
@@ -30,10 +32,12 @@ class TableStatement extends DbStatement {
     protected function __construct(?DbBase $db) {
         parent::__construct($db);
         if ($db !== null)
+            // フェッチモードを変更、レコードインスタンスを返すようにする
             $this->setFetchMode(
                 DbBase::FETCH_CLASS, $this->recordClass, [$this]
             );
     }
+
     // ---------------------------------------------------------------------------------------------
     // マジックメソッド
     public function __debugInfo() {
@@ -42,6 +46,7 @@ class TableStatement extends DbStatement {
             'bindedValues' => $this->bindedValues
         ];
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -50,6 +55,7 @@ class TableStatement extends DbStatement {
     public function setTable(Table $table) {
         $this->table = $table;
     }
+
     /**
      * 新規レコードを取得
      */

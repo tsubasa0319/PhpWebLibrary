@@ -6,6 +6,7 @@
 // 0.00.00 2024/01/23 作成。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
+
 /**
  * インデックスリストクラス
  * 
@@ -19,12 +20,14 @@ class Indexes {
     protected $table;
     /** @var Table[] 生成したインデックスインスタンスリスト */
     protected $indexInstances;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct(Table $table) {
         $this->table = $table;
         $this->setInit();
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -33,6 +36,7 @@ class Indexes {
     protected function setInit() {
         $this->indexInstances = [];
     }
+
     /**
      * インデックスインスタンスを取得
      * 
@@ -42,8 +46,11 @@ class Indexes {
      * @return Table インデックスインスタンス
      */
     protected function getIndexInstance(string $indexClass): Table {
+        // 再利用
         foreach ($this->indexInstances as $indexInstance)
             if ($indexInstance instanceof $indexClass) return $indexInstance;
+
+        // 生成し、キャッシュを取る
         $indexInstance = new $indexClass($this->table->db);
         $this->indexInstances[] = $indexInstance;
         return $indexInstance;

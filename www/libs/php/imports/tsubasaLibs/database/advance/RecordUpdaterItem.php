@@ -12,6 +12,7 @@
 namespace tsubasaLibs\database\advance;
 use tsubasaLibs\database;
 use tsubasaLibs\type;
+
 /**
  * レコードへ項目追加(更新ログ)
  * 
@@ -27,6 +28,7 @@ trait RecordUpdaterItem {
     public $updateUserId;
     /** @var string 更新プログラムID */
     public $updateProgramId;
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理(オーバーライド)
     /**

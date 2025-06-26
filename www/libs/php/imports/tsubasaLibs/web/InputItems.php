@@ -23,6 +23,7 @@ require_once __DIR__ . '/InputItemBoolean.php';
 require_once __DIR__ . '/InputItemDecimal.php';
 require_once __DIR__ . '/InputItemDate.php';
 require_once __DIR__ . '/InputItemTimeStamp.php';
+
 /**
  * 入力項目リストクラス
  * 
@@ -43,6 +44,7 @@ class InputItems {
     public $isInputOnly;
     /** @var array<string, InputItemBase> 入力項目リスト(再取得用) */
     protected $items;
+
     // ---------------------------------------------------------------------------------------------
     // マジックメソッド
     public function __debugInfo() {
@@ -53,6 +55,7 @@ class InputItems {
         }
         return $info;
     }
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
@@ -63,6 +66,7 @@ class InputItems {
         $this->events = $events;
         $this->setInit();
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -73,6 +77,7 @@ class InputItems {
     public function getEvent(): Events {
         return $this->events;
     }
+
     /**
      * 項目リストを取得
      * 
@@ -88,6 +93,7 @@ class InputItems {
 
         return $this->items;
     }
+
     /**
      * 値リストを取得
      * 
@@ -101,6 +107,7 @@ class InputItems {
 
         return $values;
     }
+
     /**
      * 値リストより設定
      * 
@@ -113,6 +120,7 @@ class InputItems {
             if (in_array($name, $names, true))
                 $item->value = $values[$name];
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(イベント前処理)
     /**
@@ -124,6 +132,7 @@ class InputItems {
         foreach ($this->getItems() as $var)
             $var->setFromSession($this->events->session->unit);
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(イベント処理)
     /**
@@ -136,16 +145,18 @@ class InputItems {
         foreach ($this->getItems() as $item)
             $item->setFromGet();
     }
+
     /**
      * POSTメソッドより値を設定
      */
     public function setFromPost() {
         // 確認画面の場合は、設定しない
         if ($this->events->isConfirm) return;
-        
+
         foreach ($this->getItems() as $item)
             $item->setFromPost();
     }
+
     /**
      * Web出力用にWeb値を設定
      * 
@@ -155,6 +166,7 @@ class InputItems {
         foreach ($this->getItems() as $item)
             $item->setForWeb();
     }
+
     /**
      * セッション出力用にセッション値を設定
      * 
@@ -164,6 +176,7 @@ class InputItems {
         foreach ($this->getItems() as $item)
             $item->setForSession();
     }
+
     /**
      * エラー項目を登録
      */
@@ -172,6 +185,7 @@ class InputItems {
             if ($item->isError())
                 $this->events->errorNames[] = $item->getName();
     }
+
     /**
      * Smarty用にWeb値リストを取得
      * 
@@ -184,6 +198,7 @@ class InputItems {
             $values[$id] = $item->getForSmarty();
         return $values;
     }
+
     /**
      * フォーカス移動
      * 
@@ -197,6 +212,7 @@ class InputItems {
             return;
         }
     }
+
     /**
      * エラー項目リストを取得
      * 
@@ -210,6 +226,7 @@ class InputItems {
                 $names[] = $item->getName();
         return $names;
     }
+
     /**
      * エラーかどうか
      * 
@@ -219,6 +236,7 @@ class InputItems {
     public function isError(): bool {
         return count($this->getError()) > 0;
     }
+
     /**
      * 入力チェック(最小限のみ)
      * 
@@ -235,6 +253,7 @@ class InputItems {
         }
         return $result;
     }
+
     /**
      * 入力チェック
      * 
@@ -248,6 +267,7 @@ class InputItems {
                 $result = false;
         return $result;
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(イベント後処理)
     /**
@@ -259,6 +279,7 @@ class InputItems {
         foreach ($this->getItems() as $item)
             $item->setToSession($unit);
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**

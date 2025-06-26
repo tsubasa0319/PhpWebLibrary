@@ -8,6 +8,7 @@
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use Smarty;
+
 /**
  * Smartyプラグインクラス
  * 
@@ -30,6 +31,7 @@ class SmartyPlugins {
         if (!isset($params['items'])) return '';
         return static::toAttributes($params['items']) ?? '';
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理(静的)
     /**
@@ -53,6 +55,7 @@ class SmartyPlugins {
         if (count($list) == 0) return null;
         return implode(' ', $list);
     }
+
     /**
      * 属性文字列へ変換
      * 
@@ -69,6 +72,7 @@ class SmartyPlugins {
         if ($_value === null) return null;
         return sprintf('%s="%s"', $name, $_value);
     }
+
     /**
      * 項目値を文字列へ変換
      * 
@@ -93,6 +97,7 @@ class SmartyPlugins {
         if ($value === false) return null;
         return (string)$value;
     }
+
     /**
      * 項目値を文字列へ変換(配列)
      * 
@@ -111,6 +116,7 @@ class SmartyPlugins {
         if (count($list) == 0) return null;
         return implode(' ', $list);
     }
+
     /**
      * 項目値を文字列へ変換(連想配列)
      * 

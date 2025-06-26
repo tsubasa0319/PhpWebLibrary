@@ -8,6 +8,7 @@
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/../type/Decimal.php';
 use tsubasaLibs\type;
+
 /**
  * 入力項目クラス(十進数型)
  * 
@@ -31,13 +32,17 @@ class InputItemDecimal extends InputItemBase {
     public $maxValue;
     /** @var ?int 小数点以下の最大桁数 */
     public $maxDegitsAfterPoint;
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(オーバーライド)
+    // 値を初期化
     public function clearValue() {
         $this->value = $this->getNewDecimal();
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理(オーバーライド)
+    // 初期設定
     protected function setInit() {
         parent::setInit();
         $this->displayZero = false;
@@ -47,9 +52,13 @@ class InputItemDecimal extends InputItemBase {
         $this->maxValue = null;
         $this->maxDegitsAfterPoint = null;
     }
+
+    // 値を設定(Web値より)
     protected function setValueFromWebValue() {
         $this->value = $this->getNewDecimal(str_replace(',', '', $this->webValue));
     }
+
+    // Web値へ変換し取得(値より)
     protected function getWebValueFromValue(): string {
         $value = (string)$this->value;
 
@@ -75,6 +84,8 @@ class InputItemDecimal extends InputItemBase {
 
         return implode('.', $valueArr);
     }
+
+    // 値チェック
     protected function checkValue(string $value): bool {
         if (!parent::checkValue($value)) return false;
         if ($value === '') return true;
@@ -156,6 +167,7 @@ class InputItemDecimal extends InputItemBase {
 
         return true;
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理(追加)
     /**

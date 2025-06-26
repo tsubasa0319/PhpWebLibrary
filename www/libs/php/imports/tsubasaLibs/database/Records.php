@@ -8,6 +8,7 @@
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/../type/ArrayLike.php';
 use tsubasaLibs\type\ArrayLike;
+
 /**
  * レコードリストクラス
  * 
@@ -23,8 +24,10 @@ class Records extends ArrayLike {
     public function __construct(Record ...$records) {
         $this->datas = $records;
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(オーバーライド)
+    // 設定
     public function offsetSet(mixed $offset, mixed $value): void {
         if ($offset !== null and !is_int($offset))
             trigger_error('offset is not an integer type', E_USER_ERROR);

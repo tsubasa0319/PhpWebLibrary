@@ -21,6 +21,7 @@
 // 0.22.00 2024/05/17 一度セッションへ保管した値は、そのまま保持するように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
+
 /**
  * 入力項目ベースクラス
  * 
@@ -32,6 +33,7 @@ class InputItemBase {
     // 定数
     /** cssクラス(エラー) */
     const CSS_CLASS_ERROR = 'error';
+
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var InputItems 入力項目リスト */
@@ -79,6 +81,7 @@ class InputItemBase {
     protected $selectList;
     /** @var ?string ラベル名(選択リストに候補が無かった時) */
     public $labelForNoList;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
@@ -92,6 +95,7 @@ class InputItemBase {
         $this->label = $label ?? $name;
         $this->setInit();
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(イベント前処理)
     /**
@@ -108,7 +112,7 @@ class InputItemBase {
             $this->sessionValue = $data;
             $this->setValueFromSessionValue();
         }
-        
+
         // ラベル名(選択リストに候補が無かった時)
         $data = $unit->getData($this->name, 'labelForNoList');
         if ($data !== null) {
@@ -116,6 +120,7 @@ class InputItemBase {
             $this->labelForNoList = $data;
         }
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(イベント処理)
     /**
@@ -137,6 +142,7 @@ class InputItemBase {
         if ($this->checkValue($this->webValue))
             $this->setValueFromWebValue();
     }
+
     /**
      * Web値を設定(POSTメソッドより)
      */
@@ -160,6 +166,7 @@ class InputItemBase {
         if ($this->checkValue($this->webValue))
             $this->setValueFromWebValue();
     }
+
     /**
      * セッション値を設定(画面単位セッションの入力テーブルより)
      * 
@@ -170,6 +177,7 @@ class InputItemBase {
         $this->sessionValue = $sessionValue;
         $this->setValueFromSessionValue();
     }
+
     /**
      * 入力チェック(最小限のみ)
      * 
@@ -188,6 +196,7 @@ class InputItemBase {
 
         return true;
     }
+
     /**
      * 入力チェック(最小限のみ、セッション版)
      * 
@@ -209,16 +218,19 @@ class InputItemBase {
 
         return true;
     }
+
     /**
      * エラーへ設定
      */
     public function setError() {
         if ($this->errorId === null) $this->errorId = '-';
     }
+
     /**
      * 値を初期化
      */
     public function clearValue() {}
+
     /**
      * フォーカス移動
      * 
@@ -227,6 +239,7 @@ class InputItemBase {
     public function setFocus() {
         $this->isFocus = true;
     }
+
     /**
      * 入力チェック
      * 
@@ -236,6 +249,7 @@ class InputItemBase {
     public function check(): bool {
         return true;
     }
+
     /**
      * 選択リストを設定(ラジオボタン/セレクトボックス用)
      * 
@@ -245,6 +259,7 @@ class InputItemBase {
     public function setSelectList(SelectList $selectList) {
         $this->selectList = $selectList;
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(イベント後処理)
     /**
@@ -256,6 +271,7 @@ class InputItemBase {
     public function isError(): bool {
         return $this->errorId !== null;
     }
+
     /**
      * Web値を設定(Web用)
      */
@@ -275,6 +291,7 @@ class InputItemBase {
         // 設定
         $this->setWebValueFromValue();
     }
+
     /**
      * セッション値を設定(セッション用)
      * 
@@ -296,6 +313,7 @@ class InputItemBase {
         // 設定
         $this->setSessionValueFromValue();
     }
+
     /**
      * name属性値を取得
      * 
@@ -308,6 +326,7 @@ class InputItemBase {
             $this->name :
             sprintf('%s[],%s', $this->name, $index);
     }
+
     /**
      * セッションへ登録
      * 
@@ -322,6 +341,7 @@ class InputItemBase {
         if ($this->labelForNoList !== null)
             $unit->setData($this->name, $this->labelForNoList, 'labelForNoList');
     }
+
     /**
      * Smarty用に取得
      */
@@ -332,6 +352,7 @@ class InputItemBase {
                 $this->selectList->getForSmarty($this->webValue, $this->labelForNoList) : null
         ];
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -350,6 +371,7 @@ class InputItemBase {
         $this->selectList = null;
         $this->labelForNoList = null;
     }
+
     /**
      * Web画面上の要素番号を取得
      * 
@@ -364,10 +386,12 @@ class InputItemBase {
 
         return null;
     }
+
     /**
      * 値を設定(Web値より)
      */
     protected function setValueFromWebValue() {}
+
     /**
      * Web値へ変換し取得(値より)
      * 
@@ -377,12 +401,14 @@ class InputItemBase {
     protected function getWebValueFromValue(): string {
         return $this->value ?? '';
     }
+
     /**
      * Web値を設定(値より)
      */
     protected function setWebValueFromValue() {
         $this->webValue = htmlspecialchars($this->getWebValueFromValue());
     }
+
     /**
      * 値を設定(セッション値より)
      * 
@@ -392,6 +418,7 @@ class InputItemBase {
         $this->webValue = $this->sessionValue;
         $this->setValueFromWebValue();
     }
+
     /**
      * セッション値を設定(値より)
      * 
@@ -401,6 +428,7 @@ class InputItemBase {
     protected function setSessionValueFromValue() {
         $this->sessionValue = $this->getWebValueFromValue();
     }
+
     /**
      * 値チェック
      * 

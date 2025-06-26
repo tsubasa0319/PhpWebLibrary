@@ -37,6 +37,7 @@ require_once __DIR__ . '/WebException.php';
 use tsubasaLibs\type;
 use tsubasaLibs\database\DbBase;
 use Exception;
+
 /**
  * イベントクラス
  * 
@@ -48,6 +49,7 @@ class Events {
     // 定数
     /** システム管理者権限 */
     const ROLE_SYSTEM_ADMINISTRATOR = 'sysAdmin';
+
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var type\TimeStamp 現在日時 */
@@ -74,35 +76,45 @@ class Events {
     public $isConfirm;
     /** @var array<string, string> 返り値リスト(Ajax用) */
     public $valuesForAjax;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct() {
         // 現在日時を取得
         $this->now = new type\TimeStamp();
+
         // セッションを取得
         $this->session = $this->getSession();
+
         // Ajax通信かどうか、エラーハンドリングを設定
         $this->isAjax =
             isset($_SERVER['HTTP_X_REQUESTED_WITH']) and
             strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
         if ($this->isAjax)
             $this->setErrorHandlerForAjax();
+
         // DB接続
         $this->db = $this->getDb();
+
         // 初期設定
         $this->setInit();
         if ($this->isLoginCheck) {
             // ログインチェック、タイムアウト処理
             if (!$this->session->user->isLogined()) $this->timeout();
         }
+
         // 権限チェック
         if (!$this->checkRole($this->session->user->getRoles())) $this->roleError();
+
         // 最終アクセス日時を更新
         $this->session->user->updateLastAccessTime();
+
         // ログアウト後、タイムアウト後などのメッセージを取得
         if ($this->session->user->isLogoutAfter()) $this->addMessage(Message::ID_LOGOUT);
         if ($this->session->user->isTimeoutAfter()) $this->addMessage(Message::ID_TIMEOUT);
         if ($this->session->user->isExpired()) $this->addMessage(Message::ID_PASSWORD_EXPIRED);
+
+        // イベント
         if (!$this->logout()) {
             if (!$this->isAjax) {
                 // 通常イベント
@@ -118,6 +130,7 @@ class Events {
             }
         }
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -131,6 +144,7 @@ class Events {
         if (count($this->messages) > 100) return;
         $this->messages[] = $this->newMessage()->setId($id, ...$params);
     }
+
     /**
      * 例外をエラーログへ出力
      * 
@@ -144,6 +158,7 @@ class Events {
             throw new WebException($message, $code, $ex);
         } catch (Exception $_ex) {}
     }
+
     /**
      * エラーかどうか
      * 
@@ -155,6 +170,7 @@ class Events {
             fn($message) => $message->isError()
         )) > 0;
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -163,12 +179,14 @@ class Events {
     protected function getSession(): Session {
         return new Session();
     }
+
     /**
      * DBを取得
      */
     protected function getDb(): DbBase|false {
         return false;
     }
+
     /**
      * 初期設定
      */
@@ -182,6 +200,7 @@ class Events {
         $this->isConfirm = false;
         $this->valuesForAjax = [];
     }
+
     /**
      * タイムアウト
      * 
@@ -190,6 +209,7 @@ class Events {
     protected function timeout() {
         $this->session->user->setTimeout();
     }
+
     /**
      * 権限チェック
      * 
@@ -204,6 +224,7 @@ class Events {
             if (in_array($userRole, $this->allowRoles, true)) return true;
         return false;
     }
+
     /**
      * 権限チェックエラー
      * 
@@ -213,6 +234,7 @@ class Events {
         header('HTTP', true, 403);
         exit;
     }
+
     /**
      * ログアウト
      * 
@@ -221,6 +243,7 @@ class Events {
     protected function logout(): bool {
         return false;
     }
+
     /**
      * イベント前処理
      * 
@@ -236,16 +259,18 @@ class Events {
             // 入力テーブル
             if ($var instanceof InputTable)
                 $var->setFromSession($name, $this->session->unit);
-            
+
             // 選択リスト
             if ($var instanceof SelectList)
                 $var->setFromSession($name, $this->session->unit);
         }
     }
+
     /**
      * イベント処理
      */
     protected function event() {}
+
     /**
      * イベントエラー
      * 
@@ -255,6 +280,7 @@ class Events {
         header('HTTP', true, 500);
         exit;
     }
+
     /**
      * イベント後処理
      * 
@@ -294,6 +320,7 @@ class Events {
             }
         }
     }
+
     /**
      * イベント後処理(Ajax)
      * 
@@ -305,6 +332,7 @@ class Events {
             'values' => $this->valuesForAjax
         ], JSON_UNESCAPED_UNICODE);
     }
+
     /**
      * 新規メッセージ発行
      * 
@@ -314,6 +342,7 @@ class Events {
     protected function newMessage(): Message {
         return new Message();
     }
+
     /**
      * エラーハンドリングを設定(Ajax用)
      * 
@@ -326,6 +355,7 @@ class Events {
             if ($error !== null) $this->errorForAjax($error);
         });
     }
+
     /**
      * エラー処理(Ajax用)
      * 
@@ -340,6 +370,7 @@ class Events {
                 'content' => (new Message)->setId(Message::ID_EXCEPTION)->content
             ]
         ];
+
         // デバッグモードの場合、ブラウザへエラーログを出力
         if ($this->isDebug)
             $response['debug'] = $error;

@@ -8,6 +8,7 @@
 namespace tsubasaLibs\pdf;
 require_once __DIR__ . '/../common/Exception.php';
 use tsubasaLibs\common;
+
 /**
  * PDF処理の例外クラス
  * 

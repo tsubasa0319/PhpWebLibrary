@@ -9,6 +9,7 @@
 namespace tsubasaLibs\database;
 use DateTime;
 use Stringable;
+
 /**
  * 実行者クラス
  * 
@@ -28,11 +29,13 @@ class Executor {
     public $isInput;
     /** @var bool 変更があったものしか更新者情報を変更しないか */
     public $isChangedOnly;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct() {
         $this->setInit();
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -53,6 +56,7 @@ class Executor {
         $this->time = new DateTime($timeStr);
         return $this;
     }
+
     /**
      * 画面入力かどうかを設定
      * 
@@ -63,6 +67,7 @@ class Executor {
         $this->isInput = $isInput;
         return $this;
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**

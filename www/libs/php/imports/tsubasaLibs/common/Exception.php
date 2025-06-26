@@ -6,18 +6,20 @@
 // 0.28.02 2024/06/27 作成。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\common;
-use Exception as BaseClass, Throwable;
+use Exception as BaseException, Throwable;
+
 /**
  * 共通の例外クラス
  * 
  * @since 0.28.02
  * @version 0.28.02
  */
-class Exception extends BaseClass {
+class Exception extends BaseException {
     // ---------------------------------------------------------------------------------------------
     // 定数
     /** 例外名 */
     const EXCEPTION_NAME = 'LibException';
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct(string $message, int $code = 0, Throwable $previous = null) {

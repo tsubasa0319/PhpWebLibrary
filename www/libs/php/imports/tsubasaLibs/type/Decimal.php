@@ -8,6 +8,7 @@
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\type;
 use Stringable;
+
 /**
  * 十進数型クラス
  * 
@@ -21,6 +22,7 @@ class Decimal implements Stringable {
     public $mantissa;
     /** @var int 指数部 */
     public $exponent;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
@@ -35,9 +37,11 @@ class Decimal implements Stringable {
         $this->exponent = strlen($values[1]) * -1;
         $this->optimize();
     }
+
     // ---------------------------------------------------------------------------------------------
     // マジックメソッド
     public function __clone() {}
+
     public function __toString() {
         if ($this->exponent == 0) return (string)$this->mantissa;
         $isMinus = $this->mantissa < 0;
@@ -51,11 +55,13 @@ class Decimal implements Stringable {
             substr($value, $exponent)
         );
     }
+
     public function __debugInfo() {
         return [
             'value' => (string)$this
         ];
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -66,6 +72,7 @@ class Decimal implements Stringable {
      */
     public function add(Stringable|string $value): static {
         $decimal = new static($value);
+
         // 指数を揃える
         if ($this->exponent < $decimal->exponent) {
             $this->mantissa *= 10 ** ($decimal->exponent - $this->exponent);
@@ -75,11 +82,13 @@ class Decimal implements Stringable {
             $decimal->mantissa *= 10 ** ($this->exponent - $decimal->exponent);
             $decimal->exponent = $this->exponent;
         }
+
         // 計算
         $this->mantissa += $decimal->mantissa;
         $this->optimize();
         return $this;
     }
+
     /**
      * 減算
      * 
@@ -88,6 +97,7 @@ class Decimal implements Stringable {
      */
     public function sub(Stringable|string $value): static {
         $decimal = new static($value);
+
         // 指数を揃える
         if ($this->exponent < $decimal->exponent) {
             $this->mantissa *= 10 ** ($decimal->exponent - $this->exponent);
@@ -97,11 +107,13 @@ class Decimal implements Stringable {
             $decimal->mantissa *= 10 ** ($this->exponent - $decimal->exponent);
             $decimal->exponent = $this->exponent;
         }
+
         // 計算
         $this->mantissa -= $decimal->mantissa;
         $this->optimize();
         return $this;
     }
+
     /**
      * 乗算
      * 
@@ -110,12 +122,14 @@ class Decimal implements Stringable {
      */
     public function mult(Stringable|string $value): static {
         $decimal = new static($value);
+
         // 計算
         $this->mantissa *= $decimal->mantissa;
         $this->exponent += $decimal->exponent;
         $this->optimize();
         return $this;
     }
+
     /**
      * 除算
      * 
@@ -125,18 +139,21 @@ class Decimal implements Stringable {
      */
     public function div(Stringable|string $value, ?int $digits = null): static {
         $decimal = new static($value);
+
         // 保証桁数のための調整
         $digits = $digits ?? $this->exponent;
         if ($digits < $this->exponent - $decimal->exponent) {
             $this->mantissa *= 10 ** ($this->exponent - $decimal->exponent - $digits);
             $this->exponent -= $this->exponent - $decimal->exponent - $digits;
         }
+
         // 計算
         $this->mantissa = intdiv($this->mantissa, $decimal->mantissa);
         $this->exponent -= $decimal->exponent;
         $this->optimize();
         return $this;
     }
+
     /**
      * 比較
      * 
@@ -147,6 +164,7 @@ class Decimal implements Stringable {
         if ($that === null) return 1;
         return (clone $this)->sub($that)->mantissa <=> 0;
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**

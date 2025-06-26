@@ -10,6 +10,7 @@
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use CurlHandle;
+
 /**
  * cURLクラス
  * 
@@ -27,6 +28,7 @@ class Curl {
     const CONTENT_TYPE_JSON = 'application/json';
     /** 文字セット(utf-8) */
     const CHARSET_UTF8 = 'utf-8';
+
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var CurlHandle cURLオブジェクト */
@@ -51,6 +53,7 @@ class Curl {
     protected $isReturnTransfer;
     /** @var mixed 受信データ */
     public $receiveData;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
@@ -61,6 +64,7 @@ class Curl {
         $this->setInit();
         $this->url = $url;
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -74,6 +78,7 @@ class Curl {
         ], false)) return;
         $this->method = $method;
     }
+
     /**
      * 送信データを設定
      * 
@@ -82,6 +87,7 @@ class Curl {
     public function setData($data) {
         $this->data = $data;
     }
+
     /**
      * 実行
      * 
@@ -147,6 +153,7 @@ class Curl {
             curl_close($this->curl);
         return $response;
     }
+
     /**
      * 転送情報を取得
      * 
@@ -155,6 +162,7 @@ class Curl {
     public function getInfo(?int $option = null) {
         return curl_getinfo($this->curl, $option);
     }
+
     /**
      * 転送結果のHTTPステータスを取得
      * 
@@ -163,6 +171,7 @@ class Curl {
     public function getHttpStatus(): int {
         return $this->getInfo()['http_code'];
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -179,6 +188,7 @@ class Curl {
         $this->isReturnTransfer = true;
         $this->receiveData = null;
     }
+
     /**
      * エラー処理
      * 

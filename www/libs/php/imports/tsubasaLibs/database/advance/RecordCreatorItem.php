@@ -12,6 +12,7 @@
 namespace tsubasaLibs\database\advance;
 use tsubasaLibs\database;
 use tsubasaLibs\type;
+
 /**
  * レコードへ項目追加(作成ログ)
  * 
@@ -27,6 +28,7 @@ trait RecordCreatorItem {
     public $createUserId;
     /** @var string 作成プログラムID */
     public $createProgramId;
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理(オーバーライド)
     /**

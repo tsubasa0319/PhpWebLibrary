@@ -11,6 +11,7 @@
 // 0.19.00 2024/04/16 プロパティ(最小文字数/最大文字数)を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
+
 /**
  * 入力項目クラス(文字列型)
  * 
@@ -22,6 +23,7 @@ class InputItemString extends InputItemBase {
     // プロパティ(オーバーライド)
     /** @var ?string 値 */
     public $value;
+
     // ---------------------------------------------------------------------------------------------
     // プロパティ(追加)
     /** @var bool 複数行にして良いか */
@@ -30,25 +32,34 @@ class InputItemString extends InputItemBase {
     public $minCounts;
     /** @var ?int 最大文字数 */
     public $maxCounts;
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(オーバーライド)
+    // 値を初期化
     public function clearValue() {
         $this->value = '';
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理(オーバーライド)
+    // 初期設定
     protected function setInit() {
         parent::setInit();
         $this->isMultiple = false;
         $this->minCounts = null;
         $this->maxCounts = null;
     }
+
+    // 値を設定(Web値より)
     protected function setValueFromWebValue() {
         $this->value = str_replace("\r", "\n", str_replace("\r\n", "\n", $this->webValue));
         if (!$this->isMultiple) $this->value = str_replace("\n", '', $this->value);
     }
+
+    // 値チェック
     protected function checkValue(string $value): bool {
         if (!parent::checkValue($value)) return false;
+
         // 特殊文字は使用不可
         if ($this->isMultiple) {
             // 改行文字のみ許可
@@ -64,6 +75,7 @@ class InputItemString extends InputItemBase {
                 return false;
             }
         }
+
         // 文字数
         $_value = str_replace("\r", "\n", str_replace("\r\n", "\n", $value));
         if (!$this->isMultiple) $_value = str_replace("\n", '', $_value);

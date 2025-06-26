@@ -12,6 +12,7 @@
 namespace tsubasaLibs\database\advance;
 use tsubasaLibs\database;
 use tsubasaLibs\type;
+
 /**
  * レコードへ項目追加(入力ログ)
  * 
@@ -27,6 +28,7 @@ trait RecordInputterItem {
     public $inputUserId;
     /** @var string 入力プログラムID */
     public $inputProgramId;
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理(オーバーライド)
     /**

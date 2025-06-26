@@ -8,6 +8,7 @@
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/SelectPlan.php';
 require_once __DIR__ . '/SelectArrayPlan.php';
+
 /**
  * クエリ予定クラス
  * 
@@ -23,6 +24,7 @@ class QueryPlanning {
     protected $selectPlans;
     /** @var SelectArrayPlan[] レコード取得予定リスト(複数レコード版) */
     protected $selectArrayPlans;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
@@ -32,6 +34,7 @@ class QueryPlanning {
         $this->table = $table;
         $this->setInit();
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -55,6 +58,7 @@ class QueryPlanning {
 
         return $record;
     }
+
     /**
      * 選択クエリを予定(複数レコード版)
      * 
@@ -74,12 +78,14 @@ class QueryPlanning {
 
         return $plan->getRecords();
     }
+
     /**
      * 予定を実行
      */
     public function execute() {
         $this->selectExecute();
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -89,6 +95,7 @@ class QueryPlanning {
         $this->selectPlans = [];
         $this->selectArrayPlans = [];
     }
+
     /**
      * 予定された選択クエリを実行
      */
@@ -109,8 +116,6 @@ class QueryPlanning {
             $valueLists[] = $plan->getValues();
         $stmt = $this->table->selectIn(...$valueLists);
         if ($stmt !== false) while ($rcd = $stmt->fetch()) {
-            $values = $rcd->getIndexKeyValues();
-
             // 単一レコード版
             /** @var SelectPlan[] */
             $_plans = array_filter($plans, fn(SelectPlan $plan) =>
@@ -123,12 +128,12 @@ class QueryPlanning {
 
             // 複数レコード版
             /** @var SelectArrayPlan[] */
-            $_arrayPlans = array_filter($arrayPlans, fn(SelectArrayPlan $plan) =>
-                $plan->isTarget($rcd)
+            $_arrayPlans = array_filter($arrayPlans, fn(SelectArrayPlan $arrayPlan) =>
+                $arrayPlan->isTarget($rcd)
             );
-            foreach ($_arrayPlans as $plan) {
-                $plan->addRecord($rcd);
-                $plan->isExecuted = true;
+            foreach ($_arrayPlans as $arrayPlan) {
+                $arrayPlan->addRecord($rcd);
+                $arrayPlan->isExecuted = true;
             }
         }
 
@@ -144,7 +149,7 @@ class QueryPlanning {
         }
         /** @var SelectPlan[] */
         $_arrayPlans2 = array_filter($arrayPlans, fn(SelectArrayPlan $plan) => !$plan->isExecuted);
-        foreach ($_arrayPlans2 as $plan)
-            $plan->isExecuted = true;
+        foreach ($_arrayPlans2 as $arrayPlan)
+            $arrayPlan->isExecuted = true;
     }
 }

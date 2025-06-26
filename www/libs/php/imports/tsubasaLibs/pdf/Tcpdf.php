@@ -13,7 +13,10 @@ namespace tsubasaLibs\pdf;
 require_once __DIR__ . '/PdfException.php';
 use TCPDF as BaseClass;
 use DateTime, Exception;
+
+// TCPDFを未導入の場合に読み込み
 if (!class_exists(BaseClass::class)) require __DIR__ . '/#phpdoc/Tcpdf.php';
+
 /**
  * TCPDFクラス
  * 
@@ -31,6 +34,7 @@ class Tcpdf extends BaseClass {
     const FONT_MS_MINCHO = 'msmincho';
     /** MS P明朝 */
     const FONT_MS_P_MINCHO = 'msminchop';
+
     // ---------------------------------------------------------------------------------------------
     // プロパティ(追加)
     /** @var bool ヘッダを自動設定するかどうか */
@@ -47,6 +51,7 @@ class Tcpdf extends BaseClass {
     protected $userName;
     /** @var bool テスト環境であることを出力するかどうか */
     protected $isTest;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ、デストラクタ
     public function __construct(
@@ -56,12 +61,16 @@ class Tcpdf extends BaseClass {
         parent::__construct($orientation, $unit, $format, $unicode, $encoding, $diskcache, $pdfa);
         $this->setInit();
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(オーバーライド)
+    // 頁を追加
     public function AddPage($orientation = '', $format = '', $keepmargins = false, $tocpage = false) {
         parent::AddPage($orientation, $format, $keepmargins, $tocpage);
         if ($this->isAutoHeader) $this->autoHeaderPageL[] = $this->page;
     }
+
+    // テキストを出力
     public function Text(
         $x, $y, $txt, $fstroke = 0, $fclip = false, $ffill = true, $border = 0, $ln = 0,
         $align = '', $fill = false, $link = '', $stretch = 0, $ignore_min_height = false,
@@ -97,6 +106,8 @@ class Tcpdf extends BaseClass {
         $this->restoreTextRenderingMode($backupTextRenderingMode);
         $this->restoreCellPadding($backupCellPadding);
     }
+
+    // 出力
     public function Output($name = 'doc.pdf', $dest = 'I') {
         // 出力前処理
         // 各頁にヘッダ出力
@@ -118,6 +129,7 @@ class Tcpdf extends BaseClass {
         // 出力処理
         parent::Output($name, $dest);
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(追加)
     /**
@@ -132,6 +144,7 @@ class Tcpdf extends BaseClass {
 
         return $this;
     }
+
     /**
      * 現在日時を変更
      * 
@@ -144,6 +157,7 @@ class Tcpdf extends BaseClass {
 
         return $this;
     }
+
     /**
      * プログラムIDを変更
      * 
@@ -156,6 +170,7 @@ class Tcpdf extends BaseClass {
 
         return $this;
     }
+
     /**
      * ユーザIDを変更
      * 
@@ -168,6 +183,7 @@ class Tcpdf extends BaseClass {
 
         return $this;
     }
+
     /**
      * ユーザ名を変更
      * 
@@ -180,6 +196,7 @@ class Tcpdf extends BaseClass {
 
         return $this;
     }
+
     /**
      * テスト環境であることを出力するかどうか変更
      * 
@@ -192,6 +209,7 @@ class Tcpdf extends BaseClass {
 
         return $this;
     }
+
     /**
      * タイトルを出力
      * 
@@ -214,6 +232,7 @@ class Tcpdf extends BaseClass {
         $this->restorePageUnit($backupPageUnit);
         $this->restoreFont($backupFont);
     }
+
     /**
      * テスト環境であることを出力
      * 
@@ -239,6 +258,7 @@ class Tcpdf extends BaseClass {
         $this->restoreFont($backupFont);
         $this->restoreTextColor($backupTextColor);
     }
+
     /**
      * 既定のヘッダを出力
      * 
@@ -299,6 +319,7 @@ class Tcpdf extends BaseClass {
         $this->restorePageUnit($backupPageUnit);
         $this->restoreFont($backupFont);
     }
+
     /**
      * グリッド線を出力
      * 
@@ -368,6 +389,7 @@ class Tcpdf extends BaseClass {
         $this->restoreTextColor($backupTextColor);
         $this->setAutoPageBreak($autoPageBreak);
     }
+
     /**
      * 長さの単位を保存
      * 
@@ -379,6 +401,7 @@ class Tcpdf extends BaseClass {
             'pdfunit' => $this->pdfunit
         ];
     }
+
     /**
      * 長さの単位を復元
      * 
@@ -388,6 +411,7 @@ class Tcpdf extends BaseClass {
     public function restorePageUnit(array $backup) {
         $this->pdfunit = $backup['pdfunit'];
     }
+
     /**
      * フォントを保存
      * 
@@ -402,6 +426,7 @@ class Tcpdf extends BaseClass {
             'FontSizePt'  => $this->FontSizePt,
         ];
     }
+
     /**
      * フォントを復元
      * 
@@ -415,6 +440,7 @@ class Tcpdf extends BaseClass {
         if ($this->FontSizePt !== $backup['FontSizePt'])
             $this->setFontSize($backup['FontSizePt']);
     }
+
     /**
      * テキストの色を保存
      * 
@@ -427,6 +453,7 @@ class Tcpdf extends BaseClass {
             'fgcolor'   => $this->fgcolor
         ];
     }
+
     /**
      * テキストの色を復元
      * 
@@ -438,6 +465,7 @@ class Tcpdf extends BaseClass {
         $this->fgcolor = $backup['fgcolor'];
         $this->ColorFlag = $this->FillColor !== $this->TextColor;
     }
+
     /**
      * テキストの描画方法を保存
      * 
@@ -450,6 +478,7 @@ class Tcpdf extends BaseClass {
             'textstrokewidth' => $this->textstrokewidth
         ];
     }
+
     /**
      * テキストの描画方法を復元
      * 
@@ -460,6 +489,7 @@ class Tcpdf extends BaseClass {
         $this->textrendermode = $backup['textrendermode'];
         $this->textstrokewidth = $backup['textstrokewidth'];
     }
+
     /**
      * セルの内側余白を保存
      * 
@@ -471,6 +501,7 @@ class Tcpdf extends BaseClass {
             'cell_padding' => $this->cell_padding
         ];
     }
+
     /**
      * セルの内側余白を復元
      * 
@@ -480,6 +511,7 @@ class Tcpdf extends BaseClass {
     public function restoreCellPadding(array $backup) {
         $this->cell_padding = $backup['cell_padding'];
     }
+
     /**
      * 描画の色を保存
      * 
@@ -492,6 +524,7 @@ class Tcpdf extends BaseClass {
             'strokecolor' => $this->strokecolor
         ];
     }
+
     /**
      * 描画の色を復元
      * 
@@ -502,6 +535,7 @@ class Tcpdf extends BaseClass {
         $this->DrawColor = $backup['DrawColor'];
         $this->strokecolor = $backup['strokecolor'];
     }
+
     /**
      * 線のスタイルを保存
      * 
@@ -518,6 +552,7 @@ class Tcpdf extends BaseClass {
             'drawColor'      => $this->saveDrawColor()
         ];
     }
+
     /**
      * 線のスタイルを復元
      * 
@@ -532,6 +567,7 @@ class Tcpdf extends BaseClass {
         $this->linestyleDash = $backup['linestyleDash'];
         $this->restoreDrawColor($backup['drawColor']);
     }
+
     /**
      * 例外をエラーログへ出力
      * 
@@ -545,6 +581,7 @@ class Tcpdf extends BaseClass {
             throw new PdfException($message, $code, $ex);
         } catch (Exception $_ex) {}
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理(追加)
     /**

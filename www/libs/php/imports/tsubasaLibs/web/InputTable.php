@@ -15,6 +15,7 @@ namespace tsubasaLibs\web;
 require_once __DIR__ . '/InputTableRow.php';
 require_once __DIR__ . '/../type/ArrayLike.php';
 use tsubasaLibs\type\ArrayLike;
+
 /**
  * 入力テーブルクラス
  * 
@@ -34,6 +35,7 @@ class InputTable extends ArrayLike {
     protected $isBatchInput;
     /** @var bool 重複できるかどうか */
     protected $canDuplicates;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
@@ -45,6 +47,7 @@ class InputTable extends ArrayLike {
         $this->datas = $rows;
         $this->setInit();
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(追加、基本)
     /**
@@ -55,6 +58,7 @@ class InputTable extends ArrayLike {
     public function getNewRow(): InputTableRow {
         return new InputTableRow($this->events, $this);
     }
+
     /**
      * 検索
      * 
@@ -71,6 +75,7 @@ class InputTable extends ArrayLike {
         }
         return null;
     }
+
     /**
      * 登録済チェック
      * 
@@ -81,6 +86,7 @@ class InputTable extends ArrayLike {
     public function checkRegistered(array $values): bool {
         return $this->searchRow($values, true) === null;
     }
+
     /**
      * 行を追加
      * 
@@ -127,6 +133,7 @@ class InputTable extends ArrayLike {
 
         return $row;
     }
+
     /**
      * 表示する行のリストを取得
      * 
@@ -140,6 +147,7 @@ class InputTable extends ArrayLike {
                 $rows[] = $row;
         return $rows;
     }
+
     /**
      * 存在する行のリストを取得
      * 
@@ -153,6 +161,7 @@ class InputTable extends ArrayLike {
                 $rows[] = $row;
         return $rows;
     }
+
     /**
      * 頁内行番号より行を取得
      * 
@@ -169,6 +178,7 @@ class InputTable extends ArrayLike {
 
         return null;
     }
+
     /**
      * 現在頁の全ての行を取得
      * 
@@ -182,9 +192,10 @@ class InputTable extends ArrayLike {
         for ($i = $start; $i < $start + $this->unitRowCount; $i++)
             if ($i < count($rows))
                 $pageRows[] = $rows[$i];
-        
+
         return $pageRows;
     }
+
     /**
      * 頁内行番号より行を削除
      * 
@@ -198,6 +209,7 @@ class InputTable extends ArrayLike {
         $row->delete();
         return true;
     }
+
     /**
      * 1頁あたりの行数を取得
      * 
@@ -206,6 +218,7 @@ class InputTable extends ArrayLike {
     public function getUnitRowCount(): int {
         return $this->unitRowCount;
     }
+
     /**
      * 前頁へ遷移
      */
@@ -214,6 +227,7 @@ class InputTable extends ArrayLike {
         if ($this->pageCount < 0) $this->pageCount = 0;
         if ($this->pageCount > $this->getMaxPageCount()) $this->pageCount = $this->getMaxPageCount();
     }
+
     /**
      * 次頁へ遷移
      */
@@ -222,6 +236,7 @@ class InputTable extends ArrayLike {
         if ($this->pageCount < 0) $this->pageCount = 0;
         if ($this->pageCount > $this->getMaxPageCount()) $this->pageCount = $this->getMaxPageCount();
     }
+
     /**
      * 頁数を変更
      * 
@@ -232,6 +247,7 @@ class InputTable extends ArrayLike {
         if ($this->pageCount < 0) $this->pageCount = 0;
         if ($this->pageCount > $this->getMaxPageCount()) $this->pageCount = $this->getMaxPageCount();
     }
+
     /**
      * 頁数を取得
      * 
@@ -240,6 +256,7 @@ class InputTable extends ArrayLike {
     public function getPageCount(): int {
         return $this->pageCount;
     }
+
     /**
      * 最大の頁数を取得
      * 
@@ -248,6 +265,7 @@ class InputTable extends ArrayLike {
     public function getMaxPageCount(): int {
         return intdiv(count($this->getVisibleRows()) - 1, $this->unitRowCount);
     }
+
     /**
      * 一括入力かどうかを取得
      * 
@@ -257,6 +275,7 @@ class InputTable extends ArrayLike {
     public function getIsBatchInput(): bool {
         return $this->isBatchInput;
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(追加、イベント前処理)
     /**
@@ -304,6 +323,7 @@ class InputTable extends ArrayLike {
         $infos = $list['infos'];
         $this->pageCount = $infos['page'];
     }
+
     /**
      * GETメソッドより値を設定
      */
@@ -311,6 +331,7 @@ class InputTable extends ArrayLike {
         foreach ($this->getRowsInCurrentPage() as $row)
             $row->setFromGet();
     }
+
     /**
      * POSTメソッドより値を設定
      */
@@ -318,6 +339,7 @@ class InputTable extends ArrayLike {
         foreach ($this->getRowsInCurrentPage() as $row)
             $row->setFromPost();
     }
+
     /**
      * 入力チェック(最小限のみ)
      * 
@@ -348,6 +370,7 @@ class InputTable extends ArrayLike {
         }
         return $result;
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(追加、イベント処理)
     /**
@@ -363,6 +386,7 @@ class InputTable extends ArrayLike {
                 $result = false;
         return $result;
     }
+
     /**
      * 頁内行番号より行を選択
      * 
@@ -378,12 +402,15 @@ class InputTable extends ArrayLike {
             return null;
         }
 
+        // 行を取得
         $row = $this->getRowByNumInPage($numInPage);
         if ($row === null) return null;
 
+        // 選択
         $row->select();
         return $row;
     }
+
     /**
      * 前頁へ遷移イベント
      * 
@@ -397,6 +424,7 @@ class InputTable extends ArrayLike {
         $this->prevPage();
         return true;
     }
+
     /**
      * 次頁へ遷移イベント
      * 
@@ -406,10 +434,11 @@ class InputTable extends ArrayLike {
         $this->setItemsNoRequired();
         $this->setFromPost();
         if (!$this->checkFromWeb()) return true;
-        
+
         $this->nextPage();
         return true;
     }
+
     /**
      * 指定した頁へ遷移イベント
      * 
@@ -423,6 +452,7 @@ class InputTable extends ArrayLike {
         $this->setPageCount($count);
         return true;
     }
+
     /**
      * 行を選択イベント
      * 
@@ -435,6 +465,7 @@ class InputTable extends ArrayLike {
 
         return true;
     }
+
     /**
      * 行を追加イベント
      * 
@@ -482,6 +513,7 @@ class InputTable extends ArrayLike {
 
         return true;
     }
+
     /**
      * 行を変更イベント
      * 
@@ -504,6 +536,7 @@ class InputTable extends ArrayLike {
 
         return true;
     }
+
     /**
      * 行を削除イベント
      * 
@@ -523,6 +556,7 @@ class InputTable extends ArrayLike {
 
         return true;
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(追加、イベント後処理)
     /**
@@ -538,6 +572,7 @@ class InputTable extends ArrayLike {
         }
         return false;
     }
+
     /**
      * セッションへ設定
      * 
@@ -546,7 +581,7 @@ class InputTable extends ArrayLike {
      */
     public function setToSession(string $name, SessionUnit $unit) {
         $list = [];
-        
+
         // データ
         $datas = [];
         foreach (clone $this as $row) {
@@ -576,6 +611,7 @@ class InputTable extends ArrayLike {
 
         $unit->setData('InputTable', $list, $name);
     }
+
     /**
      * Smarty用にWeb値リストを取得
      * 
@@ -611,6 +647,7 @@ class InputTable extends ArrayLike {
 
         return $values;
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理(追加)
     /**
@@ -622,6 +659,7 @@ class InputTable extends ArrayLike {
         $this->isBatchInput = false;
         $this->canDuplicates = false;
     }
+
     /**
      * 入力情報より必須設定を外す
      * 

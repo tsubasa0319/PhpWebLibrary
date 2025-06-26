@@ -8,15 +8,19 @@
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use tsubasaLibs\type\ArrayLike;
+
 class InputTable extends ArrayLike {
     // ---------------------------------------------------------------------------------------------
     // メソッド
+    // 取得
     /**
      * @return InputTableRow 行
      */
     public function offsetGet(mixed $offset): mixed {
         return parent::offsetGet($offset);
     }
+
+    // 現在の読み取り位置のデータ値を取得
     /**
      * @return InputTableRow 行
      */

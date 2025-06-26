@@ -9,6 +9,7 @@
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/../type/Date.php';
 use tsubasaLibs\type;
+
 /**
  * 入力項目クラス(日付型)
  * 
@@ -36,6 +37,7 @@ class InputItemDate extends InputItemBase {
     const TYPE_M = 8;
     /** 日型(dd) */
     const TYPE_D = 9;
+
     // ---------------------------------------------------------------------------------------------
     // プロパティ(オーバーライド)
     /** @var ?type\Date 値 */
@@ -48,8 +50,10 @@ class InputItemDate extends InputItemBase {
     public $maxValue;
     /** @var ?type\Date 基点とする日付(省略時は、現在日付) */
     public $baseDate;
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(オーバーライド)
+    // 画面単位セッションより設定
     public function setFromSession(SessionUnit $unit) {
         parent::setFromSession($unit);
 
@@ -60,9 +64,13 @@ class InputItemDate extends InputItemBase {
             $this->baseDate = $this->getNewDate($data);
         }
     }
+
+    // 値を初期化
     public function clearValue() {
         $this->value = null;
     }
+
+    // セッションへ登録
     public function setToSession(SessionUnit $unit) {
         parent::setToSession($unit);
 
@@ -70,8 +78,10 @@ class InputItemDate extends InputItemBase {
         if ($this->baseDate !== null)
             $unit->setData($this->name, (string)$this->baseDate, 'baseDate');
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理(オーバーライド)
+    // 初期設定
     protected function setInit() {
         parent::setInit();
         $this->type = static::TYPE_Y4MD;
@@ -79,6 +89,8 @@ class InputItemDate extends InputItemBase {
         $this->maxValue = null;
         $this->baseDate = null;
     }
+
+    // 値を設定(Web値より)
     protected function setValueFromWebValue() {
         if ($this->webValue === '') return null;
         $this->value = $this->getNewDate(match ($this->type) {
@@ -94,6 +106,8 @@ class InputItemDate extends InputItemBase {
             default           => null
         });
     }
+
+    // Web値へ変換し取得(値より)
     protected function getWebValueFromValue(): string {
         return match ($this->type) {
             static::TYPE_Y4MD => (string)$this->value,
@@ -108,6 +122,8 @@ class InputItemDate extends InputItemBase {
             default           => ''
         };
     }
+
+    // 値チェック
     protected function checkValue(string $value): bool {
         if (!parent::checkValue($value)) return false;
         if ($value === '') return true;
@@ -155,6 +171,7 @@ class InputItemDate extends InputItemBase {
 
         return true;
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理(追加)
     /**
@@ -166,6 +183,7 @@ class InputItemDate extends InputItemBase {
     protected function getNewDate(string $value = 'now'): type\Date {
         return new type\Date($value);
     }
+
     /**
      * 基点とする日付を取得
      * 
@@ -174,6 +192,7 @@ class InputItemDate extends InputItemBase {
     protected function getBaseDate(): type\Date {
         return $this->baseDate ?? $this->getNewDate();
     }
+
     /**
      * MM/dd型からyyyy/MM/dd型へ変換
      * 
@@ -198,6 +217,7 @@ class InputItemDate extends InputItemBase {
             default                      => sprintf('%04d%s', $year, $value),
         };
     }
+
     /**
      * yy/MM/dd型からyyyy/MM/dd型へ変換
      * 
@@ -224,6 +244,7 @@ class InputItemDate extends InputItemBase {
         // 変換
         return sprintf('%02d%s', $yearHead, $value);
     }
+
     /**
      * yyyy/MM型からyyyy/MM/dd型へ変換
      * 
@@ -237,7 +258,7 @@ class InputItemDate extends InputItemBase {
             !preg_match('/\A[0-9]{6}\z/', $value)) {
             return $value;
         }
-        
+
         // 変換
         return match (true) {
             !!preg_match('/\//', $value) => sprintf('%s/01', $value),
@@ -245,6 +266,7 @@ class InputItemDate extends InputItemBase {
             default                      => sprintf('%s01', $value)
         };
     }
+
     /**
      * yy/MM型からyyyy/MM/dd型へ変換
      * 
@@ -258,7 +280,7 @@ class InputItemDate extends InputItemBase {
             !preg_match('/\A[0-9]{4}\z/', $value)) {
             return $value;
         }
-        
+
         // 変換(yy/MM/dd型を経由)
         return $this->y2mdToY4md(match (true) {
             !!preg_match('/\//', $value) => sprintf('%s/01', $value),
@@ -266,6 +288,7 @@ class InputItemDate extends InputItemBase {
             default                      => sprintf('%s01', $value)
         });
     }
+
     /**
      * yyyy型からyyyy/MM/dd型へ変換
      * 
@@ -277,10 +300,11 @@ class InputItemDate extends InputItemBase {
         if (!preg_match('/\A[0-9]{1,4}\z/', $value)) {
             return $value;
         }
-        
+
         // 変換
         return sprintf('%s/01/01', $value);
     }
+
     /**
      * yy型からyyyy/MM/dd型へ変換
      * 
@@ -292,10 +316,11 @@ class InputItemDate extends InputItemBase {
         if (!preg_match('/\A[0-9]{1,2}\z/', $value)) {
             return $value;
         }
-        
+
         // 変換(yy/MM/dd経由)
         return $this->y2mdToY4md(sprintf('%s/01/01', $value));
     }
+
     /**
      * MM型からyyyy/MM/dd型へ変換
      * 
@@ -307,13 +332,14 @@ class InputItemDate extends InputItemBase {
         if (!preg_match('/\A[0-9]{1,2}\z/', $value)) {
             return $value;
         }
-        
+
         // 変換
         return sprintf('%s/%s/01',
             $this->getBaseDate()->getYear(),
             $value
         );
     }
+
     /**
      * dd型からyyyy/MM/dd型へ変換
      * 
@@ -325,13 +351,14 @@ class InputItemDate extends InputItemBase {
         if (!preg_match('/\A[0-9]{1,2}\z/', $value)) {
             return $value;
         }
-        
+
         // 変換
         return sprintf('%s/%s',
             $this->getBaseDate()->toDateTime()->format('Y/m'),
             $value
         );
     }
+
     /**
      * 値チェック(TYPE_Y4MD)
      * 
@@ -368,6 +395,7 @@ class InputItemDate extends InputItemBase {
 
         return $this->getNewDate($value);
     }
+
     /**
      * 値チェック(TYPE_Y2MD)
      * 
@@ -394,6 +422,7 @@ class InputItemDate extends InputItemBase {
         // yyyy/MM/ddのチェックへ
         return $this->checkValueForY4md($value);
     }
+
     /**
      * 値チェック(TYPE_MD)
      * 
@@ -417,6 +446,7 @@ class InputItemDate extends InputItemBase {
         // yyyy/MM/ddのチェックへ
         return $this->checkValueForY4md($value);
     }
+
     /**
      * 値チェック(TYPE_Y4M)
      * 
@@ -440,6 +470,7 @@ class InputItemDate extends InputItemBase {
         // yyyy/MM/ddのチェックへ
         return $this->checkValueForY4md($value);
     }
+
     /**
      * 値チェック(TYPE_Y2M)
      * 
@@ -463,6 +494,7 @@ class InputItemDate extends InputItemBase {
         // yyyy/MM/ddのチェックへ
         return $this->checkValueForY4md($value);
     }
+
     /**
      * 値チェック(TYPE_Y4)
      * 
@@ -484,6 +516,7 @@ class InputItemDate extends InputItemBase {
         // yyyy/MM/ddのチェックへ
         return $this->checkValueForY4md($value);
     }
+
     /**
      * 値チェック(TYPE_Y2)
      * 
@@ -505,6 +538,7 @@ class InputItemDate extends InputItemBase {
         // yyyy/MM/ddのチェックへ
         return $this->checkValueForY4md($value);
     }
+
     /**
      * 値チェック(TYPE_M)
      * 
@@ -526,6 +560,7 @@ class InputItemDate extends InputItemBase {
         // yyyy/MM/ddのチェックへ
         return $this->checkValueForY4md($value);
     }
+
     /**
      * 値チェック(TYPE_D)
      * 

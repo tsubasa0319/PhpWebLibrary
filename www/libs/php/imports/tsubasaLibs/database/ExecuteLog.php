@@ -7,6 +7,7 @@
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/ExecuteLogRow.php';
+
 /**
  * 実行ログクラス
  * 
@@ -18,11 +19,13 @@ class ExecuteLog {
     // プロパティ
     /** @var ExecuteLogRow[] ログ履歴 */
     protected $logs;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct() {
         $this->logs = [];
     }
+
     // ---------------------------------------------------------------------------------------------
     // マジックメソッド
     public function __debugInfo() {
@@ -30,6 +33,7 @@ class ExecuteLog {
             ...$this->logs
         ];
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -40,6 +44,7 @@ class ExecuteLog {
     public function newLog(): ExecuteLogRow {
         return new ExecuteLogRow();
     }
+
     /**
      * ログ行を追加
      * 
@@ -47,6 +52,8 @@ class ExecuteLog {
      */
     public function add(ExecuteLogRow $row) {
         $this->logs[] = $row;
-        if (count($this->logs) >= 100) array_shift($this->logs);
+
+        // 100件まで
+        while (count($this->logs) > 100) array_shift($this->logs);
     }
 }

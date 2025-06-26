@@ -7,6 +7,7 @@
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 use Stringable;
+
 /**
  * 項目定義クラス
  * 
@@ -22,6 +23,7 @@ class Item {
     public $type;
     /** @var ?int|string|Stringable insert時の既定値 */
     public $defaultValue;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct(int $type = DbBase::PARAM_STR, $defaultValue = null) {

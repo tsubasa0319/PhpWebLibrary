@@ -12,6 +12,7 @@
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use DateTime, DateInterval, Exception;
+
 /**
  * 画面単位セッションクラス
  * 
@@ -25,6 +26,7 @@ class SessionUnit {
     const ID = 'unit';
     /** @var string 画面単位セッション配列の要素名を持つGET/POST名 */
     const UNIT_SESSION_ID = 'UNIT_SESSION_ID';
+
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var array セッション情報のリファレンス */
@@ -33,12 +35,14 @@ class SessionUnit {
     public $unitId;
     /** @var array 画面単位セッション情報のリファレンス */
     public $data;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct() {
         $this->setInit();
         $this->setInfoFromSession();
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -63,6 +67,7 @@ class SessionUnit {
         if (!isset($values[$key])) return null;
         return $values[$key];
     }
+
     /**
      * セッションへ値を設定
      * 
@@ -87,6 +92,7 @@ class SessionUnit {
             $values[$key] = $value;
         }
     }
+
     /**
      * セッションの配列データへ値を追加
      * 
@@ -101,6 +107,7 @@ class SessionUnit {
 
         $this->data[$name][] = $value;
     }
+
     /**
      * セッションより値を削除
      * 
@@ -121,6 +128,7 @@ class SessionUnit {
                 unset($this->data[$name]);
         }
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -131,6 +139,7 @@ class SessionUnit {
         $this->removeOldUnits();
         $this->setInfoFromSession();
     }
+
     /**
      * セッション情報のリファレンスを設定
      */
@@ -141,6 +150,7 @@ class SessionUnit {
             ];
         $this->session =& $_SESSION[static::ID];
     }
+
     /**
      * 古い画面単位セッションを削除
      */
@@ -155,6 +165,7 @@ class SessionUnit {
                 unset($this->session['info'][$unitId]);
             }
         }
+
         // 増えすぎた場合に、使っていないものから順に削除
         if (count($this->session['info']) > 100) {
             $entries = [];
@@ -171,22 +182,31 @@ class SessionUnit {
             }
         }
     }
+
     /**
      * セッションより情報設定
      */
     protected function setInfoFromSession() {
+        // ユニットIDを受け取り
         $unitId = match (true) {
             isset($_POST[static::UNIT_SESSION_ID]) => $_POST[static::UNIT_SESSION_ID],
             isset($_GET[static::UNIT_SESSION_ID])  => $_GET[static::UNIT_SESSION_ID],
             default => null
         };
+
+        // ユニットIDを発行
         if ($unitId === null or !isset($this->session[$unitId]))
             $unitId = $this->makeUnit();
+
+        // ユニット情報を取得
         $this->unitId = $unitId;
         $this->data =& $this->session[$unitId];
+
+        // 最終アクセスを更新
         $this->session['info'][$unitId]['lastAccessTime'] =
             $this->getNow()->format('Y/m/d H:i:s.u');
     }
+
     /**
      * 画面単位セッションを生成
      * 
@@ -203,6 +223,7 @@ class SessionUnit {
         $this->session['info'][$unitId] = [];
         return $unitId;
     }
+
     /**
      * 現在日時を取得
      * 
@@ -215,6 +236,7 @@ class SessionUnit {
             substr($mtimeArr[0], 1));
         return $this->getTimeFromString($timeString);
     }
+
     /**
      * 日時変換(文字列型→日時型)
      * 

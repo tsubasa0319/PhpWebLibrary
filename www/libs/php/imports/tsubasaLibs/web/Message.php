@@ -14,6 +14,7 @@
 // 0.28.00 2024/06/   帳票出力開始のメッセージを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
+
 /**
  * メッセージクラス
  * 
@@ -85,6 +86,7 @@ class Message {
     const ID_HTTP_REQUEST_ERROR = 'Err00020';
     /** メッセージID(例外) */
     const ID_EXCEPTION = 'Err00999';
+
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var array{id: string, content: string}[] メッセージリスト */
@@ -93,11 +95,13 @@ class Message {
     public $id;
     /** @var string メッセージ内容 */
     public $content;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct() {
         $this->setInit();
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -110,6 +114,7 @@ class Message {
     public function setId(string $id, string ...$params): static {
         $this->id = null;
         $this->content = null;
+
         // 検索
         foreach (array_filter($this->list, function ($message) use ($id) {
             return $message['id'] === $id;
@@ -122,14 +127,17 @@ class Message {
 
                 $params[] = $httpStatusMessage;
             }
+
             // パラメータ数を調整
             $arr = explode('%s', $message['content']);
             while (count($arr) > count($params) + 1) $params[] = '';
+
             // メッセージID/内容を設定
             $this->id = $id;
             $this->content = sprintf($message['content'], ...$params);
             return $this;
         }
+
         // 例外
         if ($id !== static::ID_EXCEPTION) {
             $this->setId(static::ID_EXCEPTION);
@@ -140,6 +148,7 @@ class Message {
         }
         return $this;
     }
+
     /**
      * 通知メッセージかどうか
      * 
@@ -148,6 +157,7 @@ class Message {
     public function isInformation(): bool {
         return !!preg_match('/\AInfo[0-9]*\z/', $this->id);
     }
+
     /**
      * 警告メッセージかどうか
      * 
@@ -156,6 +166,7 @@ class Message {
     public function isWarning(): bool {
         return !!preg_match('/\AWarn[0-9]*\z/', $this->id);
     }
+
     /**
      * エラーメッセージかどうか
      * 
@@ -164,6 +175,7 @@ class Message {
     public function isError(): bool {
         return !!preg_match('/\AErr[0-9]*\z/', $this->id);
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -204,6 +216,7 @@ class Message {
             ['id' => 'Err00999' , 'content' => '予期せぬエラーが発生しました。']
         ];
     }
+
     /**
      * HTTPステータスのメッセージを取得
      * 

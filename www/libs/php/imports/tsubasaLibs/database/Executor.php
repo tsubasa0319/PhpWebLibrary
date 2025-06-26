@@ -5,6 +5,7 @@
 // History:
 // 0.00.00 2024/01/23 作成。
 // 0.04.00 2024/02/10 microtimeを配列で受け取っていなかったため修正。
+// 0.32.00 2024/08/23 WindowsのCLIの場合、パスの区切文字が\になるので、/へ変換。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 use DateTime;
@@ -14,7 +15,7 @@ use Stringable;
  * 実行者クラス
  * 
  * @since 0.00.00
- * @version 0.04.00
+ * @version 0.32.00
  */
 class Executor {
     // ---------------------------------------------------------------------------------------------
@@ -75,7 +76,7 @@ class Executor {
      */
     protected function setInit() {
         $this->setTime();
-        $this->programId = isset($_SERVER) ? $_SERVER['SCRIPT_NAME'] : '';
+        $this->programId = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
         $this->isInput = false;
         $this->isChangedOnly = false;
     }

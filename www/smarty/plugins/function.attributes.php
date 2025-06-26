@@ -3,7 +3,7 @@
 // 属性文字列を取得
 //
 // History:
-// 0.015.00 Tsubasa Kadowaki 2024/02/27 作成。
+// 0.015.00 2024/02/27 Tsubasa Kadowaki 作成。
 // -------------------------------------------------------------------------------------------------
 require_once 'base/web/SmartyPlugins.php';
 use base\web\SmartyPlugins;

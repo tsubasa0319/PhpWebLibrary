@@ -5,6 +5,7 @@
 // History:
 // 0.12.00 2024/03/12 作成。
 // 0.25.00 2024/05/21 一部処理を共通化。エラーをイベントのメッセージ領域へ返すように対応。
+// 0.30.00 2024/08/03 Curlに失敗した時の通知精度を強化。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\web;
@@ -13,7 +14,7 @@ use tsubasaLibs\web;
  * APIメソッドクラス
  * 
  * @since 0.12.00
- * @version 0.25.00
+ * @version 0.30.00
  */
 class Method {
     // ---------------------------------------------------------------------------------------------
@@ -64,7 +65,7 @@ class Method {
                 $data = $curl->receiveData['data'];
         }
 
-        // エラー処理
+        // 通信エラー
         if ($response === false) {
             if ($this->events !== null)
                 $this->events->addMessage(web\Message::ID_HTTP_REQUEST_ERROR, $curl->getHttpStatus());
@@ -73,7 +74,24 @@ class Method {
             return false;
         }
 
-        return $data;
+        // 通信先で異常終了
+        if (is_string($curl->receiveData)) {
+            if ($this->events !== null)
+                $this->events->addMessage(web\Message::ID_EXCEPTION);
+            trigger_error($curl->receiveData, E_USER_WARNING);
+            return false;
+        }
+
+        // 通信先で失敗し、メッセージを送信
+        if ($error !== null) {
+            if (isset($error['message']))
+                trigger_error($error['message'], E_USER_ERROR);
+            else
+                trigger_error(json_encode($error, JSON_UNESCAPED_UNICODE), E_USER_NOTICE);
+            return false;
+        }
+
+        return $data ?? false;
     }
 
     // ---------------------------------------------------------------------------------------------

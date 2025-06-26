@@ -7,6 +7,7 @@
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 use Stringable;
+
 /**
  * 選択クエリ予定クラス(複数レコード版)
  * 
@@ -22,11 +23,13 @@ class SelectArrayPlan {
     protected $records;
     /** @var bool 実行済かどうか */
     public $isExecuted;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct() {
         $this->setInit();
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -47,6 +50,7 @@ class SelectArrayPlan {
         }
         return true;
     }
+
     /**
      * 対象レコードかどうか
      * 
@@ -66,6 +70,7 @@ class SelectArrayPlan {
         }
         return true;
     }
+
     /**
      * 検索値リストを取得
      * 
@@ -74,6 +79,7 @@ class SelectArrayPlan {
     public function getValues(): array {
         return $this->values;
     }
+
     /**
      * 検索値リストを設定
      * 
@@ -82,6 +88,7 @@ class SelectArrayPlan {
     public function setValues(array $values) {
         $this->values = $values;
     }
+
     /**
      * レコードリストを取得
      * 
@@ -90,6 +97,7 @@ class SelectArrayPlan {
     public function getRecords(): Records {
         return $this->records;
     }
+
     /**
      * レコードを追加
      * 
@@ -98,6 +106,7 @@ class SelectArrayPlan {
     public function addRecord(Record $record) {
         $this->records[] = $record;
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**

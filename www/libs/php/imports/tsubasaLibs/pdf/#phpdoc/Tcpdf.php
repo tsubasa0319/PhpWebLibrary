@@ -9,6 +9,7 @@
 //                    よく使うメソッドにドキュメントを追加。
 // -------------------------------------------------------------------------------------------------
 use tsubasaLibs\pdf;
+
 class TCPDF {
     // ---------------------------------------------------------------------------------------------
     // プロパティ
@@ -48,6 +49,7 @@ class TCPDF {
     protected $linestyleJoin;
     /** @var string 線の破線パターンのPDF文字列 */
     protected $linestyleDash;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
@@ -66,6 +68,7 @@ class TCPDF {
     ) {
         throw new pdf\PdfException('TCPDF hasn\'t been installed');
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -74,12 +77,14 @@ class TCPDF {
      * @param bool $val 出力するかどうか
      */
     public function setPrintHeader($val = true) {}
+
     /**
      * フッタを出力するかどうか変更
      * 
      * @param bool $val 出力するかどうか
      */
     public function setPrintFooter($val = true) {}
+
     /**
      * 長さの単位を変更
      * 
@@ -88,6 +93,7 @@ class TCPDF {
      * @param string $unit 長さの単位
      */
     public function setPageUnit($unit) {}
+
     /**
      * 用紙サイズと向きを変更
      * 
@@ -98,6 +104,7 @@ class TCPDF {
      *     L or Landscape: 横向き  
      */
     public function setPageFormat($format, $orientation = 'P') {}
+
     /**
      * 用紙の向きを変更
      * 
@@ -108,6 +115,7 @@ class TCPDF {
      * @param ?float $bottommargin 下の外部余白
      */
 	public function setPageOrientation($orientation, $autopagebreak = null, $bottommargin = null) {}
+
     /**
      * 自動で改頁するかどうか変更
      * 
@@ -115,6 +123,7 @@ class TCPDF {
      * @param float $margin 下の外部余白
      */
     public function setAutoPageBreak($auto, $margin = 0) {}
+
     /**
      * 頁を追加
      * 
@@ -125,6 +134,7 @@ class TCPDF {
      * @param mixed $format 用紙サイズ
      */
     public function AddPage($orientation = '', $format = '', $keepmargins = false, $tocpage = false) {}
+
     /**
      * 頁を変更
      * 
@@ -132,6 +142,7 @@ class TCPDF {
      * @param bool $resetmargins
      */
     public function setPage($pnum, $resetmargins = false) {}
+
     /**
      * セルのX座標を変更
      * 
@@ -139,6 +150,7 @@ class TCPDF {
      * @param bool $rtloff
      */
     public function setX($x, $rtloff = false) {}
+
     /**
      * セルのY座標を変更
      * 
@@ -146,6 +158,7 @@ class TCPDF {
      * @param bool $rtloff
      */
     public function setY($y, $rtloff = false) {}
+
     /**
      * セルのX座標/Y座標を変更
      * 
@@ -154,6 +167,7 @@ class TCPDF {
      * @param bool $rtloff
      */
     public function setXY($x, $y, $rtloff = false) {}
+
     /**
      * フォントを変更
      * 
@@ -167,6 +181,7 @@ class TCPDF {
     public function setFont(
         $family, $style = '', $size = null, $fontfile = '', $subset = 'default', $out = true
     ) {}
+
     /**
      * テキストの色を変更
      * 
@@ -181,6 +196,7 @@ class TCPDF {
     public function setTextColor(
         $col1 = 0, $col2 = -1, $col3 = -1, $col4 = -1, $ret = false, $name = ''
     ) {}
+
     /**
      * 線の色を変更
      * 
@@ -195,6 +211,7 @@ class TCPDF {
     public function setDrawColor(
         $col1 = 0, $col2 = -1, $col3 = -1, $col4 = -1, $ret = false, $name = ''
     ) {}
+
     /**
      * 塗りつぶしの色を変更
      * 
@@ -209,6 +226,7 @@ class TCPDF {
     public function setFillColor(
         $col1 = 0, $col2 = -1, $col3 = -1, $col4 = -1, $ret = false, $name = ''
     ) {}
+
     /**
      * セルを出力
      * 
@@ -234,6 +252,7 @@ class TCPDF {
         $w, $h = 0, $txt = '', $border = 0, $ln = 0, $align = '', $fill = false, $link = '',
         $stretch = 0, $ignore_min_height = false, $calign = 'T', $valign = 'M'
     ) {}
+
     /**
      * テキストを出力
      * 
@@ -264,12 +283,14 @@ class TCPDF {
         $align = '', $fill = false, $link = '', $stretch = 0, $ignore_min_height = false,
         $calign = 'T', $valign = 'M', $rtloff = false
     ) {}
+
     /**
      * 線のスタイルを変更
      * 
      * @param array{width:float, cap:string, join:string, dash:string, phase:int, color:array} $style スタイル
      */
     public function setLineStyle($style) {}
+
     /**
      * 線を出力
      * 
@@ -280,6 +301,7 @@ class TCPDF {
      * @param array{width:float, cap:string, join:string, dash:string, phase:int, color:array} $style スタイル
      */
     public function Line($x1, $y1, $x2, $y2, $style = []) {}
+
     /**
      * 矩形を出力
      * 
@@ -293,6 +315,7 @@ class TCPDF {
      * @param array $fill_color 塗りつぶす色
      */
     public function Rect($x, $y, $w, $h, $style = '', $border_style = [], $fill_color = []) {}
+
     /**
      * 円を出力
      * 
@@ -311,6 +334,7 @@ class TCPDF {
         $x0, $y0, $r, $angstr = 0, $angend = 360, $style = '',
         $line_style = [], $fill_color = [], $nc = 2
     ) {}
+
     /**
      * 楕円を出力
      * 
@@ -331,6 +355,7 @@ class TCPDF {
         $x0, $y0, $rx, $ry = 0, $angle = 0, $astart = 0, $afinish = 360, $style = '',
         $line_style = [], $fill_color = [], $nc = 2
     ) {}
+
     /**
      * 画像を出力
      * 
@@ -349,6 +374,7 @@ class TCPDF {
         $border = 0, $fitbox = false, $hidden = false, $fitonpage = false, $alt = false,
         $altimgs = []
     ) {}
+
     /**
      * 出力
      * 
@@ -366,6 +392,7 @@ class TCPDF {
     public function getPageWidth($pagenum = null) {
         return 0;
     }
+
     /**
      * 頁の高さを取得
      * 
@@ -375,6 +402,7 @@ class TCPDF {
     public function getPageHeight($pagenum = null) {
         return 0;
     }
+
     /**
      * 文字列の幅を取得
      * 
@@ -391,6 +419,7 @@ class TCPDF {
     public function GetStringWidth($s, $fontname = '', $fontstyle = '', $fontsize = 0, $getarray = false) {
         return 0;
     }
+
     /**
      * テキストのレンダリングモードを変更
      * 
@@ -399,6 +428,7 @@ class TCPDF {
      * @param bool $clip 境界線でクリップ
      */
     public function setTextRenderingMode($stroke = 0, $fill = true, $clip = false) {}
+
     /**
      * セルの内側余白を変更
      * 

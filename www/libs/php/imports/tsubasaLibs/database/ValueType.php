@@ -10,6 +10,7 @@
 namespace tsubasaLibs\database;
 use tsubasaLibs\type;
 use DateTime;
+
 /**
  * データ型の共通処理
  * 
@@ -17,6 +18,8 @@ use DateTime;
  * @version 0.11.00
  */
 class ValueType {
+    // ---------------------------------------------------------------------------------------------
+    // メソッド(静的)
     /**
      * バインド用変換
      * 
@@ -46,6 +49,7 @@ class ValueType {
                 break;
         }
     }
+
     /**
      * レコード用変換
      * 
@@ -65,6 +69,7 @@ class ValueType {
             DbBase::PARAM_ADD_DECIMAL => static::convertDecimalForRecord($value)
         };
     }
+
     /**
      * バインド用変換(PARAM_INT)
      * 
@@ -74,6 +79,7 @@ class ValueType {
     static protected function convertIntForBind(&$value, int &$type) {
         $value = (int)$value;
     }
+
     /**
      * バインド用変換(PARAM_STR)
      * 
@@ -83,6 +89,7 @@ class ValueType {
     static protected function convertStrForBind(&$value, int &$type) {
         $value = (string)$value;
     }
+
     /**
      * バインド用変換(PARAM_ADD_DATE)
      * 
@@ -94,6 +101,7 @@ class ValueType {
         if ($value instanceof type\Date) $value = (string)$value;
         $type = DbBase::PARAM_STR;
     }
+
     /**
      * バインド用変換(PARAM_ADD_DATETIME)
      * 
@@ -105,6 +113,7 @@ class ValueType {
         if ($value instanceof type\DateTime) $value = (string)$value;
         $type = DbBase::PARAM_STR;
     }
+
     /**
      * バインド用変換(PARAM_ADD_TIMESTAMP)
      * 
@@ -116,6 +125,7 @@ class ValueType {
         if ($value instanceof type\TimeStamp) $value = (string)$value;
         $type = DbBase::PARAM_STR;
     }
+
     /**
      * バインド用変換(PARAM_ADD_DECIMAL)
      * 
@@ -126,6 +136,7 @@ class ValueType {
         $value = (string)$value;
         $type = DbBase::PARAM_STR;
     }
+
     /**
      * レコード用変換(PARAM_INT)
      * 
@@ -135,6 +146,7 @@ class ValueType {
     static protected function convertIntForRecord($value): int {
         return (int)$value;
     }
+
     /**
      * レコード用変換(PARAM_STR)
      * 
@@ -144,6 +156,7 @@ class ValueType {
     static protected function convertStrForRecord($value): string {
         return (string)$value;
     }
+
     /**
      * レコード用変換(PARAM_BOOL)
      * 
@@ -153,6 +166,7 @@ class ValueType {
     static protected function convertBoolForRecord($value): bool {
         return (bool)$value;
     }
+
     /**
      * レコード用変換(PARAM_ADD_DATE)
      * 
@@ -162,6 +176,7 @@ class ValueType {
     static protected function convertDateForRecord($value): type\Date {
         return new type\Date($value);
     }
+
     /**
      * レコード用変換(PARAM_ADD_DATETIME)
      * 
@@ -171,6 +186,7 @@ class ValueType {
     static protected function convertDateTimeForRecord($value): type\DateTime {
         return new type\DateTime($value);
     }
+
     /**
      * レコード用変換(PARAM_ADD_TIMESTAMP)
      * 
@@ -180,6 +196,7 @@ class ValueType {
     static protected function convertTimeStampForRecord($value): type\TimeStamp {
         return new type\TimeStamp($value);
     }
+
     /**
      * レコード用変換(PARAM_ADD_DECIMAL)
      * 

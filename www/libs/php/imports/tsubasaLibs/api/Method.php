@@ -8,6 +8,7 @@
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\web;
+
 /**
  * APIメソッドクラス
  * 
@@ -23,12 +24,14 @@ class Method {
     const HOST_NAME = null;
     /** APIシステムのプログラムID(要オーバーライド) */
     const PROGRAM_ID = 'index.html';
+
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var ?web\Events イベント */
     protected $events;
     /** @var string http(s)+host */
     protected $webRoot;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
@@ -38,6 +41,7 @@ class Method {
         $this->setInit();
         $this->events = $events;
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -71,18 +75,21 @@ class Method {
 
         return $data;
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
      * 初期設定
      */
     protected function setInit() {}
+
     /**
      * Curlインスタンスを生成
      */
     protected function makeCurlInstance($url = null): web\Curl {
         return new web\Curl($url);
     }
+
     /**
      * URLを取得
      * 
@@ -94,6 +101,7 @@ class Method {
 
         return $this->makeUrl();
     }
+
     /**
      * URLを生成
      * 
@@ -109,6 +117,7 @@ class Method {
             $programId ?? static::PROGRAM_ID
         );
     }
+
     /**
      * パラメータリストを取得
      * 

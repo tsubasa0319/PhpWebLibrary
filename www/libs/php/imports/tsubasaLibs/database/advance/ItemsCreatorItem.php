@@ -10,6 +10,7 @@
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database\advance;
 use tsubasaLibs\database;
+
 /**
  * 項目定義リストへ項目追加(作成ログ)
  * 
@@ -25,6 +26,7 @@ trait ItemsCreatorItem {
     public $createUserId;
     /** @var database\Item 作成プログラムID */
     public $createProgramId;
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -35,6 +37,7 @@ trait ItemsCreatorItem {
     public function getAddedItemIdsCreator(): array {
         return ['createTime', 'createUserId', 'createProgramId'];
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**

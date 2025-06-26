@@ -9,6 +9,7 @@
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/../type/TimeStamp.php';
 use tsubasaLibs\type;
+
 /**
  * 入力項目クラス(タイムスタンプ型)
  * 
@@ -24,24 +25,34 @@ class InputItemTimeStamp extends InputItemBase {
     public $minValue;
     /** @var ?type\TimeStamp 最大値 */
     public $maxValue;
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(オーバーライド)
+    // 値を初期化
     public function clearValue() {
         $this->value = null;
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理(オーバーライド)
+    // 初期設定
     protected function setInit() {
         parent::setInit();
         $this->minValue = null;
         $this->maxValue = null;
     }
+
+    // 値を設定(Web値より)
     protected function setValueFromWebValue() {
         $this->value = $this->webValue !== '' ? $this->getNewTimeStamp($this->webValue) : null;
     }
+
+    // Web値へ変換し取得(値より)
     protected function getWebValueFromValue(): string {
         return (string)$this->value;
     }
+
+    // 値チェック
     protected function checkValue(string $value): bool {
         if (!parent::checkValue($value)) return false;
         if ($value === '') return true;
@@ -122,6 +133,7 @@ class InputItemTimeStamp extends InputItemBase {
 
         return true;
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理(追加)
     /**

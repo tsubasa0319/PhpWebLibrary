@@ -9,6 +9,7 @@
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\csv;
 use Stringable;
+
 /**
  * CSV書き込みクラス
  * 
@@ -28,6 +29,7 @@ class Writer {
     const CHAR_LF = "\n";
     /** 改行文字(CR+LF) */
     const CHAR_CRLF = "\r\n";
+
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var string ファイル名 */
@@ -54,6 +56,7 @@ class Writer {
     protected $isFirst;
     /** @var bool 1列目の書き込みかどうか */
     protected $isFirstInRow;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
@@ -65,6 +68,7 @@ class Writer {
         if ($fileName !== null) $this->fileName = $fileName;
         if ($charset !== null) $this->charset = $charset;
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -77,6 +81,7 @@ class Writer {
         $this->hasEnclosure = $hasEnclosure;
         return $this;
     }
+
     /**
      * 必要に応じて自動でダブルクォートで括るかどうかを変更
      * 
@@ -87,6 +92,7 @@ class Writer {
         $this->autoEnclosed = $autoEnclosed;
         return $this;
     }
+
     /**
      * ファイルを開く(ファイル出力用)
      */
@@ -94,6 +100,7 @@ class Writer {
         $this->fileHandle = fopen(sprintf('%s/%s', $this->getFileDir(), $this->fileName), $mode);
         return $this->fileHandle !== false;
     }
+
     /**
      * レスポンスヘッダを出力(ブラウザ出力用)
      */
@@ -105,6 +112,7 @@ class Writer {
             'Content-Disposition: attachment; filename=%s', $this->fileName
         ));
     }
+
     /**
      * 書き込み
      * 
@@ -113,6 +121,7 @@ class Writer {
     public function write(int|string|bool|array|Stringable|null $data) {
         $this->writeRow(is_array($data) ? $data : [$data]);
     }
+
     /**
      * ファイルを閉じる(ファイル出力用)
      */
@@ -122,6 +131,7 @@ class Writer {
 
         $this->fileHandle = null;
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -141,6 +151,7 @@ class Writer {
         $this->isFirst = true;
         $this->isFirstInRow = true;
     }
+
     /**
      * ファイルディレクトリを取得(要オーバーライド)
      * 
@@ -149,6 +160,7 @@ class Writer {
     protected function getFileDir(): string {
         return __DIR__;
     }
+
     /**
      * 行書き込み
      * 
@@ -164,6 +176,7 @@ class Writer {
 
         $this->isFirst = false;
     }
+
     /**
      * 項目書き込み
      * 
@@ -187,6 +200,7 @@ class Writer {
 
         $this->isFirstInRow = false;
     }
+
     /**
      * 値を変換
      * 
@@ -212,6 +226,7 @@ class Writer {
 
         return $data;
     }
+
     /**
      * 出力処理
      * 
@@ -226,6 +241,7 @@ class Writer {
             $this->outputToFile($value) :
             $this->outputToBrowser($value);
     }
+
     /**
      * 出力処理(ファイル出力用)
      * 
@@ -235,6 +251,7 @@ class Writer {
         if (fwrite($this->fileHandle, $value) === false)
             trigger_error(sprintf('File output failed ! %s', $value), E_USER_ERROR);
     }
+
     /**
      * 出力処理(ブラウザ出力用)
      * 

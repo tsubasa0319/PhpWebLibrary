@@ -15,6 +15,7 @@ namespace tsubasaLibs\api;
 use tsubasaLibs\type;
 use tsubasaLibs\database;
 use Stringable;
+
 /**
  * APIイベントクラス
  * 
@@ -46,6 +47,7 @@ class Events {
     protected $logFilePath;
     /** @var ?resource ログファイルポインタ */
     protected $logFilePointer;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct() {
@@ -80,6 +82,7 @@ class Events {
         $this->endLog();
         fclose($this->logFilePointer);
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -101,12 +104,14 @@ class Events {
             }
         });
     }
+
     /**
      * DBを取得
      */
     protected function getDb(): database\DbBase|false {
         return false;
     }
+
     /**
      * 初期設定
      */
@@ -131,6 +136,7 @@ class Events {
         $this->canResponseError = false;
         $this->logFilePath = null;
     }
+
     /**
      * 権限チェック
      * 
@@ -147,12 +153,15 @@ class Events {
         $ips = $this->getIpsByHost($host);
         if (!in_array($_SERVER['REMOTE_ADDR'], $ips, true)) {
             $isOk = false;
+
             // 開発環境からのアクセスはOK
             if (preg_match('/\A172\.18\.4\.[0-9]{1,3}\z/', $_SERVER['REMOTE_ADDR']))
                 $isOk = true;
+
             // 同じサーバからのアクセスはOK
             if ($_SERVER['REMOTE_ADDR'] === '127.0.0.1')
                 $isOk = true;
+
             if (!$isOk) {
                 $this->errorMessage = sprintf(
                     '%s and %s are inconsistent', $this->remoteHost, $_SERVER['REMOTE_ADDR']
@@ -160,6 +169,7 @@ class Events {
                 return false;
             }
         }
+
         // 許可したリモートホスト名かどうか
         if ($this->allowHosts !== null and !in_array($host, $this->allowHosts, true)) {
             $this->errorMessage = sprintf(
@@ -169,6 +179,7 @@ class Events {
         }
         return true;
     }
+
     /**
      * ホスト名別のIPアドレスリストを取得
      * 
@@ -179,6 +190,7 @@ class Events {
     protected function getIpsByHost(string $host): array {
         return [];
     }
+
     /**
      * 権限チェックエラー
      * 
@@ -188,6 +200,7 @@ class Events {
         $this->log('Role error: ' . $this->errorMessage);
         $this->error($this->errorMessage, 403);
     }
+
     /**
      * イベント処理
      * 
@@ -196,6 +209,7 @@ class Events {
     protected function event() {
         return false;
     }
+
     /**
      * イベント後処理
      */
@@ -208,6 +222,7 @@ class Events {
             'data' => $data
         ], JSON_UNESCAPED_UNICODE);
     }
+
     /**
      * データ変換(JSON用)
      */
@@ -238,6 +253,7 @@ class Events {
                     mb_convert_encoding($data, $this->responseCharset) : $data;
         }
     }
+
     /**
      * エラー処理
      * 
@@ -260,6 +276,7 @@ class Events {
         }
         exit;
     }
+
     /**
      * ログを出力
      * 
@@ -277,6 +294,7 @@ class Events {
             sprintf('"%s"', str_replace('"', '""', $message))
         ]) . "\n");
     }
+
     /**
      * 開始ログを出力
      * 
@@ -288,6 +306,7 @@ class Events {
             'Data' => [...$_GET, ...$_POST]
         ], JSON_UNESCAPED_UNICODE));
     }
+
     /**
      * 終了ログを出力
      * 

@@ -10,6 +10,7 @@
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database\advance;
 use tsubasaLibs\database;
+
 /**
  * 項目定義リストへ項目追加(入力ログ)
  * 
@@ -25,6 +26,7 @@ trait ItemsInputterItem {
     public $inputUserId;
     /** @var database\Item 入力プログラムID */
     public $inputProgramId;
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -35,6 +37,7 @@ trait ItemsInputterItem {
     public function getAddedItemIdsInputter(): array {
         return ['inputTime', 'inputUserId', 'inputProgramId'];
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**

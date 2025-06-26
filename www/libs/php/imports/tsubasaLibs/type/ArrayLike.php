@@ -10,6 +10,7 @@
 namespace tsubasaLibs\type;
 use ArrayAccess, Iterator, Countable;
 use Stringable;
+
 /**
  * 配列型クラス
  * 
@@ -23,6 +24,7 @@ class ArrayLike implements ArrayAccess, Iterator, Countable {
     protected $datas;
     /** @var int 読み取り位置 */
     protected $position;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
@@ -31,12 +33,15 @@ class ArrayLike implements ArrayAccess, Iterator, Countable {
     public function __construct(mixed ...$datas) {
         $this->datas = $datas;
     }
+
     // ---------------------------------------------------------------------------------------------
     // マジックメソッド
     public function __clone() {}
+
     public function __debugInfo() {
         return $this->datas;
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(オーバーライド、ArrayAccess)
     /**
@@ -50,6 +55,7 @@ class ArrayLike implements ArrayAccess, Iterator, Countable {
             $offset = (string)$offset;
         return isset($this->datas[$offset]);
     }
+
     /**
      * 取得
      * 
@@ -61,6 +67,7 @@ class ArrayLike implements ArrayAccess, Iterator, Countable {
             $offset = (string)$offset;
         return $this->datas[$offset];
     }
+
     /**
      * 設定
      * 
@@ -76,6 +83,7 @@ class ArrayLike implements ArrayAccess, Iterator, Countable {
             $this->datas[$offset] = $value;
         }
     }
+
     /**
      * 破棄
      * 
@@ -86,6 +94,7 @@ class ArrayLike implements ArrayAccess, Iterator, Countable {
             $offset = (string)$offset;
         unset($this->datas[$offset]);
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(オーバーライド、Iterator)
     /**
@@ -94,18 +103,21 @@ class ArrayLike implements ArrayAccess, Iterator, Countable {
     public function rewind(): void {
         $this->position = 0;
     }
+
     /**
      * 読み取り位置を次へ移動
      */
     public function next(): void {
         $this->position++;
     }
+
     /**
      * 読み取り位置を取得
      */
     public function key(): mixed {
         return $this->position;
     }
+
     /**
      * 現在の読み取り位置のデータ値を取得
      * 
@@ -116,6 +128,7 @@ class ArrayLike implements ArrayAccess, Iterator, Countable {
             array_keys($this->datas)[$this->position]
         ];
     }
+
     /**
      * 読み取り位置にデータがあるかどうか
      * 
@@ -124,6 +137,7 @@ class ArrayLike implements ArrayAccess, Iterator, Countable {
     public function valid(): bool {
         return $this->position < count($this->datas);
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(オーバーライド、Countable)
     /**
@@ -134,6 +148,7 @@ class ArrayLike implements ArrayAccess, Iterator, Countable {
     public function count(): int {
         return count($this->datas);
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(追加)
     /**
@@ -145,6 +160,7 @@ class ArrayLike implements ArrayAccess, Iterator, Countable {
         $this->datas = [];
         $this->rewind();
     }
+
     /**
      * 要素を削除(順序番号指定)
      * 

@@ -14,6 +14,7 @@
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use DateTime, DateInterval;
+
 /**
  * ログインユーザクラス
  * 
@@ -37,6 +38,7 @@ class SessionUser {
     const STATUS_TIMEOUT_AFTER = 'timeoutAfter';
     /** @var string ステータス(パスワードが有効期限切れ) */
     const STATUS_EXPIRED = 'expired';
+
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var array セッション情報のリファレンス */
@@ -49,12 +51,14 @@ class SessionUser {
     public $loginTime;
     /** @var DateTime 最終アクセス時間 */
     public $lastAccessTime;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct() {
         $this->setInit();
         $this->setInfoFromSession();
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -67,6 +71,7 @@ class SessionUser {
         if ($this->isTimeout()) return false;
         return true;
     }
+
     /**
      * 権限リストを取得
      * 
@@ -76,6 +81,7 @@ class SessionUser {
     public function getRoles(): array {
         return [];
     }
+
     /**
      * 最終アクセス時間を更新(延長処理)
      * 
@@ -85,6 +91,7 @@ class SessionUser {
         $now = $this->getNow();
         $this->setLastAccessTime($now);
     }
+
     /**
      * タイムアウトしたことを記録
      * 
@@ -93,6 +100,7 @@ class SessionUser {
     public function setTimeout() {
         $this->session['status'] = static::STATUS_TIMEOUT_AFTER;
     }
+
     /**
      * ログイン
      * 
@@ -109,6 +117,7 @@ class SessionUser {
         $this->setLastAccessTime($now);
         return true;
     }
+
     /**
      * ログアウト
      * 
@@ -119,6 +128,7 @@ class SessionUser {
         $this->session['status'] = static::STATUS_LOGOUT_AFTER;
         return true;
     }
+
     /**
      * ログアウト後かどうか
      * 
@@ -132,6 +142,7 @@ class SessionUser {
         }
         return false;
     }
+
     /**
      * タイムアウト後かどうか
      * 
@@ -145,6 +156,7 @@ class SessionUser {
         }
         return false;
     }
+
     /**
      * パスワードが有効期限切れ
      * 
@@ -153,6 +165,7 @@ class SessionUser {
     public function setExpired() {
         $this->session['status'] = static::STATUS_EXPIRED;
     }
+
     /**
      * パスワードが有効期限切れかどうか
      * 
@@ -162,6 +175,7 @@ class SessionUser {
     public function isExpired(): bool {
         return $this->session['status'] === static::STATUS_EXPIRED;
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -174,6 +188,7 @@ class SessionUser {
         $this->loginTime = null;
         $this->lastAccessTime = null;
     }
+
     /**
      * セッション情報のリファレンスを設定
      * 
@@ -186,6 +201,7 @@ class SessionUser {
             ];
         $this->session =& $_SESSION[static::ID];
     }
+
     /**
      * セッションより情報設定
      */
@@ -196,6 +212,7 @@ class SessionUser {
         $this->loginTime = $this->getTimeFromString($this->session['loginTime']);
         $this->lastAccessTime = $this->getTimeFromString($this->session['lastAccessTime']);
     }
+
     /**
      * タイムアウトしているかどうか
      * 
@@ -209,6 +226,7 @@ class SessionUser {
         );
         return $now > $limitTime;
     }
+
     /**
      * ユーザIDを変更
      * 
@@ -218,6 +236,7 @@ class SessionUser {
         $this->userId = $userId;
         $this->session['userId'] = $userId;
     }
+
     /**
      * ログイン時間を変更
      * 
@@ -227,6 +246,7 @@ class SessionUser {
         $this->loginTime = $now;
         $this->session['loginTime'] = $this->loginTime->format('Y/m/d H:i:s.u');
     }
+
     /**
      * 最終アクセス時間を変更
      * 
@@ -236,6 +256,7 @@ class SessionUser {
         $this->lastAccessTime = $now;
         $this->session['lastAccessTime'] = $this->lastAccessTime->format('Y/m/d H:i:s.u');
     }
+
     /**
      * ログイン時のチェック
      * 
@@ -246,6 +267,7 @@ class SessionUser {
     protected function checkForLogin($userId, $password): bool {
         return false;
     }
+
     /**
      * 現在日時を取得
      * 
@@ -258,6 +280,7 @@ class SessionUser {
             substr($mtimeArr[0], 1));
         return $this->getTimeFromString($timeString);
     }
+
     /**
      * 日時変換(文字列型→日時型)
      * 

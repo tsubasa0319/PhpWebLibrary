@@ -10,6 +10,7 @@
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database\advance;
 use tsubasaLibs\database;
+
 /**
  * 項目定義リストへ項目追加(更新ログ)
  * 
@@ -25,6 +26,7 @@ trait ItemsUpdaterItem {
     public $updateUserId;
     /** @var database\Item 更新プログラムID */
     public $updateProgramId;
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -35,6 +37,7 @@ trait ItemsUpdaterItem {
     public function getAddedItemIdsUpdater(): array {
         return ['updateTime', 'updateUserId', 'updateProgramId'];
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**

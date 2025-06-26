@@ -10,6 +10,7 @@ require_once __DIR__ . '/Item.php';
 require_once __DIR__ . '/advance/ItemsCreatorItem.php';
 require_once __DIR__ . '/advance/ItemsInputterItem.php';
 require_once __DIR__ . '/advance/ItemsUpdaterItem.php';
+
 /**
  * 項目定義リストクラス
  * 
@@ -21,6 +22,7 @@ class Items {
     // プロパティ
     /** @var string[] 追加項目 */
     public $addedItems;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct() {
@@ -32,26 +34,35 @@ class Items {
             $value->id = $name;
         }
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
+     * 項目定義リストを連想配列型で取得
+     * 
      * @return array<string, Item>
      */
     public function getItemsArray(): array {
         $itemsArray = [];
+
+        // 通常の項目
         foreach (get_object_vars($this) as $name => $item) {
             if (!($item instanceof Item)) continue;
             if (in_array($name, $this->addedItems, true)) continue;
             $itemsArray[$name] = $item;
         }
+
+        // 後ろに、追加項目を追加(ログ情報など)
         foreach ($this->addedItems as $name) {
             if (!property_exists($this, $name)) continue;
             $item = $this->{$name};
             if (!($item instanceof Item)) continue;
             $itemsArray[$name] = $item;
         }
+
         return $itemsArray;
     }
+
     /**
      * 追加した項目IDのリストを取得(作成者)
      * 
@@ -60,6 +71,7 @@ class Items {
     public function getAddedItemIdsCreator(): array {
         return [];
     }
+
     /**
      * 追加した項目IDのリストを取得(入力者)
      * 
@@ -68,6 +80,7 @@ class Items {
     public function getAddedItemIdsInputter(): array {
         return [];
     }
+
     /**
      * 追加した項目IDのリストを取得(更新者)
      * 
@@ -76,6 +89,7 @@ class Items {
     public function getAddedItemIdsUpdater(): array {
         return [];
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -84,6 +98,7 @@ class Items {
     protected function setInit() {
         $this->addedItems = [];
     }
+
     /**
      * 項目定義を設定
      */

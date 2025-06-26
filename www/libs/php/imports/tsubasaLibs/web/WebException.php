@@ -7,6 +7,7 @@
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use Exception, Throwable;
+
 /**
  * Web処理の例外クラス
  * 
@@ -14,6 +15,8 @@ use Exception, Throwable;
  * @version 0.22.00
  */
 class WebException extends Exception {
+    // ---------------------------------------------------------------------------------------------
+    // コンストラクタ/デストラクタ
     public function __construct(string $message, int $code = 0, Throwable $previous = null) {
         parent::__construct($message, $code, $previous);
 

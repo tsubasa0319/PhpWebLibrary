@@ -11,6 +11,7 @@ require_once __DIR__ . '/DateTime.php';
 use tsubasaLibs\type\DateTime;
 use Stringable;
 use DateTime as _DateTime, DateTimeZone;
+
 /**
  * タイムスタンプ型クラス
  * 
@@ -29,6 +30,7 @@ class TimeStamp extends DateTime {
     ) {
         if ($date instanceof _DateTime) $date = $date->format('Y/m/d H:i:s.u');
         if ($date instanceof Stringable) $date = (string)$date;
+
         // 現在日時
         if ($date === 'now') {
             $mtimeArr = explode(' ', microtime());
@@ -36,13 +38,16 @@ class TimeStamp extends DateTime {
                 (string)(new parent(date('Y/m/d H:i:s', (int)$mtimeArr[1]), $timezone)),
                 substr($mtimeArr[0], 1));
         }
+
         $this->datetime = new _DateTime($date, $timezone);
     }
+
     // ---------------------------------------------------------------------------------------------
     // マジックメソッド(オーバーライド)
     public function __toString() {
         return $this->datetime->format('Y/m/d H:i:s.u');
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(オーバーライド)
     /**
@@ -61,6 +66,7 @@ class TimeStamp extends DateTime {
             $microsecond ?? $this->getMicrosecond());
         return $this;
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(追加)
     /**
@@ -69,6 +75,7 @@ class TimeStamp extends DateTime {
     public function getMicrosecond() {
         return (int)$this->datetime->format('u');
     }
+
     /**
      * マイクロ秒を変更
      * 

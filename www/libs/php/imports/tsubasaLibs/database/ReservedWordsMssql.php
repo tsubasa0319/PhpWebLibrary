@@ -6,6 +6,7 @@
 // 0.00.00 2024/01/23 作成。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
+
 /**
  * 予約語(Microsoft SQL Server)
  * 
@@ -13,6 +14,13 @@ namespace tsubasaLibs\database;
  * @version 0.00.00
  */
 class ReservedWordsMssql {
+    // ---------------------------------------------------------------------------------------------
+    // メソッド(静的)
+    /**
+     * 予約語を取得
+     * 
+     * @return string[]
+     */
     static public function getWords() {
         return [
             'add',

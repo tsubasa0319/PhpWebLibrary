@@ -10,6 +10,7 @@
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/DbBase.php';
 require_once __DIR__ . '/DbException.php';
+
 /**
  * DBコネクタベースクラス
  * 
@@ -33,6 +34,7 @@ class DbConnectorBase {
     const DB_ENGINE_MSSQL = 'mssql';
     /** IBM i(ODBC経由) */
     const DB_ENGINE_IBMI_ODBC = 'ibmi-odbc';
+
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var string 動作環境 */
@@ -59,6 +61,7 @@ class DbConnectorBase {
     protected $_options;
     /** @var string 接続DSN */
     protected $_dsn;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ、デストラクタ
     /**
@@ -67,6 +70,7 @@ class DbConnectorBase {
     public function __construct(?string $env = null) {
         $this->setEnv($env)->setConParam()->setDsn();
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -77,6 +81,7 @@ class DbConnectorBase {
     public function connect() {
         return new DbBase(...$this->getConPrmArr());
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -92,6 +97,7 @@ class DbConnectorBase {
         $this->_env = $env;
         return $this;
     }
+
     /**
      * DBエンジンを設定
      * 
@@ -104,6 +110,7 @@ class DbConnectorBase {
         $this->_dbengine = $dbengine;
         return $this;
     }
+
     /**
      * ホスト名を設定
      * 
@@ -114,6 +121,7 @@ class DbConnectorBase {
         $this->_host = $host;
         return $this;
     }
+
     /**
      * ポート番号を設定
      * 
@@ -124,6 +132,7 @@ class DbConnectorBase {
         $this->_port = $port;
         return $this;
     }
+
     /**
      * DB名を設定
      * 
@@ -134,6 +143,7 @@ class DbConnectorBase {
         $this->_dbname = $dbname;
         return $this;
     }
+
     /**
      * 文字セットを設定
      * 
@@ -144,6 +154,7 @@ class DbConnectorBase {
         $this->_charset = $charset;
         return $this;
     }
+
     /**
      * ライブラリリストを設定
      * 
@@ -154,6 +165,7 @@ class DbConnectorBase {
         $this->_libl = $libl;
         return $this;
     }
+
     /**
      * CCSIDを設定
      * 
@@ -164,6 +176,7 @@ class DbConnectorBase {
         $this->_ccsid = $ccsid;
         return $this;
     }
+
     /**
      * 接続ユーザIDを設定
      * 
@@ -174,6 +187,7 @@ class DbConnectorBase {
         $this->_username = $username;
         return $this;
     }
+
     /**
      * 接続パスワードを設定
      * 
@@ -184,6 +198,7 @@ class DbConnectorBase {
         $this->_password = $password;
         return $this;
     }
+
     /**
      * 接続オプションへ追加
      * 
@@ -196,6 +211,7 @@ class DbConnectorBase {
         $this->_options[$key] = $value;
         return $this;
     }
+
     /**
      * 接続パラメータを設定
      * 
@@ -212,6 +228,7 @@ class DbConnectorBase {
             throw new DbException(sprintf('Not Found Connection Parameter: %s', $this->_env));
         return $this;
     }
+
     /**
      * DSN設定
      * 
@@ -225,6 +242,7 @@ class DbConnectorBase {
             throw new DbException(sprintf('Invalid Db-Engine: %s', $this->_dbengine));
         return $this;
     }
+
     /**
      * 動作環境の存在チェック
      * 
@@ -237,6 +255,7 @@ class DbConnectorBase {
             self::ENV_PROD, self::ENV_TEST, self::ENV_DEV, self::ENV_DEV2
         ], true);
     }
+
     /**
      * DBエンジンの存在チェック
      * 
@@ -250,6 +269,7 @@ class DbConnectorBase {
             self::DB_ENGINE_MSSQL,
             self::DB_ENGINE_IBMI_ODBC], true);
     }
+
     /**
      * 既定動作環境を取得
      * 
@@ -259,6 +279,7 @@ class DbConnectorBase {
     protected function getDefaultEnv() {
         return self::ENV_DEV;
     }
+
     /**
      * 接続パラメータ取得(本番環境)
      * 
@@ -268,6 +289,7 @@ class DbConnectorBase {
     protected function setConParamProd() {
         return false;
     }
+
     /**
      * 接続パラメータ取得(テスト環境)
      * 
@@ -277,6 +299,7 @@ class DbConnectorBase {
     protected function setConParamTest() {
         return false;
     }
+
     /**
      * 接続パラメータ取得(開発環境)
      * 
@@ -286,6 +309,7 @@ class DbConnectorBase {
     protected function setConParamDev() {
         return false;
     }
+
     /**
      * 接続パラメータ取得(開発環境2)
      * 
@@ -295,6 +319,7 @@ class DbConnectorBase {
     protected function setConParamDev2() {
         return false;
     }
+
     /**
      * 接続パラメータ取得(その他環境)
      * 
@@ -304,6 +329,7 @@ class DbConnectorBase {
     protected function setConParamOther() {
         return false;
     }
+
     /**
      * DSN取得(MySQL)
      * 
@@ -311,22 +337,28 @@ class DbConnectorBase {
      */
     protected function setDsnMysql() {
         $valL = [];
+
         // ホスト名
         $valL['host'] = $this->_host;
+
         // ポート番号
         if ($this->_port !== null and $this->_port !== 3306)
             $valL['port'] = $this->_port;
+
         // 既定のDB名
         if ($this->_dbname !== null)
             $valL['dbname'] = $this->_dbname;
+
         // 既定の文字セット
         if ($this->_charset !== null)
             $valL['charset'] = $this->_charset;
+
         $prmL = [];
         foreach ($valL as $key => $val) $prmL[] = sprintf('%s=%s', $key, $val);
         $this->_dsn = sprintf('mysql:%s;', implode('; ', $prmL));
         return true;
     }
+
     /**
      * DSN取得(IBM i(ODBC経由))
      * 
@@ -334,24 +366,35 @@ class DbConnectorBase {
      */
     protected function setDsnIbmiOdbc() {
         $valL = [];
+
         // ドライバー
         $valL['Driver'] = '{IBM i Access ODBC Driver}';
+
         // ホスト名
         $valL['System'] = $this->_host;
+
         // ライブラリリスト
         if ($this->_libl !== null)
             $valL['DBQ'] = sprintf('%s', is_array($this->_libl) ?
                 implode(',', $this->_libl) : $this->_libl);
+
         // CCSID
         if ($this->_ccsid !== null)
             $valL['CCSID'] = $this->_ccsid;
+
+        // パフォーマンスを犠牲にして、結果の長さを常に計算する
         $valL['ALWAYSCALCLEN'] = 1;
+
+        // 末尾の空白を削除する
         $valL['TRIMCHAR'] = 1;
+
         $prmL = [];
         foreach ($valL as $key => $val) $prmL[] = sprintf('%s=%s', $key, $val);
         $this->_dsn = sprintf('odbc:%s;', implode('; ', $prmL));
         return true;
-    }    /**
+    }
+
+    /**
      * DB接続に指定するパラメータを配列型で取得(PDO)
      */
     protected function getConPrmArr() {

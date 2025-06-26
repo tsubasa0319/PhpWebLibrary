@@ -10,6 +10,7 @@
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/../common/Exception.php';
 use tsubasaLibs\common;
+
 /**
  * DB接続の例外クラス
  * 

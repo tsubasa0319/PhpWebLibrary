@@ -8,6 +8,7 @@
 // 0.22.00 2024/05/17 システム管理者権限を定数化。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
+
 /**
  * メニュークラス
  * 
@@ -19,6 +20,7 @@ class Menu {
     // 定数
     /** プログラムID(メニュー) */
     const PROGRAM_ID_MENU = 'menu';
+
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var string[] ユーザの所有権限 */
@@ -27,11 +29,13 @@ class Menu {
     protected $groups;
     /** @var array{id: string, name: string, group: string}[] メニューリスト */
     protected $items;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct() {
         $this->setInit();
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -42,6 +46,7 @@ class Menu {
     public function addRoles(string ...$roles) {
         $this->userRoles = [...$this->userRoles, ...$roles];
     }
+
     /**
      * メニューグループリストを取得(権限範囲のみ)
      * 
@@ -57,6 +62,7 @@ class Menu {
         }
         return $groups;
     }
+
     /**
      * ヘッダ用のメニュー項目リストを取得
      * 
@@ -75,6 +81,7 @@ class Menu {
                 }
             }
         }
+
         // サブシステムの機能に居る場合
         if ($myGroup !== null) {
             return [
@@ -82,6 +89,7 @@ class Menu {
                 $this->makeGroupLink($myGroup)
             ];
         }
+
         // メニューに居る場合
         $tree = [];
         $tree[] = $this->makeGroupLink(['id' => null, 'name' => 'TOP']);
@@ -89,6 +97,7 @@ class Menu {
             $tree[] = $this->makeGroupLink($group);
         return $tree;
     }
+
     /**
      * メニュー項目リストを取得
      * 
@@ -101,6 +110,7 @@ class Menu {
             $items[] = ['id' => $item['id'], 'name' => $item['name']];
         return $items;
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -111,6 +121,7 @@ class Menu {
         $this->setGroups();
         $this->setItems();
     }
+
     /**
      * メニューグループリストを設定
      */
@@ -119,6 +130,7 @@ class Menu {
             ['id' => 'management', 'name' => '管理者用', 'roles' => []]
         ];
     }
+
     /**
      * メニューリストを設定
      */
@@ -127,6 +139,7 @@ class Menu {
             ['id' => 'management/maintenanceMstUser', 'name' => 'ユーザマスタ保守', 'group' => 'management']
         ];
     }
+
     /**
      * メニューグループのリンク用項目を生成
      * 

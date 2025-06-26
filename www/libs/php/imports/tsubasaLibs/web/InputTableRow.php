@@ -11,6 +11,7 @@
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/InputItems.php';
 use Exception;
+
 /**
  * 入力テーブルの行クラス
  * 
@@ -39,6 +40,7 @@ class InputTableRow extends InputItems {
      * trueにすると、行を削除時に論理削除ではなく、物理削除になります。
      */
     public $isAdded;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
@@ -52,8 +54,10 @@ class InputTableRow extends InputItems {
         $this->table = $table;
         $this->setInit();
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(オーバーライド)
+    // フォーカス移動
     public function setFocus() {
         // 設定済ならば、上書きしない
         if ($this->events->focusName !== null) return;
@@ -69,6 +73,7 @@ class InputTableRow extends InputItems {
             return;
         }
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(追加)
     /**
@@ -77,6 +82,7 @@ class InputTableRow extends InputItems {
     public function getTable(): ?InputTable {
         return $this->table;
     }
+
     /**
      * 行番号を取得
      * 
@@ -88,6 +94,7 @@ class InputTableRow extends InputItems {
                 return $num;
         return null;
     }
+
     /**
      * 頁番号を取得
      * 
@@ -98,6 +105,7 @@ class InputTableRow extends InputItems {
         if ($rowCount === null) return null;
         return intdiv($rowCount, $this->table->getUnitRowCount());
     }
+
     /**
      * 頁内の行番号を取得
      * 
@@ -108,6 +116,7 @@ class InputTableRow extends InputItems {
         if ($rowCount === null) return null;
         return $rowCount % $this->table->getUnitRowCount();
     }
+
     /**
      * 選択
      * 
@@ -125,6 +134,7 @@ class InputTableRow extends InputItems {
         // 頁を移動
         $this->table->setPageCount($this->getPageCount());
     }
+
     /**
      * 検索対象かどうか
      * 
@@ -135,12 +145,14 @@ class InputTableRow extends InputItems {
     public function isTarget(array $values): bool {
         return false;
     }
+
     /**
      * 再取得
      * 
      * @since 0.22.00
      */
     public function refresh() {}
+
     /**
      * 削除
      * 
@@ -162,6 +174,7 @@ class InputTableRow extends InputItems {
                 break;
             }
     }
+
     /**
      * 入力チェック(最小限のみ、入力テーブルの表示外の頁)
      * 
@@ -177,6 +190,7 @@ class InputTableRow extends InputItems {
         }
         return $result;
     }
+
     /**
      * 更新処理(追加)
      * 
@@ -198,6 +212,7 @@ class InputTableRow extends InputItems {
         }
         return true;
     }
+
     /**
      * 更新処理(変更)
      * 
@@ -219,6 +234,7 @@ class InputTableRow extends InputItems {
         }
         return true;
     }
+
     /**
      * 更新処理(削除)
      * 
@@ -239,8 +255,10 @@ class InputTableRow extends InputItems {
         }
         return true;
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理(オーバーライド)
+    // 初期設定
     protected function setInit() {
         parent::setInit();
         $this->isVisible = true;
@@ -248,6 +266,7 @@ class InputTableRow extends InputItems {
         $this->isPlanToDeleted = false;
         $this->isAdded = false;
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理(追加)
     /**
@@ -259,6 +278,7 @@ class InputTableRow extends InputItems {
     protected function executeQueryForAdd(): int|false {
         return 0;
     }
+
     /**
      * クエリを実行(変更)
      * 
@@ -268,6 +288,7 @@ class InputTableRow extends InputItems {
     protected function executeQueryForEdit(): int|false {
         return 0;
     }
+
     /**
      * クエリを実行(削除)
      * 

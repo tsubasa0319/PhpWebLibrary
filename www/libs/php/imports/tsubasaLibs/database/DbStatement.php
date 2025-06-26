@@ -11,6 +11,7 @@
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/ValueType.php';
 use PDOStatement, PDOException;
+
 /**
  * DBステートメントクラス(PDOベース)
  * 
@@ -24,6 +25,7 @@ class DbStatement extends PDOStatement {
     protected $db;
     /** @var array<string, ?int|string> バインド値リスト(デバッグ用) */
     protected $bindedValues;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
@@ -33,6 +35,7 @@ class DbStatement extends PDOStatement {
         $this->db = $db;
         $this->setInit();
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(オーバーライド)
     /**
@@ -50,6 +53,7 @@ class DbStatement extends PDOStatement {
         $this->setBindValue($param, $value);
         return parent::bindValue($param, $value, $type);
     }
+
     /**
      * 実行
      * 
@@ -58,9 +62,11 @@ class DbStatement extends PDOStatement {
      */
     public function execute(array|null $params = null): bool {
         $log = new ExecuteLogRow();
+
         try {
             $result = parent::execute($params);
         } catch (PDOException $ex) {
+            // 異常終了
             if ($this->db->isDebug) var_dump($this->queryString, $this->bindedValues, $params);
             error_log(sprintf('Query failed ! [SQL]%s[PARAM]%s[OPTION]%s',
                 $this->queryString,
@@ -69,9 +75,11 @@ class DbStatement extends PDOStatement {
             ));
             $this->db->throwException('プリペアドステートメントの実行に失敗しました。', $ex);
         }
+
         $this->addQueryHistory($log, $result);
         return $result;
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(追加)
     /**
@@ -82,6 +90,7 @@ class DbStatement extends PDOStatement {
     public function getExecutor(): ?Executor {
         return $this->db->executor;
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(追加、静的)
     /**
@@ -96,6 +105,7 @@ class DbStatement extends PDOStatement {
         $stmt->db = $db;
         return $stmt;
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -104,6 +114,7 @@ class DbStatement extends PDOStatement {
     protected function setInit() {
         $this->bindedValues = [];
     }
+
     /**
      * バインド用変換
      * 
@@ -113,12 +124,14 @@ class DbStatement extends PDOStatement {
     protected function convertForBind(&$value, int &$type) {
         ValueType::convertForBind($value, $type);
     }
+
     /**
      * バインドした値を登録(デバッグ用)
      */
     protected function setBindValue(int|string $param, int|string|null $value) {
         $this->bindedValues[(string)$param] = $value;
     }
+
     /**
      * クエリ履歴へ追加(デバッグ用)
      */

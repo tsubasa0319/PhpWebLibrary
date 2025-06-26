@@ -18,6 +18,7 @@ require_once __DIR__ . '/Executor.php';
 require_once __DIR__ . '/ExecuteLog.php';
 use PDO, PDOException;
 use Throwable;
+
 /**
  * DBクラス(PDOベース)
  * 
@@ -35,6 +36,7 @@ class DbBase extends PDO {
     public const PARAM_ADD_TIMESTAMP = 18;
     /** データ型(追加、十進数型) */
     public const PARAM_ADD_DECIMAL = 19;
+
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var bool デバッグモード */
@@ -51,6 +53,7 @@ class DbBase extends PDO {
     protected $tableInstances;
     /** @var Executor 実行者 */
     public $executor;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct(
@@ -70,6 +73,7 @@ class DbBase extends PDO {
         $log->setEndTime();
         if ($this->isDebug) $this->executeLog->add($log);
     }
+
     // ---------------------------------------------------------------------------------------------
     // マジックメソッド
     public function __debugInfo() {
@@ -78,6 +82,7 @@ class DbBase extends PDO {
             'executeLog' => $this->executeLog
         ];
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(オーバーライド)
     /**
@@ -92,11 +97,15 @@ class DbBase extends PDO {
         string $query, int|null $fetchMode = null, ...$fetch_mode_args
     ): DbStatement|false {
         $log = new ExecuteLogRow();
+
+        // 持続的な接続中に、更新処理は禁止
         if (!$this->checkQueryForPersistent($query))
             throw new DbException('持続的な接続で、更新やロックは禁止されています。');
+
         try {
             $result = parent::query($query, $fetchMode, ...$fetch_mode_args);
         } catch (PDOException $ex) {
+            // 異常終了
             error_log(sprintf('Query failed ! [SQL]%s[MODE]%s[ARGS]%s',
                 $query,
                 $fetchMode ?? 'Null',
@@ -105,9 +114,11 @@ class DbBase extends PDO {
             if ($this->isDebug) var_dump($query, $fetchMode, $fetch_mode_args);
             $this->throwException('クエリ実行中に失敗しました。', $ex);
         }
+
         $this->addQueryHistory($log, $query, $result !== false);
         return $result;
     }
+
     /**
      * 更新クエリ実行
      * 
@@ -116,18 +127,24 @@ class DbBase extends PDO {
      */
     public function exec(string $statement): int|false {
         $log = new ExecuteLogRow();
+
+        // 持続的な接続中に、更新処理は禁止
         if (!$this->checkQueryForPersistent($statement))
             throw new DbException('持続的な接続で、更新やロックは禁止されています。');
+
         try {
             $result = parent::exec($statement);
         } catch (PDOException $ex) {
+            // 異常終了
             error_log(sprintf('Query failed ! [SQL]%s', $statement));
             if ($this->isDebug) var_dump($statement);
             $this->throwException('クエリ実行中に失敗しました。', $ex);
         }
+
         $this->addQueryHistory($log, $statement, $result !== false);
         return $result;
     }
+
     /**
      * プリペアドステートメント取得
      * 
@@ -136,11 +153,14 @@ class DbBase extends PDO {
      * @return DbStatement|false
      */
     public function prepare(string $query, array $options = []): DbStatement|false {
+        // 持続的な接続中に、更新処理は禁止
         if (!$this->checkQueryForPersistent($query))
             throw new DbException('持続的な接続で、更新やロックは禁止されています。');
+
         try {
             $result = parent::prepare($query, $options);
         } catch (PDOException $ex) {
+            // 異常終了
             error_log(sprintf('Query failed ! [SQL]%s[OPTION]%s',
                 $query,
                 json_encode($options, JSON_UNESCAPED_UNICODE)
@@ -148,8 +168,10 @@ class DbBase extends PDO {
             if ($this->isDebug) var_dump($query, $options);
             $this->throwException('プリペアドステートメント取得中に失敗しました。', $ex);
         }
+
         return $result;
     }
+
     /**
      * トランザクション開始
      * 
@@ -158,22 +180,29 @@ class DbBase extends PDO {
     public function beginTransaction(): bool {
         $log = new ExecuteLogRow();
         $log->setName('トランザクション開始');
+
+        // 持続的な接続中に、トランザクション処理は禁止
         if ($this->isNeedPersistentCheck())
             throw new DbException('持続的な接続で、トランザクション処理は禁止されています。');
+
         try {
             // 自動で生成されたトランザクションは終了させる
             $autocommit = $this->getAttribute(static::ATTR_AUTOCOMMIT);
             if (!$autocommit and $this->inTransaction()) $this->rollBack();
+
             // トランザクション開始
             $result = parent::beginTransaction();
             if ($result) $this->isBeginTransaction = true;
         } catch (PDOException $ex) {
+            // 異常終了
             $this->throwException('トランザクション開始に失敗しました。', $ex);
         }
+
         $log->setEndTime()->setIsSuccessful($result);
         if ($this->isDebug) $this->executeLog->add($log);
         return $result;
     }
+
     /**
      * コミット
      * 
@@ -182,16 +211,20 @@ class DbBase extends PDO {
     public function commit(): bool {
         $log = new ExecuteLogRow;
         $log->setName('コミット');
+
         try {
             $result = parent::commit();
             if ($result) $this->isBeginTransaction = false;
         } catch (PDOException $ex) {
+            // 異常終了
             $this->throwException('コミットに失敗しました。', $ex);
         }
+
         $log->setEndTime()->setIsSuccessful($result);
         if ($this->isDebug) $this->executeLog->add($log);
         return $result;
     }
+
     /**
      * ロールバック
      * 
@@ -200,16 +233,20 @@ class DbBase extends PDO {
     public function rollBack(): bool {
         $log = new ExecuteLogRow;
         $log->setName('ロールバック');
+
         try {
             $result = parent::rollBack();
             if ($result) $this->isBeginTransaction = false;
         } catch (PDOException $ex) {
+            // 異常終了
             $this->throwException('ロールバックに失敗しました。', $ex);
         }
+
         $log->setEndTime()->setIsSuccessful($result);
         if ($this->isDebug) $this->executeLog->add($log);
         return $result;
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(追加)
     /**
@@ -221,6 +258,7 @@ class DbBase extends PDO {
     public function throwException(string $message, ?Throwable $ex = null) {
         throw new DbException($message, 0, $ex);
     }
+
     /**
      * MySQLかどうか
      * 
@@ -229,6 +267,7 @@ class DbBase extends PDO {
     public function isMysql(): bool {
         return $this->getAttribute(self::ATTR_DRIVER_NAME) === 'mysql';
     }
+
     /**
      * Microsoft SQL Serverかどうか
      * 
@@ -237,6 +276,7 @@ class DbBase extends PDO {
     public function isMssql(): bool {
         return $this->getAttribute(self::ATTR_DRIVER_NAME) === 'sqlsrv';
     }
+
     /**
      * クエリ履歴へ追加(デバッグ用)
      * 
@@ -253,6 +293,7 @@ class DbBase extends PDO {
             setDetail($query)
         );
     }
+
     /**
      * 予約語をエスケープ
      * 
@@ -263,6 +304,7 @@ class DbBase extends PDO {
         return $this->isReservedWord($word) ?
             $this->escapeReservedWord($word) : $word;
     }
+
     /**
      * 持続的な接続かどうか
      * 
@@ -271,6 +313,7 @@ class DbBase extends PDO {
     public function isPersistent(): bool {
         return (bool)$this->getAttribute(static::ATTR_PERSISTENT);
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理(追加)
     /**
@@ -284,6 +327,7 @@ class DbBase extends PDO {
         $this->executeLog = new ExecuteLog();
         $this->reservedWords = $this->getReservedWords();
         $this->tableInstances = [];
+
         // 属性
         $this->setAttribute(static::ATTR_ERRMODE, static::ERRMODE_EXCEPTION);
         $this->setAttribute(static::ATTR_AUTOCOMMIT, false);
@@ -291,6 +335,7 @@ class DbBase extends PDO {
         $this->setAttribute(static::ATTR_DEFAULT_FETCH_MODE, static::FETCH_ASSOC);
         $this->setAttribute(static::ATTR_STATEMENT_CLASS, [DbStatement::class, [$this]]);
     }
+
     /**
      * DBエンジンの予約語リストを取得
      * 
@@ -303,6 +348,7 @@ class DbBase extends PDO {
             default => []
         };
     }
+
     /**
      * MySQLの予約語リストを取得
      * 
@@ -311,6 +357,7 @@ class DbBase extends PDO {
     protected function getReservedWordsMysql(): array {
         return ReservedWordsMysql::getWords();
     }
+
     /**
      * Microsoft SQL Serverの予約語リストを取得
      * 
@@ -319,6 +366,7 @@ class DbBase extends PDO {
     protected function getReservedWordsMssql(): array {
         return ReservedWordsMssql::getWords();
     }
+
     /**
      * DBエンジンの予約語であるかどうか
      * 
@@ -327,6 +375,7 @@ class DbBase extends PDO {
     protected function isReservedWord(string $word): bool {
         return in_array($word, $this->reservedWords);
     }
+
     /**
      * DBエンジンの予約語をエスケープ
      * 
@@ -340,6 +389,7 @@ class DbBase extends PDO {
             default => $word
         };
     }
+
     /**
      * MySQLの予約語をエスケープ
      * 
@@ -349,6 +399,7 @@ class DbBase extends PDO {
     protected function escapeMysqlReservedWord(string $word): string {
         return sprintf('`%s`', $word);
     }
+
     /**
      * Microsoft SQL Serverの予約語をエスケープ
      * 
@@ -358,6 +409,7 @@ class DbBase extends PDO {
     protected function escapeMssqlReservedWord(string $word): string {
         return sprintf('[%s]', $word);
     }
+
     /**
      * テーブルインスタンスを取得
      * 
@@ -373,6 +425,7 @@ class DbBase extends PDO {
         $this->tableInstances[] = $tableInstance;
         return $tableInstance;
     }
+
     /**
      * 持続的な接続をチェックする必要があるかどうか
      * 
@@ -383,6 +436,7 @@ class DbBase extends PDO {
         if (!$this->isPersistent()) return false;
         return true;
     }
+
     /**
      * 持続的な接続による更新やロックを実行しようとしていないかどうか
      * 

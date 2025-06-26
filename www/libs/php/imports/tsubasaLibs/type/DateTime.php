@@ -11,6 +11,7 @@ require_once __DIR__ . '/Date.php';
 use tsubasaLibs\type\Date;
 use Stringable;
 use DateTime as _DateTime, DateTimeZone;
+
 /**
  * 日時型クラス
  * 
@@ -29,19 +30,24 @@ class DateTime extends Date {
     ) {
         if ($date instanceof _DateTime) $date = $date->format('Y/m/d H:i:s');
         if ($date instanceof Stringable) $date = (string)$date;
+
         // yyyymmddHHii型
         if (preg_match('/\A[0-9]{12}\z/', $date)) $date .= '00';
+
         // yyyymmddHHiiss型
         if (preg_match('/\A[0-9]{14}\z/', $date)) $date = sprintf('%s/%s/%s %s:%s:%s',
             substr($date, 0, 4), substr($date, 4, 2), substr($date, 6, 2),
             substr($date, 8, 2), substr($date, 10, 2), substr($date, 12));
+
         $this->datetime = new _DateTime($date, $timezone);
     }
+
     // ---------------------------------------------------------------------------------------------
     // マジックメソッド(オーバーライド)
     public function __toString() {
         return $this->datetime->format('Y/m/d H:i:s');
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド(追加)
     /**
@@ -50,18 +56,21 @@ class DateTime extends Date {
     public function getHour() {
         return (int)$this->datetime->format('h');
     }
+
     /**
      * 分を取得
      */
     public function getMinute() {
         return (int)$this->datetime->format('i');
     }
+
     /**
      * 秒を取得
      */
     public function getSecond() {
         return (int)$this->datetime->format('s');
     }
+
     /**
      * 時間を変更
      * 
@@ -81,6 +90,7 @@ class DateTime extends Date {
             $second ?? $this->getSecond());
         return $this;
     }
+
     /**
      * 時を変更
      * 
@@ -90,6 +100,7 @@ class DateTime extends Date {
     public function setHour(int $hour) {
         return $this->setTime($hour);
     }
+
     /**
      * 分を変更
      * 
@@ -99,6 +110,7 @@ class DateTime extends Date {
     public function setMinute(int $minute) {
         return $this->setTime(null, $minute);
     }
+
     /**
      * 秒を変更
      * 
@@ -108,6 +120,7 @@ class DateTime extends Date {
     public function setSecond(int $second) {
         return $this->setTime(null, null, $second);
     }
+
     /**
      * 時を加算
      * 
@@ -117,6 +130,7 @@ class DateTime extends Date {
     public function addHours(int $hours) {
         return $this->setTime($this->getHour() + $hours);
     }
+
     /**
      * 分を加算
      * 
@@ -126,6 +140,7 @@ class DateTime extends Date {
     public function addMinutes(int $minutes) {
         return $this->setTime(null, $this->getMinute() + $minutes);
     }
+
     /**
      * 秒を加算
      * 

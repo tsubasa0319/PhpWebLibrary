@@ -9,6 +9,7 @@
 // 0.11.00 2024/03/08 データ型のクラス名を変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database\advance;
+
 /**
  * テーブルID/項目IDをキャメルケースとして処理
  * 
@@ -26,6 +27,7 @@ trait TableCamelCase {
     protected function convertIdFromSqlToVar(string $id): string {
         return $this->convertSnakeToCamel($id);
     }
+
     /**
      * テーブルID/項目IDを変換(変数→SQL)
      * 
@@ -34,6 +36,7 @@ trait TableCamelCase {
     protected function convertIdFromVarToSql(string $id): string {
         return $this->convertCamelToSnake($id);
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理(追加)
     /**
@@ -43,6 +46,7 @@ trait TableCamelCase {
         $id = ucwords(str_replace('_', ' ', $id));
         return lcfirst(str_replace(' ', '', $id));
     }
+
     /**
      * キャメルケースからスネークケースへ変換
      */

@@ -20,27 +20,28 @@
    0.21.00 2024/04/24 ブロックに対して、下寄せ用のクラスを実装。
    0.22.00 2024/05/17 更新ボタン/警告付き更新ボタンを追加。高さの標準値を25pxへ変更。
    0.24.00 2024/05/18 マウス操作によるフォーカスも囲むように対応。
+   0.33.00 2024/08/24 ライブラリ名を訂正。
 ------------------------------------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------------------------------- */
 /* 変数定義 */
 :root {
     /* 既定値 */
-    --tsubasaLib-default-font-family: sans-serif;
-    --tsubasaLib-default-font-size: 14px;
+    --tsubasaLibs-default-font-family: sans-serif;
+    --tsubasaLibs-default-font-size: 14px;
     /* ローカル変数 */
-    --tsubasaLib-font-family:
-        var(--tsubasaLib-setting-font-family, var(--tsubasaLib-default-font-family));
-    --tsubasaLib-font-size:
-        var(--tsubasaLib-setting-font-size, var(--tsubasaLib-default-font-size));
-    --tsubasaLib-h1-font-size:
-        calc(var(--tsubasaLib-font-size) * 1.5);
+    --tsubasaLibs-font-family:
+        var(--tsubasaLibs-setting-font-family, var(--tsubasaLibs-default-font-family));
+    --tsubasaLibs-font-size:
+        var(--tsubasaLibs-setting-font-size, var(--tsubasaLibs-default-font-size));
+    --tsubasaLibs-h1-font-size:
+        calc(var(--tsubasaLibs-font-size) * 1.5);
 }
 /* ---------------------------------------------------------------------------------------------- */
 /* BODY */
 body {
     margin: 0;
-    font-family: var(--tsubasaLib-font-family);
-    font-size: var(--tsubasaLib-font-size);
+    font-family: var(--tsubasaLibs-font-family);
+    font-size: var(--tsubasaLibs-font-size);
     overflow-wrap: break-word;
 }
 
@@ -101,7 +102,7 @@ footer.valign-middle {
 /* 見出し */
 h1 {
     margin: 10px 0 0 0;
-    font-size: var(--tsubasaLib-h1-font-size);
+    font-size: var(--tsubasaLibs-h1-font-size);
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -119,8 +120,8 @@ input[type="number"] {
     width: 180px;
     height: 23px;
     border: solid 1px rgb(133, 133, 133);
-    font-family: var(--tsubasaLib-font-family);
-    font-size: var(--tsubasaLib-font-size);
+    font-family: var(--tsubasaLibs-font-family);
+    font-size: var(--tsubasaLibs-font-size);
     padding: 0 3px;
 }
 
@@ -161,8 +162,8 @@ input[type="number"] {
 textarea {
     resize: none;
     border: solid 1px rgb(133, 133, 133);
-    font-family: var(--tsubasaLib-font-family);
-    font-size: var(--tsubasaLib-font-size);
+    font-family: var(--tsubasaLibs-font-family);
+    font-size: var(--tsubasaLibs-font-size);
     padding: 0 4px;
 }
 
@@ -179,8 +180,8 @@ textarea:disabled {
 /* ---------------------------------------------------------------------------------------------- */
 /* セレクトボックス */
 select {
-    font-family: var(--tsubasaLib-font-family);
-    font-size: var(--tsubasaLib-font-size);
+    font-family: var(--tsubasaLibs-font-family);
+    font-size: var(--tsubasaLibs-font-size);
     padding: 0;
 }
 
@@ -256,8 +257,8 @@ label:has(> input[type="radio"]:not(:disabled)):hover {
 input[type="button"],
 input[type="submit"],
 button {
-    font-family: var(--tsubasaLib-font-family);
-    font-size: var(--tsubasaLib-setting-font-size-button, 12px);
+    font-family: var(--tsubasaLibs-font-family);
+    font-size: var(--tsubasaLibs-setting-font-size-button, 12px);
     height: 25px;
     padding: 0 3px;
 }
@@ -339,8 +340,8 @@ button.link {
     background-color: transparent;
     min-width: unset;
     text-decoration: underline;
-    font-family: var(--tsubasaLib-font-family);
-    font-size: var(--tsubasaLib-font-size);
+    font-family: var(--tsubasaLibs-font-family);
+    font-size: var(--tsubasaLibs-font-size);
     color: blue;
 }
 

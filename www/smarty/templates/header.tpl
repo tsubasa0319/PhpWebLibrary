@@ -4,7 +4,7 @@
         <meta charset="utf-8">
         <title>{$general.title}</title>
         <link rel="stylesheet" href="{$general.css}">
-        <script type="module" src="/js/imports/tsubasaLib/webLoader.js"></script>
+        <script type="module" src="/js/imports/tsubasaLibs/webLoader.js"></script>
         <script type="module" src="/js/subScreen/webLoader.js"></script>
         <script defer src="/js/frame.js"></script>
         <script defer src="/js/general.js"></script>

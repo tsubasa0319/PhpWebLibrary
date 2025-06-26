@@ -4,6 +4,7 @@
 //
 // History:
 // 0.34.00 2024/08/30 作成。
+// 0.35.00 2024/08/31 ファイルを開く/ロックすることに失敗した時のメッセージを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\csv;
 require_once __DIR__ . '/../type/Nothing.php';
@@ -14,7 +15,7 @@ use tsubasaLibs\type;
  * CSV読み込みクラス
  * 
  * @since 0.34.00
- * @version 0.34.00
+ * @version 0.35.00
  */
 class Reader {
     // ---------------------------------------------------------------------------------------------
@@ -135,6 +136,26 @@ class Reader {
         // 継承先で、詳細処理を記述
 
         return true;
+    }
+
+    /**
+     * ファイルを開くことに失敗した時のメッセージを生成
+     * 
+     * @since 0.35.00
+     * @return string メッセージ
+     */
+    public function makeMessageForOpenError(): string {
+        return sprintf('Could not open file: %s', $this->filePath ?? 'Null');
+    }
+
+    /**
+     * ファイルをロックすることに失敗した時のメッセージを生成
+     * 
+     * @since 0.35.00
+     * @return string メッセージ
+     */
+    public function makeMessageForLockError(): string {
+        return sprintf('Could not lock file: %s', $this->filePath ?? 'Null');
     }
 
     // ---------------------------------------------------------------------------------------------

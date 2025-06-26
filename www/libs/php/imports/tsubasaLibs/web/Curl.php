@@ -7,6 +7,7 @@
 // 0.11.01 2024/03/09 通信エラー時、警告を返すように対応。
 // 0.11.02 2024/03/09 ユーザエージェントが空文字ではWAFを通れないため対処。
 // 0.25.00 2024/05/21 エラー処理を専用メソッドへ分離。
+// 0.31.02 2024/08/09 受取データ/エラー処理を、指定の文字セットへ変換するように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use CurlHandle;
@@ -15,7 +16,7 @@ use CurlHandle;
  * cURLクラス
  * 
  * @since 0.09.00
- * @version 0.25.00
+ * @version 0.31.02
  */
 class Curl {
     // ---------------------------------------------------------------------------------------------
@@ -27,7 +28,7 @@ class Curl {
     /** コンテンツタイプ(JSON) */
     const CONTENT_TYPE_JSON = 'application/json';
     /** 文字セット(utf-8) */
-    const CHARSET_UTF8 = 'utf-8';
+    const CHARSET_UTF8 = 'UTF-8';
 
     // ---------------------------------------------------------------------------------------------
     // プロパティ
@@ -61,6 +62,8 @@ class Curl {
      */
     public function __construct(?string $url = null) {
         $this->curl = curl_init($url);
+        if ($this->curl === false)
+            throw new WebException('Failed to get a new cURL object');
         $this->setInit();
         $this->url = $url;
     }
@@ -133,9 +136,9 @@ class Curl {
         // 受け取りデータ
         $this->receiveData = null;
         if ($info['content_type'] !== null) {
-            switch (explode(';', $info['content_type'])[0]) {
+            switch (trim(explode(';', $info['content_type'])[0])) {
                 case static::CONTENT_TYPE_JSON:
-                    $this->receiveData = json_decode($response, true);
+                    $this->receiveData = $this->makeReceiveDataForJson($response);
                     break;
                 default:
                     $this->receiveData = $response;
@@ -190,17 +193,131 @@ class Curl {
     }
 
     /**
+     * 既定の文字セットを取得
+     * 
+     * @since 0.31.02
+     * @return string 既定の文字セット
+     */
+    protected function getDefaultCharset(): string {
+        return ini_get('default_charset');
+    }
+
+    /**
+     * 文字セットを変換(PHPでの処理用)
+     * 
+     * @since 0.31.02
+     * @return ?string 変換後の文字セット
+     */
+    protected function convertCharsetForPhp($charset): ?string {
+        // UTF-8
+        if (in_array($charset, [
+            'UTF-8', 'UTF8'
+        ]))
+            return static::CHARSET_UTF8;
+
+        // Windows-31J(統合後のShift_JIS)
+        if (in_array($charset, [
+            'Shift_JIS', 'SJIS', 'Shift-JIS', 'CP932', 'MS932', 'Windows-31J'
+        ]))
+            return 'SJIS-win';
+
+        // EUC-JP
+        if (in_array($charset, [
+            'EUC-JP'
+        ]))
+            return 'EUC-JP';
+
+        return null;
+    }
+
+    /**
+     * 受信データを生成(JSON)
+     * 
+     * @since 0.31.02
+     * @param string $response JSON形式の返り値
+     * @param mixed デコード後
+     */
+    protected function makeReceiveDataForJson($response) {
+        $info = $this->getInfo();
+        $contentType = $info['content_type'];
+
+        // 文字セット
+        $responseCharset = static::CHARSET_UTF8;
+        $matches = null;
+        if (!!preg_match('/charset=(.*?)/i', $contentType, $matches))
+            $responseCharset = $this->convertCharsetForPhp(trim($matches[1])) ?? static::CHARSET_UTF8;
+
+        // デコードのため、UTF-8へ変換
+        if ($responseCharset !== static::CHARSET_UTF8)
+            $response = mb_convert_encoding($response, static::CHARSET_UTF8, $responseCharset);
+
+        // デコード
+        $receiveData = json_decode($response, true, JSON_BIGINT_AS_STRING);
+
+        // 元の文字セットへ変換
+        if ($responseCharset !== static::CHARSET_UTF8)
+            $receiveData = $this->convertEncodingForArray(
+                $receiveData, $responseCharset, static::CHARSET_UTF8);
+
+        return $receiveData;
+    }
+
+    /**
+     * 文字セット変換(配列用)
+     * 
+     * @since 0.31.02
+     * @param mixed $data データ
+     * @param string $toCharset 文字セット(変換後)
+     * @param string $fromCharset 文字セット(データ)
+     * @return mixed 変換後のデータ
+     */
+    protected function convertEncodingForArray($data, $toCharset, $fromCharset) {
+        switch (true) {
+            case is_array($data) and array_values($data) === $data:
+                // 配列
+                $newData = [];
+                foreach ($data as $val)
+                    $newData[] = $this->convertEncodingForArray($val, $toCharset, $fromCharset);
+                return $newData;
+
+            case is_array($data) and array_values($data) !== $data:
+                // 連想配列
+                $newData = [];
+                foreach ($data as $key => $val)
+                    $newData[$key] = $this->convertEncodingForArray($val, $toCharset, $fromCharset);
+                return $newData;
+
+            case is_string($data):
+                // 文字列
+                return mb_convert_encoding($data, $toCharset, $fromCharset);
+
+            default:
+                // その他の値型
+                return $data;
+        }
+    }
+
+    /**
      * エラー処理
      * 
      * @since 0.25.00
      */
     protected function error() {
         $info = $this->getInfo();
+
+        // JSONへエンコードのため、データの文字セットをUTF-8へ
+        $data = $this->data;
+        $requestCharset = $this->convertCharsetForPhp($this->requestCharset) ?? static::CHARSET_UTF8;
+        if ($requestCharset !== static::CHARSET_UTF8)
+            $data = $this->convertEncodingForArray($data, static::CHARSET_UTF8, $requestCharset);
+
         trigger_error(sprintf(
-            'cURL error: HTTP %s By %s (%s)',
+            'cURL error: HTTP %s By %s (%s, %s, %s)',
             $info['http_code'],
             $info['url'],
-            json_encode($this->data, JSON_UNESCAPED_UNICODE)
+            $this->requestContentType ?? '',
+            $this->requestCharset ?? '',
+            json_encode($data, JSON_UNESCAPED_UNICODE)
         ), E_USER_NOTICE);
     }
 }

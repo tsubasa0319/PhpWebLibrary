@@ -13,6 +13,7 @@
 // 0.31.00 2024/08/08 コンテンツタイプをapplication/x-www-form-urlencoded、application/jsonに対応。
 //                    文字セットをUTF-8、Windows-31J、EUC-JPに対応。
 // 0.31.01 2024/08/08 x-www-form-urlencodedの時、POST値が配列の場合に文字セット変換に失敗していたので修正。
+// 0.31.02 2024/08/09 正常終了時、戻り値がdata属性に設定できていなかったので修正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
@@ -23,7 +24,7 @@ use Stringable;
  * APIイベントクラス
  * 
  * @since 0.09.00
- * @version 0.31.01
+ * @version 0.31.02
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -324,7 +325,9 @@ class Events {
      * @since 0.31.00
      */
     protected function outputResponseByJson() {
-        $this->outputJson($this->responseData);
+        $this->outputJson([
+            'data' => $this->responseData
+        ]);
     }
 
     /**

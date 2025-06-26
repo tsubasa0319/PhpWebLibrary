@@ -18,7 +18,7 @@
             <input type="hidden" id="callType" value="{$general.callType}" disabled>
             <input type="hidden" name="startTime" value="{$general.startTime}">
         </form>
-        <div id="subScreen" class="subScreen" onclick="frame.closeSubScreen(event);">
+        <div id="subScreen" class="subScreen" onclick="libs.frame.closeSubScreen(event);">
             <iframe></iframe>
         </div>
     </body>

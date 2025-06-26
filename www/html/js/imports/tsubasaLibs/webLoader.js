@@ -6,7 +6,8 @@
 //
 // History:
 // 0.05.00 2024/02/20 作成。
+// 0.33.00 2024/08/24 ライブラリ名を訂正。
 // -------------------------------------------------------------------------------------------------
-import tsubasaLib from "./loader.js";
+import tsubasaLibs from "./loader.js";
 
-globalThis.tsubasaLib = tsubasaLib;
+globalThis.tsubasaLibs = tsubasaLibs;

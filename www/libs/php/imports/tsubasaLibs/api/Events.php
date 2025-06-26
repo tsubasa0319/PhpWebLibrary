@@ -14,6 +14,7 @@
 //                    文字セットをUTF-8、Windows-31J、EUC-JPに対応。
 // 0.31.01 2024/08/08 x-www-form-urlencodedの時、POST値が配列の場合に文字セット変換に失敗していたので修正。
 // 0.31.02 2024/08/09 正常終了時、戻り値がdata属性に設定できていなかったので修正。
+// 0.31.03 2024/08/09 json_decodeのオプションを第3パラメータに設定していたので修正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
@@ -24,7 +25,7 @@ use Stringable;
  * APIイベントクラス
  * 
  * @since 0.09.00
- * @version 0.31.02
+ * @version 0.31.03
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -315,7 +316,7 @@ class Events {
         if ($charset !== null and $charset !== 'UTF-8')
             $data = mb_convert_encoding($data, 'UTF-8', $charset);
 
-        foreach (json_decode($data, true, JSON_BIGINT_AS_STRING) ?? [] as $key => $val)
+        foreach (json_decode($data, true, 512, JSON_BIGINT_AS_STRING) ?? [] as $key => $val)
             $this->_post[$key] = (string)$val;
     }
 

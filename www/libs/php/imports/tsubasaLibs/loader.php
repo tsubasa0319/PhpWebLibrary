@@ -10,6 +10,7 @@
 // 0.26.00 2024/05/22 CSV書き込みクラスを追加。
 // 0.28.00 2024/06/26 TCPDFクラスを追加。
 // 0.28.01 2024/06/26 ローダを各サブライブラリへ分割。
+// 0.35.00 2024/08/31 CLI処理用のクラスローダを追加。
 // -------------------------------------------------------------------------------------------------
 require_once __DIR__ . '/type/loader.php';
 require_once __DIR__ . '/database/loader.php';
@@ -17,3 +18,4 @@ require_once __DIR__ . '/web/loader.php';
 require_once __DIR__ . '/csv/loader.php';
 require_once __DIR__ . '/pdf/loader.php';
 require_once __DIR__ . '/api/loader.php';
+require_once __DIR__ . '/cli/loader.php';

@@ -11,6 +11,7 @@
 // 0.20.00 2024/04/23 Like検索にバグがあったので修正。
 // 0.22.00 2024/05/17 新規レコード取得時、余計なクエリを実行しないように対応。
 //                    複数のレコードを削除、インデックスキーによる削除を実装。
+// 0.35.00 2024/08/31 レコード追加/更新/削除によるエラーメッセージ生成と、処理結果メッセージ生成を実装。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -25,7 +26,7 @@ require_once __DIR__ . '/advance/TableCamelCase.php';
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.22.00
+ * @version 0.35.00
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -696,6 +697,69 @@ class Table {
      */
     public function executePlan() {
         $this->queryPlanning->execute();
+    }
+
+    /**
+     * レコード追加エラー時のメッセージを生成
+     * 
+     * @since 0.35.00
+     * @return string メッセージ
+     */
+    public function makeMessageForInsertError(): string {
+        return sprintf('%s insert error', $this->id);
+    }
+
+    /**
+     * レコード更新エラー時のメッセージを生成
+     * 
+     * @since 0.35.00
+     * @return string メッセージ
+     */
+    public function makeMessageForUpdateError(): string {
+        return sprintf('%s update error', $this->id);
+    }
+
+    /**
+     * レコード削除エラー時のメッセージを生成
+     * 
+     * @since 0.35.00
+     * @return string メッセージ
+     */
+    public function makeMessageForDeleteError(): string {
+        return sprintf('%s delete error', $this->id);
+    }
+
+    /**
+     * レコード追加結果のメッセージを生成
+     * 
+     * @since 0.35.00
+     * @param int $counts 件数
+     * @return string メッセージ
+     */
+    public function makeMessageForInsertResult(int $counts): string {
+        return sprintf('%s insert counts: %s', $this->id, number_format($counts));
+    }
+
+    /**
+     * レコード更新結果のメッセージを生成
+     * 
+     * @since 0.35.00
+     * @param int $counts 件数
+     * @return string メッセージ
+     */
+    public function makeMessageForUpdateResult(int $counts): string {
+        return sprintf('%s update counts: %s', $this->id, number_format($counts));
+    }
+
+    /**
+     * レコード削除結果のメッセージを生成
+     * 
+     * @since 0.35.00
+     * @param int $counts 件数
+     * @return string メッセージ
+     */
+    public function makeMessageForDeleteResult(int $counts): string {
+        return sprintf('%s delete counts: %s', $this->id, number_format($counts));
     }
 
     // ---------------------------------------------------------------------------------------------

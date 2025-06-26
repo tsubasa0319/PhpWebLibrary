@@ -4,6 +4,7 @@
 //
 // History:
 // 0.28.02 2024/06/27 作成。
+// 0.37.00 2024/09/11 エラーログに、エラーコード/メッセージを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\common;
 use Exception as BaseException, Throwable;
@@ -12,7 +13,7 @@ use Exception as BaseException, Throwable;
  * 共通の例外クラス
  * 
  * @since 0.28.02
- * @version 0.28.02
+ * @version 0.37.00
  */
 class Exception extends BaseException {
     // ---------------------------------------------------------------------------------------------
@@ -29,13 +30,18 @@ class Exception extends BaseException {
         error_log(sprintf('PHP %s: %s in %s on line %s',
             static::EXCEPTION_NAME, $message, $this->file, $this->line));
 
-        // スタックトレース(一番元のなったものを参照)
+        // 詳細(一番元になったものを参照)
         $ex = $this;
         while ($ex->getPrevious() instanceof Throwable)
             $ex = $ex->getPrevious();
-        error_log('PHP Stack trace:');
 
-        // トレースループ
+        // エラーコード、メッセージ
+        error_log(sprintf('PHP Detail: [%s:%s]%s',
+            $ex::class, $ex->getCode(), $ex->getMessage()
+        ));
+
+        // スタックトレース
+        error_log('PHP Stack trace:');
         foreach ($ex->getTrace() as $num => $trace)
             error_log(sprintf('PHP %3d. %s%s%s %s:%s %s',
                 $num + 1,

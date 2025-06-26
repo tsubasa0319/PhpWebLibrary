@@ -8,6 +8,7 @@
 // 0.11.02 2024/03/09 ユーザエージェントが空文字ではWAFを通れないため対処。
 // 0.25.00 2024/05/21 エラー処理を専用メソッドへ分離。
 // 0.31.02 2024/08/09 受取データ/エラー処理を、指定の文字セットへ変換するように対応。
+// 0.31.03 2024/08/09 json_decodeのオプションを第3パラメータに設定していたので修正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use CurlHandle;
@@ -16,7 +17,7 @@ use CurlHandle;
  * cURLクラス
  * 
  * @since 0.09.00
- * @version 0.31.02
+ * @version 0.31.03
  */
 class Curl {
     // ---------------------------------------------------------------------------------------------
@@ -252,7 +253,7 @@ class Curl {
             $response = mb_convert_encoding($response, static::CHARSET_UTF8, $responseCharset);
 
         // デコード
-        $receiveData = json_decode($response, true, JSON_BIGINT_AS_STRING);
+        $receiveData = json_decode($response, true, 512, JSON_BIGINT_AS_STRING);
 
         // 元の文字セットへ変換
         if ($responseCharset !== static::CHARSET_UTF8)

@@ -1,3 +1,11 @@
+0.38.00 2024/09/12 18:27:14
+[変更]
+テーブルクラスのメソッドをリネームと後方互換ラッパ追加(旧名は非推奨化)。
+inserts → insertMultiple
+insertsFromTable → insertFromTable
+updatesFromTable → updateFromTable
+deletes → deleteMultiple
+
 0.37.00 2024/09/11 15:52:11
 [変更]
 テーブルに、全レコード削除/テーブルを空にする処理/全レコード版の他テーブルよりINSERTを追加。

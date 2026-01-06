@@ -14,6 +14,11 @@
 // 0.35.00 2024/08/31 レコード追加/更新/削除によるエラーメッセージ生成と、処理結果メッセージ生成を実装。
 // 0.37.00 2024/09/11 全レコード削除/テーブルを空にする処理を追加。
 //                    全レコード版の他テーブルよりINSERTを追加。
+// 0.38.00 2024/09/12 メソッド名を一部変更。旧名も非推奨にして残す。
+//                    ・inserts → insertMultiple
+//                    ・insertsFromTable → insertFromTable
+//                    ・updatesFromTable → updateFromTable
+//                    ・deletes → deleteMultiple
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -28,7 +33,7 @@ require_once __DIR__ . '/advance/TableCamelCase.php';
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.37.00
+ * @version 0.38.00
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -401,27 +406,42 @@ class Table {
      * (?, ?, ...),  
      * ...
      * 
+     * @since 0.38.00
      * @param Record ...$records レコード
      * @return int|false 件数
      */
-    public function inserts(Record ...$records): int|false {
+    public function insertMultiple(Record ...$records): int|false {
         // レコードの対象項目リスト(リストに無い項目は、DBの既定値に依存)
-        $items = $this->getInsertsItems(...$records);
+        $items = $this->getInsertMultipleItems(...$records);
         if ($items === false) return 0;
 
         // 実行者情報
         foreach ($records as $record) $record->setValuesForInsert();
 
         // プリペアドステートメント
-        $stmt = $this->prepare($this->getInsertsSql($items, ...$records));
+        $stmt = $this->prepare($this->getInsertMultipleSql($items, ...$records));
         if ($stmt === false) return false;
 
         // バインド
-        $this->bindInsertsValue($items, $stmt, ...$records);
+        $this->bindInsertMultipleValue($items, $stmt, ...$records);
 
         // 実行
         if (!$stmt->execute()) return false;
         return $stmt->rowCount();
+    }
+
+    /**
+     * 旧レコード追加(複数)
+     * 
+     * 0.38.00より非推奨となりました。  
+     * メソッド名を、insertMultipleへ変更しました。
+     * 
+     * @deprecated
+     * @param Record ...$records レコード
+     * @return int|false 件数
+     */
+    public function inserts(Record ...$records): int|false {
+        return $this->insertMultiple(...$records);
     }
 
     /**
@@ -440,20 +460,35 @@ class Table {
      * WHERE  
      * tbl.[PrimaryKey1] IS NULL
      * 
+     * @since 0.38.00
      * @param static $tempTable 追加元のテーブル
      * @return int|false 件数
      */
-    public function insertsFromTable(self $tempTable): int|false {
+    public function insertFromTable(self $tempTable): int|false {
         // プリペアドステートメント
-        $stmt = $this->prepare($this->getInsertsFromTableSql($tempTable));
+        $stmt = $this->prepare($this->getInsertFromTableSql($tempTable));
         if ($stmt === false) return false;
 
         // バインド
-        $this->bindInsertsFromTableValue($stmt);
+        $this->bindInsertFromTableValue($stmt);
 
         // 実行
         if (!$stmt->execute()) return false;
         return $stmt->rowCount();
+    }
+
+    /**
+     * 旧レコード追加(別のテーブルより、キー重複分は除外)
+     * 
+     * 0.38.00より非推奨となりました。  
+     * メソッド名を、insertFromTableへ変更しました。
+     * 
+     * @deprecated
+     * @param static $tempTable 追加元のテーブル
+     * @return int|false 件数
+     */
+    public function insertsFromTable(self $tempTable): int|false {
+        return $this->insertFromTable($tempTable);
     }
 
     /**
@@ -473,7 +508,7 @@ class Table {
         if ($stmt === false) return false;
 
         // バインド
-        $this->bindInsertsFromTableValue($stmt);
+        $this->bindInsertFromTableValue($stmt);
 
         // 実行
         if (!$stmt->execute()) return false;
@@ -538,13 +573,14 @@ class Table {
      * tbl.[Item2] = tmp.[Item2],
      * ...
      * 
+     * @since 0.38.00
      * @param static $tempTable テーブル
      * @param ?Record $recordForTarget 対象とする項目を決定するためのレコード
      * @return int|false 件数
      */
-    public function updatesFromTable(self $tempTable, ?Record $recordForTarget = null): int|false {
+    public function updateFromTable(self $tempTable, ?Record $recordForTarget = null): int|false {
         // SQL
-        $query = $this->getUpdatesFromTableSql($tempTable, $recordForTarget);
+        $query = $this->getUpdateFromTableSql($tempTable, $recordForTarget);
         if ($query === false) return 0;
 
         // プリペアドステートメント
@@ -552,11 +588,26 @@ class Table {
         if ($stmt === false) return false;
 
         // バインド
-        $this->bindUpdatesFromTableValue($stmt);
+        $this->bindUpdateFromTableValue($stmt);
 
         // 実行
         if (!$stmt->execute()) return false;
         return $stmt->rowCount();
+    }
+
+    /**
+     * 旧レコード更新(他のテーブルより)
+     * 
+     * 0.38.00より非推奨となりました。  
+     * メソッド名を、updateFromTableへ変更しました。
+     * 
+     * @deprecated
+     * @param static $tempTable テーブル
+     * @param ?Record $recordForTarget 対象とする項目を決定するためのレコード
+     * @return int|false 件数
+     */
+    public function updatesFromTable(self $tempTable, ?Record $recordForTarget = null): int|false {
+        return $this->updateFromTable($tempTable, $recordForTarget);
     }
 
     /**
@@ -593,11 +644,11 @@ class Table {
      * ([PrimaryKey1] = ? AND [PrimaryKey2] = ? AND ...) OR  
      * ...
      * 
-     * @since 0.22.00
+     * @since 0.38.00
      * @param Record ...$records レコード
      * @return int|false 件数
      */
-    public function deletes(Record ...$records): int|false {
+    public function deleteMultiple(Record ...$records): int|false {
         if (count($records) == 0) return 0;
 
         // プリペアドステートメント
@@ -605,11 +656,26 @@ class Table {
         if ($stmt === false) return false;
 
         // バインド
-        $this->bindDeletesValue($stmt, ...$records);
+        $this->bindDeleteMultipleValue($stmt, ...$records);
 
         // 実行
         if (!$stmt->execute()) return false;
         return $stmt->rowCount();
+    }
+
+    /**
+     * 旧レコード削除(複数)
+     * 
+     * 0.38.00より非推奨となりました。  
+     * メソッド名を、deleteMultipleへ変更しました。
+     * 
+     * @deprecated
+     * @since 0.22.00
+     * @param Record ...$records レコード
+     * @return int|false 件数
+     */
+    public function deletes(Record ...$records): int|false {
+        return $this->deleteMultiple(...$records);
     }
 
     /**
@@ -1525,7 +1591,7 @@ class Table {
      * @param Record ...$records レコード
      * @return array<string, Item>|false INSERT対象項目
      */
-    protected function getInsertsItems(Record ...$records) {
+    protected function getInsertMultipleItems(Record ...$records) {
         if (count($records) == 0) return false;
         $itemsArray = $this->items->getItemsArray();
         $executorIds = $this->getExecutorIds();
@@ -1549,7 +1615,7 @@ class Table {
      * @param Record ...$records レコード
      * @return string SQLステートメント
      */
-    protected function getInsertsSql(array $insertItems, Record ...$records): string {
+    protected function getInsertMultipleSql(array $insertItems, Record ...$records): string {
         $tableId = $this->getIdForSql($this->id);
         $executorIds = $this->getExecutorIds();
         $itemIds = [];
@@ -1584,7 +1650,7 @@ class Table {
      * @param TableStatement テーブルステートメント
      * @param Record ...$records レコード
      */
-    protected function bindInsertsValue(array $insertItems, TableStatement $stmt, Record ...$records) {
+    protected function bindInsertMultipleValue(array $insertItems, TableStatement $stmt, Record ...$records) {
         $num = 0;
         $rowNum = 0;
         $itemsArray = $this->items->getItemsArray();
@@ -1621,7 +1687,7 @@ class Table {
      * @param static $tempTable 別のテーブル
      * @return string SQLステートメント
      */
-    protected function getInsertsFromTableSql(self $tempTable): string {
+    protected function getInsertFromTableSql(self $tempTable): string {
         $tableId = $this->getIdForSql($this->id);
         $tempTableId = $this->getIdForSql($tempTable->id);
         $keyItems = $this->primaryKey->getKeyItems();
@@ -1677,7 +1743,7 @@ class Table {
      * 
      * @param TableStatement テーブルステートメント
      */
-    protected function bindInsertsFromTableValue(TableStatement $stmt) {
+    protected function bindInsertFromTableValue(TableStatement $stmt) {
         $itemsArray = $this->items->getItemsArray();
         $record = $this->getNewRecord();
         $record->setValuesForInsert();
@@ -1884,7 +1950,7 @@ class Table {
      * @param ?Record $recordForTarget 更新対象とする項目を決定するためのレコード
      * @return string|false SQLステートメント、更新対象とする項目がなければfalse
      */
-    protected function getUpdatesFromTableSql(self $tempTable, ?Record $recordForTarget): string|false {
+    protected function getUpdateFromTableSql(self $tempTable, ?Record $recordForTarget): string|false {
         // テーブルID
         $tableId = $this->getIdForSql($this->id);
         $tempTableId = $this->getIdForSql($tempTable->id);
@@ -1982,7 +2048,7 @@ class Table {
      * 
      * @param TableStatement $stmt テーブルステートメント
      */
-    protected function bindUpdatesFromTableValue(TableStatement $stmt) {
+    protected function bindUpdateFromTableValue(TableStatement $stmt) {
         $itemsArray = $this->items->getItemsArray();
         $executorIds = $this->getExecutorIds();
         $num = 0;
@@ -2063,7 +2129,7 @@ class Table {
      * @param TableStatement $stmt テーブルステートメント
      * @param Record ...$records レコード
      */
-    protected function bindDeletesValue(TableStatement $stmt, Record ...$records) {
+    protected function bindDeleteMultipleValue(TableStatement $stmt, Record ...$records) {
         if (count($records) == 0) return;
 
         // バインド番号

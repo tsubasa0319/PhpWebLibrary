@@ -6,6 +6,7 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
+// 0.90.05 2025/05/28 接続パラメータの設定を接続時に行うように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/DbBase.php';
@@ -15,7 +16,7 @@ require_once __DIR__ . '/DbException.php';
  * DBコネクタベースクラス
  * 
  * @since 0.00.00
- * @version 0.00.00
+ * @version 0.90.05
  */
 class DbConnectorBase {
     // ---------------------------------------------------------------------------------------------
@@ -68,7 +69,8 @@ class DbConnectorBase {
      * @param ?string $env 環境
      */
     public function __construct(?string $env = null) {
-        $this->setEnv($env)->setConParam()->setDsn();
+        $this->setInit();
+        $this->setEnv($env);
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -78,12 +80,30 @@ class DbConnectorBase {
      * 
      * @return DbBase DB接続(PDO)
      */
-    public function connect() {
-        return new DbBase(...$this->getConPrmArr());
+    public function connect(): DbBase {
+        $this->setConParam()->setDsn();
+        return $this->makeDb();
     }
 
     // ---------------------------------------------------------------------------------------------
     // 内部処理
+    /**
+     * DBインスタンスを生成
+     * 
+     * @since 0.90.05
+     * @return DbBase DB
+     */
+    protected function makeDb(): DbBase {
+        return new DbBase(...$this->getConPrmArr());
+    }
+
+    /**
+     * 初期設定
+     * 
+     * @since 0.90.05
+     */
+    protected function setInit() {}
+
     /**
      * 動作環境を設定
      * 

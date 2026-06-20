@@ -4,6 +4,7 @@
    History:
    0.20.00 2024/04/23 作成。
    0.33.00 2024/08/27 ライブラリ名を訂正。直接に個人ライブラリ名を使用しないように変更。
+   0.57.00 2024/12/11 フォームのエンコードタイプを指定できるように対応。
 ------------------------------------------------------------------------------------------------- *}
 <!DOCTYPE html>
 <html lang="ja">
@@ -16,7 +17,9 @@
         <script defer src="{$general.js}"></script>
     </head>
     <body onload="libs.frame.body_load(event);" onkeydown="return libs.frame.body_keydown(event);">
-        <form method="post" onsubmit="libs.frame.form_submit(event);">
+        <form method="post" {attributes items=[
+                'enctype' => $formEnctype|default:false
+            ]} onsubmit="libs.frame.form_submit(event);">
             <header>
                 <section id="bodyHeaderInfo" class="subScreen">
                     <div>

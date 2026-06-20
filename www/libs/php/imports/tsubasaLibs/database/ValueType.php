@@ -6,16 +6,17 @@
 // 0.00.00 2024/01/23 作成。
 // 0.10.00 2024/03/08 値がNothing型の場合、レコード用変換をスキップ。
 // 0.11.00 2024/03/08 データ型のクラス名を変更。
+// 0.61.00 2024/12/17 バインド用変換(PARAM_INT)で変換に失敗しても、警告のみで継続してしまうのを防止。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 use tsubasaLibs\type;
-use DateTime;
+use UnitEnum, BackedEnum, DateTime;
 
 /**
  * データ型の共通処理
  * 
  * @since 0.00.00
- * @version 0.11.00
+ * @version 0.61.00
  */
 class ValueType {
     // ---------------------------------------------------------------------------------------------
@@ -27,6 +28,8 @@ class ValueType {
      * @param int $type データ型(DbBase::PARAM_*)
      */
     static public function convertForBind(&$value, int &$type) {
+        if ($value instanceof BackedEnum) $value = $value->value;
+        if ($value instanceof UnitEnum) $value = $value->name;
         if ($value === null) $type = DbBase::PARAM_NULL;
         switch ($type) {
             case DbBase::PARAM_INT:
@@ -77,6 +80,9 @@ class ValueType {
      * @param int $type データ型(DbBase::PARAM_*)
      */
     static protected function convertIntForBind(&$value, int &$type) {
+        if (!is_numeric($value))
+            throw new DbException('Value could not be converted to int');
+
         $value = (int)$value;
     }
 

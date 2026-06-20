@@ -29,6 +29,7 @@
 // 0.48.01 2024/10/24 Null値へ更新する処理を修正。
 // 0.53.00 2024/11/21 SQLステートメントを生成(SET句)にて、日時の実行者項目に対してパラメータ指定するように修正。
 // 0.56.00 2024/12/10 SELECTの並び順を逆にできるように対応。
+// 0.61.00 2024/12/17 makeBindItemsWhereEqFromRecordが正常に動作していなかったので修正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -45,7 +46,7 @@ use Stringable;
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.56.00
+ * @version 0.61.00
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -3049,7 +3050,7 @@ class Table {
         // 値リスト
         $values = $this->makeKeyValuesFromRecord($key, $previousRecord);
 
-        return $this->makeBindItemsWhereEq($key, $values);
+        return $this->makeBindItemsWhereEq($key, ...$values);
     }
 
     /**

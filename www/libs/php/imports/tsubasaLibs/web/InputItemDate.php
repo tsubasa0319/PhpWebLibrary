@@ -5,6 +5,8 @@
 // History:
 // 0.19.00 2024/04/16 作成。
 // 0.22.00 2024/05/17 未入力の場合に現在日時に変わってしまうので対処。
+// 0.82.00 2025/03/26 valueへ設定するための変換より、日付型の変換を分離。
+//                    年4桁の入力項目に対して年2桁の入力をできるように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/../type/Date.php';
@@ -14,28 +16,28 @@ use tsubasaLibs\type;
  * 入力項目クラス(日付型)
  * 
  * @since 0.19.00
- * @version 0.22.00
+ * @version 0.82.00
  */
 class InputItemDate extends InputItemBase {
     // ---------------------------------------------------------------------------------------------
     // 定数(追加)
-    /** 一般的な日付型(yyyy/MM/dd, yyyyMMdd, MM/dd, MMdd) */
+    /** 一般的な日付型(Y/m/d, YYYYmmdd) */
     const TYPE_Y4MD = 1;
-    /** 年2桁の日付型(yy/MM/dd, yyMMdd) */
+    /** 年2桁の日付型(y/m/d, yymmdd) */
     const TYPE_Y2MD = 2;
-    /** 月日の日付型(MM/dd, MMdd) */
+    /** 月日の日付型(m/d, mmdd) */
     const TYPE_MD = 3;
-    /** 年月型(yyyy/MM, yyyyMM) */
+    /** 年月型(Y/m, YYYYmm) */
     const TYPE_Y4M = 4;
-    /** 年2桁の年月型(yy/MM, yyMM) */
+    /** 年2桁の年月型(y/m, yymm) */
     const TYPE_Y2M = 5;
-    /** 年型(yyyy) */
+    /** 年型(Y) */
     const TYPE_Y4 = 6;
-    /** 年2桁の年型(yy) */
+    /** 年2桁の年型(y) */
     const TYPE_Y2 = 7;
-    /** 月型(MM) */
+    /** 月型(m) */
     const TYPE_M = 8;
-    /** 日型(dd) */
+    /** 日型(d) */
     const TYPE_D = 9;
 
     // ---------------------------------------------------------------------------------------------
@@ -61,7 +63,7 @@ class InputItemDate extends InputItemBase {
         $data = $unit->getData($this->name, 'baseDate');
         if ($data !== null) {
             $unit->deleteData($this->name, 'baseDate');
-            $this->baseDate = $this->getNewDate($data);
+            $this->baseDate = $this->makeNewDate($data);
         }
     }
 
@@ -93,16 +95,16 @@ class InputItemDate extends InputItemBase {
     // 値を設定(Web値より)
     protected function setValueFromWebValue() {
         if ($this->webValue === '') return null;
-        $this->value = $this->getNewDate(match ($this->type) {
-            static::TYPE_Y4MD => $this->mdToY4md($this->webValue),
-            static::TYPE_Y2MD => $this->y2mdToY4md($this->webValue),
-            static::TYPE_MD   => $this->mdToY4md($this->webValue),
-            static::TYPE_Y4M  => $this->y4mToY4md($this->webValue),
-            static::TYPE_Y2M  => $this->y2mToY4md($this->webValue),
-            static::TYPE_Y4   => $this->y4ToY4md($this->webValue),
-            static::TYPE_Y2   => $this->y2ToY4md($this->webValue),
-            static::TYPE_M    => $this->mToY4md($this->webValue),
-            static::TYPE_D    => $this->dToY4md($this->webValue),
+        $this->value = $this->makeNewDate(match ($this->type) {
+            static::TYPE_Y4MD => $this->convertValueForY4md($this->webValue),
+            static::TYPE_Y2MD => $this->convertValueForY2md($this->webValue),
+            static::TYPE_MD   => $this->convertValueForMd($this->webValue),
+            static::TYPE_Y4M  => $this->convertValueForY4m($this->webValue),
+            static::TYPE_Y2M  => $this->convertValueForY2m($this->webValue),
+            static::TYPE_Y4   => $this->convertValueForY4($this->webValue),
+            static::TYPE_Y2   => $this->convertValueForY2($this->webValue),
+            static::TYPE_M    => $this->convertValueForM($this->webValue),
+            static::TYPE_D    => $this->convertValueForD($this->webValue),
             default           => null
         });
     }
@@ -128,20 +130,23 @@ class InputItemDate extends InputItemBase {
         if (!parent::checkValue($value)) return false;
         if ($value === '') return true;
 
-        // 入力型別のチェック
-        $date = match ($this->type) {
-            static::TYPE_Y4MD => $this->checkValueForY4md($value),
-            static::TYPE_Y2MD => $this->checkValueForY2md($value),
-            static::TYPE_MD   => $this->checkValueForMd($value),
-            static::TYPE_Y4M  => $this->checkValueForY4m($value),
-            static::TYPE_Y2M  => $this->checkValueForY2m($value),
-            static::TYPE_Y4   => $this->checkValueForY4($value),
-            static::TYPE_Y2   => $this->checkValueForY2($value),
-            static::TYPE_M    => $this->checkValueForM($value),
-            static::TYPE_D    => $this->checkValueForD($value),
-            default           => false
+        // 入力型別のチェックと変換
+        $valueY4md = match ($this->type) {
+            static::TYPE_Y4MD => $this->convertValueForY4md($value),
+            static::TYPE_Y2MD => $this->convertValueForY2md($value),
+            static::TYPE_MD   => $this->convertValueForMd($value),
+            static::TYPE_Y4M  => $this->convertValueForY4m($value),
+            static::TYPE_Y2M  => $this->convertValueForY2m($value),
+            static::TYPE_Y4   => $this->convertValueForY4($value),
+            static::TYPE_Y2   => $this->convertValueForY2($value),
+            static::TYPE_M    => $this->convertValueForM($value),
+            static::TYPE_D    => $this->convertValueForD($value),
+            default           => null
         };
-        if ($date === false) return false;
+        if ($valueY4md === null) return false;
+
+        // 日付型へ変換
+        $date = $this->makeNewDate($valueY4md);
 
         // 値の範囲
         if ($this->minValue !== null) {
@@ -180,406 +185,532 @@ class InputItemDate extends InputItemBase {
      * @param string $value 日付文字列
      * @return type\Date 日付型
      */
-    protected function getNewDate(string $value = 'now'): type\Date {
+    protected function makeNewDate(string $value = 'now'): type\Date {
         return new type\Date($value);
     }
 
     /**
      * 基点とする日付を取得
      * 
-     * @return type\Date 基点とする日付
+     * @return ?type\Date 基点とする日付
      */
-    protected function getBaseDate(): type\Date {
-        return $this->baseDate ?? $this->getNewDate();
+    protected function getBaseDate(): ?type\Date {
+        return $this->baseDate ?? $this->makeNewDate();
     }
 
     /**
-     * MM/dd型からyyyy/MM/dd型へ変換
+     * 日付を表す値であるかどうかチェック
      * 
-     * @param string $value MM/dd型の値
-     * @return string yyyy/MM/dd型の値
+     * @since 0.82.00
+     * @param string $value 値
+     * @return bool 成否
      */
-    protected function mdToY4md(string $value): string {
-        // MM/dd、MM-dd、MMdd以外は、そのまま返す
-        if (!preg_match('/\A[0-9]{1,2}\/[0-9]{1,2}\z/', $value) and
-            !preg_match('/\A[0-9]{1,2}\-[0-9]{1,2}\z/', $value) and
-            !preg_match('/\A[0-9]{4}\z/', $value)) {
-            return $value;
-        }
-
-        // 年を算出
-        $year = $this->getBaseDate()->getYear();
-
-        // 変換
-        return match (true) {
-            !!preg_match('/\//', $value) => sprintf('%04d/%s', $year, $value),
-            !!preg_match('/\-/', $value) => sprintf('%04d-%s', $year, $value),
-            default                      => sprintf('%04d%s', $year, $value),
-        };
+    protected function checkDate(string $value): bool {
+        return type\Date::checkDate($value);
     }
 
     /**
-     * yy/MM/dd型からyyyy/MM/dd型へ変換
+     * Y/m/d型、Y-m-d型、YYYYmmdd型であるかどうかチェック
      * 
-     * @param string $value yy/MM/dd型の値
-     * @return string yyyy/MM/dd型の値
+     * 型のみをチェックし、日付として有効であるかどうかは考慮しません。
+     * 
+     * @since 0.82.00
+     * @param string $value 値
+     * @return bool 成否
      */
-    protected function y2mdToY4md(string $value): string {
-        // yy/MM/dd、yy-MM-dd、yyMMdd以外は、そのまま返す
-        if (!preg_match('/\A[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{1,2}\z/', $value) and
-            !preg_match('/\A[0-9]{1,2}\-[0-9]{1,2}\-[0-9]{1,2}\z/', $value) and
-            !preg_match('/\A[0-9]{6}\z/', $value)) {
-            return $value;
-        }
-
-        // 年の上2桁を算出
-        $year = $this->getBaseDate()->getYear();
-        $year1 = intdiv($year, 100);
-        $year2 = $year % 100;
-        $yearHead = $year1;
-        $yy = (int)substr($value, 0, 2);
-        if ($year2 < 25 and $yy >= 75) $yearHead--;
-        if ($year2 >= 75 and $yy < 25) $yearHead++;
-
-        // 変換
-        return sprintf('%02d%s', $yearHead, $value);
+    protected function checkTypeY4md(string $value): bool {
+        return type\Date::checkTypeY4md($value);
     }
 
     /**
-     * yyyy/MM型からyyyy/MM/dd型へ変換
+     * y/m型、y-m型、yymm型であるかどうかチェック
      * 
-     * @param string $value yyyy/MM型の値
-     * @return string yyyy/MM/dd型の値
+     * 型のみをチェックし、日付として有効であるかどうかは考慮しません。
+     * 
+     * @since 0.82.00
+     * @param string $value 値
+     * @return bool 成否
+     */
+    protected function checkTypeY2md(string $value): bool {
+        return type\Date::checkTypeY2md($value);
+    }
+
+    /**
+     * m/d型、m-d型、mmdd型であるかどうかチェック
+     * 
+     * 型のみをチェックし、日付として有効であるかどうかは考慮しません。
+     * 
+     * @since 0.82.00
+     * @param string $value 値
+     * @return bool 成否
+     */
+    protected function checkTypeMd(string $value): bool {
+        return type\Date::checkTypeMd($value);
+    }
+
+    /**
+     * Y/m型、Y-m型、YYYYmm型であるかどうかチェック
+     * 
+     * 型のみをチェックし、日付として有効であるかどうかは考慮しません。
+     * 
+     * @since 0.82.00
+     * @param string $value 値
+     * @return bool 成否
+     */
+    protected function checkTypeY4m(string $value): bool {
+        return type\Date::checkTypeY4m($value);
+    }
+
+    /**
+     * y/m型、y-m型、yymm型であるかどうかチェック
+     * 
+     * 型のみをチェックし、日付として有効であるかどうかは考慮しません。
+     * 
+     * @since 0.82.00
+     * @param string $value 値
+     * @return bool 成否
+     */
+    protected function checkTypeY2m(string $value): bool {
+        return type\Date::checkTypeY2m($value);
+    }
+
+    /**
+     * Y型であるかどうかチェック
+     * 
+     * 型のみをチェックし、日付として有効であるかどうかは考慮しません。
+     * 
+     * @since 0.82.00
+     * @param string $value 値
+     * @return bool 成否
+     */
+    protected function checkTypeY4(string $value): bool {
+        return type\Date::checkTypeY4($value);
+    }
+
+    /**
+     * y型であるかどうかチェック
+     * 
+     * 型のみをチェックし、日付として有効であるかどうかは考慮しません。
+     * 
+     * @since 0.82.00
+     * @param string $value 値
+     * @return bool 成否
+     */
+    protected function checkTypeY2(string $value): bool {
+        return type\Date::checkTypeY2($value);
+    }
+
+    /**
+     * m型であるかどうかチェック
+     * 
+     * 型のみをチェックし、日付として有効であるかどうかは考慮しません。
+     * 
+     * @since 0.82.00
+     * @param string $value 値
+     * @return bool 成否
+     */
+    protected function checkTypeM(string $value): bool {
+        return type\Date::checkTypeM($value);
+    }
+
+    /**
+     * d型であるかどうかチェック
+     * 
+     * 型のみをチェックし、日付として有効であるかどうかは考慮しません。
+     * 
+     * @since 0.82.00
+     * @param string $value 値
+     * @return bool 成否
+     */
+    protected function checkTypeD(string $value): bool {
+        return type\Date::checkTypeD($value);
+    }
+
+    /**
+     * y型からY型へ変換
+     * 
+     * @since 0.82.00
+     * @param string $value y型
+     * @return ?string Y型
+     */
+    protected function y2ToY4(string $value): ?string {
+        return type\Date::y2ToY4($value, $this->getBaseDate());
+    }
+
+    /**
+     * m/d型からY/m/d型へ変換
+     * 
+     * @param string $value m/d型、m-d型、mmdd型
+     * @return ?string Y/m/d型
+     */
+    protected function mdToY4md(string $value): ?string {
+        return type\Date::mdToY4md($value, $this->getBaseDate());
+    }
+
+    /**
+     * y/m/d型からY/m/d型へ変換
+     * 
+     * @param string $value y/m/d型、y-m-d型、yymmdd型
+     * @return ?string Y/m/d型
+     */
+    protected function y2mdToY4md(string $value): ?string {
+        return type\Date::y2mdToY4md($value, $this->getBaseDate());
+    }
+
+    /**
+     * Y/m型からY/m/d型へ変換
+     * 
+     * @param string $value Y/m型、Y-m型、YYYYmm型
+     * @return string Y/m/d型
      */
     protected function y4mToY4md(string $value): string {
-        // yyyy/MM、yyyy-MM、yyyyMM以外は、そのまま返す
-        if (!preg_match('/\A[0-9]{1,4}\/[0-9]{1,2}\z/', $value) and
-            !preg_match('/\A[0-9]{1,4}\-[0-9]{1,2}\z/', $value) and
-            !preg_match('/\A[0-9]{6}\z/', $value)) {
-            return $value;
-        }
-
-        // 変換
-        return match (true) {
-            !!preg_match('/\//', $value) => sprintf('%s/01', $value),
-            !!preg_match('/\-/', $value) => sprintf('%s-01', $value),
-            default                      => sprintf('%s01', $value)
-        };
+        return type\Date::y4mToY4md($value);
     }
 
     /**
-     * yy/MM型からyyyy/MM/dd型へ変換
+     * y/m型からY/m/d型へ変換
      * 
-     * @param string $value yy/MM型の値
-     * @return string yyyy/MM/dd型の値
+     * @param string $value y/m型、y-m型、yymm型
+     * @return ?string Y/m/d型
      */
-    protected function y2mToY4md(string $value): string {
-        // yy/MM、yy-MM、yyMM以外は、そのまま返す
-        if (!preg_match('/\A[0-9]{1,2}\/[0-9]{1,2}\z/', $value) and
-            !preg_match('/\A[0-9]{1,2}\-[0-9]{1,2}\z/', $value) and
-            !preg_match('/\A[0-9]{4}\z/', $value)) {
-            return $value;
-        }
-
-        // 変換(yy/MM/dd型を経由)
-        return $this->y2mdToY4md(match (true) {
-            !!preg_match('/\//', $value) => sprintf('%s/01', $value),
-            !!preg_match('/\-/', $value) => sprintf('%s-01', $value),
-            default                      => sprintf('%s01', $value)
-        });
+    protected function y2mToY4md(string $value): ?string {
+        return type\Date::y2mToY4md($value, $this->getBaseDate());
     }
 
     /**
-     * yyyy型からyyyy/MM/dd型へ変換
+     * Y型からY/m/d型へ変換
      * 
-     * @param string $value yyyy型の値
-     * @return string yyyy/MM/dd型の値
+     * @param string $value Y型
+     * @return string Y/m/d型
      */
     protected function y4ToY4md(string $value): string {
-        // yyyy以外は、そのまま返す
-        if (!preg_match('/\A[0-9]{1,4}\z/', $value)) {
-            return $value;
-        }
-
-        // 変換
-        return sprintf('%s/01/01', $value);
+        return type\Date::y4ToY4md($value);
     }
 
     /**
-     * yy型からyyyy/MM/dd型へ変換
+     * y型からY/m/d型へ変換
      * 
-     * @param string $value yy型の値
-     * @return string yyyy/MM/dd型の値
+     * @param string $value y型
+     * @return ?string Y/m/d型
      */
-    protected function y2ToY4md(string $value): string {
-        // yy以外は、そのまま返す
-        if (!preg_match('/\A[0-9]{1,2}\z/', $value)) {
-            return $value;
-        }
-
-        // 変換(yy/MM/dd経由)
-        return $this->y2mdToY4md(sprintf('%s/01/01', $value));
+    protected function y2ToY4md(string $value): ?string {
+        return type\Date::y2ToY4md($value, $this->getBaseDate());
     }
 
     /**
-     * MM型からyyyy/MM/dd型へ変換
+     * m型からY/m/d型へ変換
      * 
-     * @param string $value MM型の値
-     * @return string yyyy/MM/dd型の値
+     * @param string $value m型
+     * @return ?string Y/m/d型
      */
-    protected function mToY4md(string $value): string {
-        // MM以外は、そのまま返す
-        if (!preg_match('/\A[0-9]{1,2}\z/', $value)) {
-            return $value;
-        }
-
-        // 変換
-        return sprintf('%s/%s/01',
-            $this->getBaseDate()->getYear(),
-            $value
-        );
+    protected function mToY4md(string $value): ?string {
+        return type\Date::mToY4md($value, $this->getBaseDate());
     }
 
     /**
-     * dd型からyyyy/MM/dd型へ変換
+     * d型からY/m/d型へ変換
      * 
-     * @param string $value dd型の値
-     * @return string yyyy/MM/dd型の値
+     * @param string $value d型
+     * @return ?string Y/m/d型
      */
-    protected function dToY4md(string $value): string {
-        // dd以外は、そのまま返す
-        if (!preg_match('/\A[0-9]{1,2}\z/', $value)) {
-            return $value;
-        }
-
-        // 変換
-        return sprintf('%s/%s',
-            $this->getBaseDate()->toDateTime()->format('Y/m'),
-            $value
-        );
+    protected function dToY4md(string $value): ?string {
+        return type\Date::dToY4md($value, $this->getBaseDate());
     }
 
     /**
-     * 値チェック(TYPE_Y4MD)
+     * 値を変換(TYPE_Y4MD)
      * 
      * @param string $value 値
-     * @return type\Date|false 日付型
+     * @return ?string Y/m/d型
      */
-    protected function checkValueForY4md(string $value): type\Date|false {
-        // MM/dd、MM-dd、MMddであれば、変換
-        $value = $this->mdToY4md($value);
+    protected function convertValueForY4md(string $value): ?string {
+        // 型チェック
+        if (($valueY4md = match (true) {
+            // Y/m/d型、Y-m-d型、YYYYmmdd型
+            $this->checkTypeY4md($value)    =>  $value,
 
-        // yyyy-MM-dd -> yyyy/MM/dd
-        if (preg_match('/\A[0-9]{1,4}\-[0-9]{1,2}\-[0-9]{1,2}\z/', $value))
-            $value = str_replace('-', '/', $value);
+            // m/d型、m-d型、mmdd型
+            $this->checkTypeMd($value)      =>  $this->mdToY4md($value),
 
-        // yyyyMMdd -> yyyy/MM/dd
-        if (preg_match('/\A[0-9]{8}\z/', $value))
-            $value = sprintf('%s/%s/%s',
-                substr($value, 0, 4), substr($value, 4, 2), substr($value, 6));
+            // y/m/d型、y-m-d型、yymmdd型
+            $this->checkTypeY2md($value)    =>  $this->y2mdToY4md($value),
 
-        // yyyy/MM/ddかどうか
-        if (!preg_match('/\A[0-9]{1,4}\/[0-9]{1,2}\/[0-9]{1,2}\z/', $value)) {
+            default                         =>  null
+        }) === null) {
             $this->errorId = Message::ID_TYPE_ERROR;
             $this->errorParams = [$this->label, '日付'];
-            return false;
+            return null;
         }
 
-        // 日付として存在するかどうか
-        $valueArr = explode('/', $value);
-        if (!checkdate((int)$valueArr[1], (int)$valueArr[2], (int)$valueArr[0])) {
+        // 値チェック
+        if (!$this->checkDate($valueY4md)) {
             $this->errorId = Message::ID_VALUE_INVALID_DATE;
             $this->errorParams = [$this->label, '日付'];
-            return false;
+            return null;
         }
 
-        return $this->getNewDate($value);
+        return $valueY4md;
     }
 
     /**
-     * 値チェック(TYPE_Y2MD)
+     * 値を変換(TYPE_Y2MD)
      * 
      * @param string $value 値
-     * @return type\Date|false 日付型
+     * @return ?string Y/m/d型
      */
-    protected function checkValueForY2md(string $value): type\Date|false {
+    protected function convertValueForY2md(string $value): ?string {
         // 型チェック
-        // MM/dd、MM-dd、MMdd、yy/MM/dd、yy-MM-dd、yyMMdd
-        if (!preg_match('/\A[0-9]{1,2}\/[0-9]{1,2}\z/', $value) and
-            !preg_match('/\A[0-9]{1,2}\-[0-9]{1,2}\z/', $value) and
-            !preg_match('/\A[0-9]{4}\z/', $value) and
-            !preg_match('/\A[0-9]{1,2}\/[0-9]{1,2}\/[0-9]{1,2}\z/', $value) and
-            !preg_match('/\A[0-9]{1,2}\-[0-9]{1,2}\-[0-9]{1,2}\z/', $value) and
-            !preg_match('/\A[0-9]{6}\z/', $value)) {
-            $this->errorId = Message::ID_VALUE_INVALID_DATE;
+        if (($valueY4md = match (true) {
+            // y/m/d型、y-m-d型、yymmdd型
+            $this->checkTypeY2md($value)    =>  $this->y2mdToY4md($value),
+
+            // m/d型、m-d型、mmdd型
+            $this->checkTypeMd($value)      =>  $this->mdToY4md($value),
+
+            // Y/m/d型、Y-m-d型、YYYYmmdd型
+            $this->checkTypeY4md($value)    =>  $value,
+
+            default                         =>  null
+        }) === null) {
+            $this->errorId = Message::ID_TYPE_ERROR;
             $this->errorParams = [$this->label, '日付'];
-            return false;
+            return null;
         }
 
-        // 変換
-        $value = $this->y2mdToy4md($value);
+        // 値チェック
+        if (!$this->checkDate($valueY4md)) {
+            $this->errorId = Message::ID_VALUE_INVALID_DATE;
+            $this->errorParams = [$this->label, '日付'];
+            return null;
+        }
 
-        // yyyy/MM/ddのチェックへ
-        return $this->checkValueForY4md($value);
+        return $valueY4md;
     }
 
     /**
-     * 値チェック(TYPE_MD)
+     * 値を変換(TYPE_MD)
      * 
      * @param string $value 値
-     * @return type\Date|false 日付型
+     * @return ?string Y/m/d型
      */
-    protected function checkValueForMd(string $value): type\Date|false {
+    protected function convertValueForMd(string $value): ?string {
         // 型チェック
-        // MM/dd、MM-dd、MMdd
-        if (!preg_match('/\A[0-9]{1,2}\/[0-9]{1,2}\z/', $value) and
-            !preg_match('/\A[0-9]{1,2}\-[0-9]{1,2}\z/', $value) and
-            !preg_match('/\A[0-9]{4}\z/', $value)) {
-            $this->errorId = Message::ID_VALUE_INVALID_DATE;
+        if (($valueY4md = match (true) {
+            // m/d型、m-d型、mmdd型
+            $this->checkTypeMd($value)      =>  $this->mdToY4md($value),
+
+            // Y/m/d型、Y-m-d型、YYYYmmdd型
+            $this->checkTypeY4md($value)    =>  $value,
+
+            // y/m/d型、y-m-d型、yymmdd型
+            $this->checkTypeY2md($value)    =>  $this->y2mdToY4md($value),
+
+            default                         =>  null
+        }) === null) {
+            $this->errorId = Message::ID_TYPE_ERROR;
             $this->errorParams = [$this->label, '日付'];
-            return false;
+            return null;
         }
 
-        // 変換
-        $value = $this->y2mdToy4md($value);
+        // 値チェック
+        if (!$this->checkDate($valueY4md)) {
+            $this->errorId = Message::ID_VALUE_INVALID_DATE;
+            $this->errorParams = [$this->label, '日付'];
+            return null;
+        }
 
-        // yyyy/MM/ddのチェックへ
-        return $this->checkValueForY4md($value);
+        return $valueY4md;
     }
 
     /**
-     * 値チェック(TYPE_Y4M)
+     * 値を変換(TYPE_Y4M)
      * 
      * @param string $value 値
-     * @return type\Date|false 日付型
+     * @return ?string Y/m/d型
      */
-    protected function checkValueForY4m(string $value): type\Date|false {
+    protected function convertValueForY4m(string $value): ?string {
         // 型チェック
-        // yyyy/MM、yyyy-MM、yyyyMM
-        if (!preg_match('/\A[0-9]{1,4}\/[0-9]{1,2}\z/', $value) and
-            !preg_match('/\A[0-9]{1,4}\-[0-9]{1,2}\z/', $value) and
-            !preg_match('/\A[0-9]{6}\z/', $value)) {
-            $this->errorId = Message::ID_VALUE_INVALID_DATE;
-            $this->errorParams = [$this->label, '日付'];
-            return false;
+        if (($valueY4md = match (true) {
+            // Y/m型、Y-m型、YYYYmm型
+            $this->checkTypeY4m($value) =>  $this->y4mToY4md($value),
+
+            // m型
+            $this->checkTypeM($value)   =>  $this->mToY4md($value),
+
+            // y/m型、y-m型、yymm型
+            $this->checkTypeY2m($value) =>  $this->y2mToY4md($value),
+
+            default                     =>  null
+        }) === null) {
+            $this->errorId = Message::ID_TYPE_ERROR;
+            $this->errorParams = [$this->label, '日付(年月)'];
+            return null;
         }
 
-        // 変換
-        $value = $this->y4mToY4md($value);
+        // 値チェック
+        if (!$this->checkDate($valueY4md)) {
+            $this->errorId = Message::ID_VALUE_INVALID_DATE;
+            $this->errorParams = [$this->label, '日付'];
+            return null;
+        }
 
-        // yyyy/MM/ddのチェックへ
-        return $this->checkValueForY4md($value);
+        return $valueY4md;
     }
 
     /**
-     * 値チェック(TYPE_Y2M)
+     * 値を変換(TYPE_Y2M)
      * 
      * @param string $value 値
-     * @return type\Date|false 日付型
+     * @return ?string Y/m/d型
      */
-    protected function checkValueForY2m(string $value): type\Date|false {
+    protected function convertValueForY2m(string $value): ?string {
         // 型チェック
-        // yyyy/MM、yyyy-MM、yyyyMM
-        if (!preg_match('/\A[0-9]{1,2}\/[0-9]{1,2}\z/', $value) and
-            !preg_match('/\A[0-9]{1,2}\-[0-9]{1,2}\z/', $value) and
-            !preg_match('/\A[0-9]{4}\z/', $value)) {
-            $this->errorId = Message::ID_VALUE_INVALID_DATE;
-            $this->errorParams = [$this->label, '日付'];
-            return false;
+        if (($valueY4md = match (true) {
+            // y/m型、y-m型、yymm型
+            $this->checkTypeY2m($value) =>  $this->y2mToY4md($value),
+
+            // m型
+            $this->checkTypeM($value)   =>  $this->mToY4md($value),
+
+            // Y/m型、Y-m型、YYYYmm型
+            $this->checkTypeY4m($value) =>  $this->y4mToY4md($value),
+
+            default                     =>  null
+        }) === null) {
+            $this->errorId = Message::ID_TYPE_ERROR;
+            $this->errorParams = [$this->label, '日付(年月)'];
+            return null;
         }
 
-        // 変換
-        $value = $this->y2mToY4md($value);
+        // 値チェック
+        if (!$this->checkDate($valueY4md)) {
+            $this->errorId = Message::ID_VALUE_INVALID_DATE;
+            $this->errorParams = [$this->label, '日付'];
+            return null;
+        }
 
-        // yyyy/MM/ddのチェックへ
-        return $this->checkValueForY4md($value);
+        return $valueY4md;
     }
 
     /**
-     * 値チェック(TYPE_Y4)
+     * 値を変換(TYPE_Y4)
      * 
      * @param string $value 値
-     * @return type\Date|false 日付型
+     * @return ?string Y/m/d型
      */
-    protected function checkValueForY4(string $value): type\Date|false {
+    protected function convertValueForY4(string $value): ?string {
         // 型チェック
-        // yyyy
-        if (!preg_match('/\A[0-9]{1,4}\z/', $value)) {
-            $this->errorId = Message::ID_VALUE_INVALID_DATE;
-            $this->errorParams = [$this->label, '日付'];
-            return false;
+        if (($valueY4md = match (true) {
+            // Y型
+            $this->checkTypeY4($value)  =>  $this->y4ToY4md($value),
+
+            // y型
+            $this->checkTypeY2($value)  =>  $this->y2ToY4md($value),
+
+            default                     =>  null
+        }) === null) {
+            $this->errorId = Message::ID_TYPE_ERROR;
+            $this->errorParams = [$this->label, '日付(年)'];
+            return null;
         }
 
-        // 変換
-        $value = $this->y4ToY4md($value);
+        // 値チェック
+        if (!$this->checkDate($valueY4md)) {
+            $this->errorId = Message::ID_VALUE_INVALID_DATE;
+            $this->errorParams = [$this->label, '日付'];
+            return null;
+        }
 
-        // yyyy/MM/ddのチェックへ
-        return $this->checkValueForY4md($value);
+        return $valueY4md;
     }
 
     /**
-     * 値チェック(TYPE_Y2)
+     * 値を変換(TYPE_Y2)
      * 
      * @param string $value 値
-     * @return type\Date|false 日付型
+     * @return ?string Y/m/d型
      */
-    protected function checkValueForY2(string $value): type\Date|false {
+    protected function convertValueForY2(string $value): ?string {
         // 型チェック
-        // yyyy
-        if (!preg_match('/\A[0-9]{1,2}\z/', $value)) {
-            $this->errorId = Message::ID_VALUE_INVALID_DATE;
-            $this->errorParams = [$this->label, '日付'];
-            return false;
+        if (($valueY4md = match (true) {
+            // y型
+            $this->checkTypeY2($value)  =>  $this->y2ToY4md($value),
+
+            // Y型
+            $this->checkTypeY4($value)  =>  $this->y4ToY4md($value),
+
+            default                     =>  null
+        }) === null) {
+            $this->errorId = Message::ID_TYPE_ERROR;
+            $this->errorParams = [$this->label, '日付(年)'];
+            return null;
         }
 
-        // 変換
-        $value = $this->y2ToY4md($value);
+        // 値チェック
+        if (!$this->checkDate($valueY4md)) {
+            $this->errorId = Message::ID_VALUE_INVALID_DATE;
+            $this->errorParams = [$this->label, '日付'];
+            return null;
+        }
 
-        // yyyy/MM/ddのチェックへ
-        return $this->checkValueForY4md($value);
+        return $valueY4md;
     }
 
     /**
-     * 値チェック(TYPE_M)
+     * 値を変換(TYPE_M)
      * 
      * @param string $value 値
-     * @return type\Date|false 日付型
+     * @return ?string Y/m/d型
      */
-    protected function checkValueForM(string $value): type\Date|false {
+    protected function convertValueForM(string $value): ?string {
         // 型チェック
-        // yyyy
-        if (!preg_match('/\A[0-9]{1,2}\z/', $value)) {
-            $this->errorId = Message::ID_VALUE_INVALID_DATE;
-            $this->errorParams = [$this->label, '日付'];
-            return false;
+        if (($valueY4md = match (true) {
+            // m型
+            $this->checkTypeM($value)   =>  $this->mToY4md($value),
+
+            default                     =>  null
+        }) === null) {
+            $this->errorId = Message::ID_TYPE_ERROR;
+            $this->errorParams = [$this->label, '日付(月のみ)'];
+            return null;
         }
 
-        // 変換
-        $value = $this->mToY4md($value);
+        // 値チェック
+        if (!$this->checkDate($valueY4md)) {
+            $this->errorId = Message::ID_VALUE_INVALID_DATE;
+            $this->errorParams = [$this->label, '日付'];
+            return null;
+        }
 
-        // yyyy/MM/ddのチェックへ
-        return $this->checkValueForY4md($value);
+        return $valueY4md;
     }
 
     /**
-     * 値チェック(TYPE_D)
+     * 値を変換(TYPE_D)
      * 
      * @param string $value 値
-     * @return type\Date|false 日付型
+     * @return ?string Y/m/d型
      */
-    protected function checkValueForD(string $value): type\Date|false {
+    protected function convertValueForD(string $value): ?string {
         // 型チェック
-        // yyyy
-        if (!preg_match('/\A[0-9]{1,2}\z/', $value)) {
-            $this->errorId = Message::ID_VALUE_INVALID_DATE;
-            $this->errorParams = [$this->label, '日付'];
-            return false;
+        if (($valueY4md = match (true) {
+            // d型
+            $this->checkTypeD($value)   =>  $this->dToY4md($value),
+
+            default                     =>  null
+        }) === null) {
+            $this->errorId = Message::ID_TYPE_ERROR;
+            $this->errorParams = [$this->label, '日付(日のみ)'];
+            return null;
         }
 
-        // 変換
-        $value = $this->dToY4md($value);
+        // 値チェック
+        if (!$this->checkDate($valueY4md)) {
+            $this->errorId = Message::ID_VALUE_INVALID_DATE;
+            $this->errorParams = [$this->label, '日付'];
+            return null;
+        }
 
-        // yyyy/MM/ddのチェックへ
-        return $this->checkValueForY4md($value);
+        return $valueY4md;
     }
 }

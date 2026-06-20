@@ -3,12 +3,14 @@
 //
 // History:
 // 0.05.00 2024/02/20 作成。
+// 0.54.00 2024/11/22 送信パラメータの生成に失敗していたので修正。
 // -------------------------------------------------------------------------------------------------
+
 /**
  * Ajaxクラス
  * 
  * @since 0.05.00
- * @version 0.05.00
+ * @version 0.54.00
  */
 export default class Ajax {
     // ---------------------------------------------------------------------------------------------
@@ -29,21 +31,23 @@ export default class Ajax {
     static get RESPONSE_TYPE_JSON() {return 'json';}
     /** 受取データ型(テキスト) */
     static get RESPONSE_TYPE_TEXT() {return 'text';}
+
     // ---------------------------------------------------------------------------------------------
     // プロパティ
-    /** @var {string|null} URL */
+    /** @type {string|null} URL */
     #url;
-    /** @var {string} メソッド */
+    /** @type {string} メソッド */
     #method;
     get method() {return this.#method;}
-    /** @var {{key: string, val: string}[]} 送信データ */
+    /** @type {{key: string, val: string}[]} 送信データ */
     #data;
-    /** @var {string} 受取データ型 */
+    /** @type {string} 受取データ型 */
     #responseType;
-    /** @var {((request: XMLHttpRequest) => void)|null} 成功時受取関数 */
+    /** @type {((request: XMLHttpRequest) => void)|null} 成功時受取関数 */
     #reciever;
-    /** @var {((request: XMLHttpRequest) => void)|null} 失敗時受取関数 */
+    /** @type {((request: XMLHttpRequest) => void)|null} 失敗時受取関数 */
     #errorHandler;
+
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ
     constructor() {
@@ -54,6 +58,7 @@ export default class Ajax {
         this.#reciever = null;
         this.#errorHandler = null;
     }
+
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
@@ -70,6 +75,7 @@ export default class Ajax {
         this.#url = url;
         return this;
     }
+
     /**
      * メソッドを設定
      * 
@@ -88,6 +94,7 @@ export default class Ajax {
         this.#method = _method;
         return this;
     }
+
     /**
      * データを追加
      * 
@@ -99,6 +106,7 @@ export default class Ajax {
         this.#data.push({key: String(key), val: String(val)});
         return this;
     }
+
     /**
      * データを追加(連想配列)
      * 
@@ -112,6 +120,7 @@ export default class Ajax {
         });
         return this;
     }
+
     /**
      * 受取データ型を設定
      * 
@@ -130,6 +139,7 @@ export default class Ajax {
         this.#responseType = _responseType;
         return this;
     }
+
     /**
      * 成功時受取関数を設定
      * 
@@ -141,6 +151,7 @@ export default class Ajax {
             this.#reciever = reciever;
         return this;
     }
+
     /**
      * 失敗時受取関数を設定
      * 
@@ -152,6 +163,7 @@ export default class Ajax {
             this.#errorHandler = errorHandler;
         return this;
     }
+
     /**
      * 送信
      */
@@ -159,6 +171,7 @@ export default class Ajax {
         if (this.#method === self.METHOD_GET) this.#sendGet();
         if (this.#method === self.METHOD_POST) this.#sendPost();
     }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -178,6 +191,7 @@ export default class Ajax {
             request.responseType = this.#responseType;
         request.send(null);
     }
+
     /**
      * POSTメソッド送信
      */
@@ -193,6 +207,7 @@ export default class Ajax {
             request.responseType = this.#responseType;
         request.send(this.#makeParam());
     }
+
     /**
      * 送信パラメータを生成
      * 
@@ -200,13 +215,15 @@ export default class Ajax {
      */
     #makeParam() {
         const params = [];
-        Object.keys(this.#data).forEach((key) => {
-            const val = this.#data[key];
+        this.#data.forEach((data) => {
+            const key = data.key;
+            const val = data.val;
             params.push(encodeURIComponent(key) + '=' + encodeURIComponent(val));
-        })
+        });
         if (params.length == 0) return null;
         return params.join('&');
     }
+
     /**
      * 送信状況が変更時
      * 

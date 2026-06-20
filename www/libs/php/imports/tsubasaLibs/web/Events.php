@@ -26,6 +26,7 @@
 // 0.40.00 2024/09/25 デストラクタを追加。DBインスタンスを可能な範囲で解放。
 // 0.42.00 2024/10/08 メソッドに、サブプログラムを呼ぶ(データ出力用/帳票出力用)を追加。
 // 0.44.00 2024/10/12 Smartyクラスを追加。
+// 0.47.00 2024/10/19 タイムスタンプインスタンスを生成するメソッドを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
@@ -41,13 +42,15 @@ require_once __DIR__ . '/Smarty.php';
 use tsubasaLibs\type;
 use tsubasaLibs\database\DbBase;
 use Smarty;
+use DateTime, DateTimeZone;
+use Stringable;
 use Exception;
 
 /**
  * イベントクラス
  * 
  * @since 0.00.00
- * @version 0.44.00
+ * @version 0.47.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -92,7 +95,7 @@ class Events {
     // コンストラクタ/デストラクタ
     public function __construct() {
         // 現在日時を取得
-        $this->now = new type\TimeStamp();
+        $this->now = $this->makeNewTimeStamp();
 
         // セッションを取得
         $this->session = $this->getSession();
@@ -204,6 +207,18 @@ class Events {
      */
     protected function getDb(): DbBase|false {
         return false;
+    }
+
+    /**
+     * タイムスタンプインスタンスを生成
+     * 
+     * @since 0.47.00
+     * @param string|DateTime|Stringable $date 日付
+     * @param ?DateTimeZone タイムゾーン
+     * @return type\TimeStamp タイムスタンプインスタンス
+     */
+    protected function makeNewTimeStamp($date = 'now', $timezone = null) {
+        return new type\TimeStamp($date, $timezone);
     }
 
     /**

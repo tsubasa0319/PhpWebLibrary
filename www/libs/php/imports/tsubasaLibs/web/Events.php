@@ -38,6 +38,7 @@
 // 0.87.04 2025/04/24 実行者情報の取得タイミングを変更、セッションで利用できるようにするため。
 //                    無駄なDB接続を減らすため、セッションを取得した後にDB接続するように変更。
 //                    出力データのフラッシュをシャットダウン時に行うように変更。
+// 0.90.03 2025/05/21 Ajax時、最終エラーのタイプがエラーの場合のみ、失敗を返すように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
@@ -60,7 +61,7 @@ use Exception;
  * イベントクラス
  * 
  * @since 0.00.00
- * @version 0.87.04
+ * @version 0.90.03
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -126,6 +127,10 @@ class Events {
             ob_start();
             $this->sendDoctype();
         }
+
+        // Ajaxの場合、バッファリング
+        if ($this->isAjax)
+            ob_start();
 
         // セッションを取得
         $this->session = $this->getSession();
@@ -510,17 +515,25 @@ class Events {
         ini_set('display_errors', false);
         register_shutdown_function(function () {
             $error = error_get_last();
-            if ($error !== null) $this->errorForAjax($error);
+            switch ($error['type'] ?? null) {
+                case E_ERROR:
+                case E_USER_ERROR:
+                    $this->errorForAjaxShutdown($error);
+                    break;
+            };
         });
     }
 
     /**
-     * エラー処理(Ajax用)
+     * エラー処理(Ajax用、シャットダウン時)
      * 
      * @since 0.05.00
      * @param array{type:int, message:string, file:string, line:int} $error
      */
-    protected function errorForAjax($error) {
+    protected function errorForAjaxShutdown($error) {
+        // 途中まで送信された分を削除
+        if (ob_get_level()) ob_clean();
+
         $response = [
             'status'  => 'error',
             'message' => [
@@ -532,6 +545,8 @@ class Events {
         // デバッグモードの場合、ブラウザへエラーログを出力
         if ($this->isDebug)
             $response['debug'] = $error;
+
+        // 送信
         header('Content-Type: application/json', true, 500);
         echo json_encode($response, JSON_UNESCAPED_UNICODE);
     }

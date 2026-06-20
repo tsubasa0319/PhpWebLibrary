@@ -14,6 +14,7 @@
 // 0.40.02 2024/09/27 生成済テーブルインスタンスは通常の参照へ戻す。途中でメモリ解放されてしまうため。
 //                    メモリ解放はdisposeメソッドか、ガベージコレクションで行う。
 // 0.84.00 2025/03/28 実行者を設定するメソッドを追加。
+// 0.84.01 2025/03/28 実行者インスタンス生成メソッドを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/DbStatement.php';
@@ -30,7 +31,7 @@ use Throwable;
  * DBクラス(PDOベース)
  * 
  * @since 0.00.00
- * @version 0.84.00
+ * @version 0.84.01
  */
 class DbBase extends PDO {
     // ---------------------------------------------------------------------------------------------
@@ -361,11 +362,21 @@ class DbBase extends PDO {
      * @since 0.84.00
      */
     public function setExecutor() {
-        $this->executor = new Executor();
+        $this->executor = $this->makeNewExecutor();
     }
 
     // ---------------------------------------------------------------------------------------------
     // 内部処理(追加)
+    /**
+     * 実行者インスタンスを生成
+     * 
+     * @since 0.84.01
+     * @return Executor 実行者インスタンス
+     */
+    protected function makeNewExecutor(): Executor {
+        return new Executor();
+    }
+
     /**
      * 初期設定
      */

@@ -11,15 +11,18 @@
 // 0.31.03 2024/08/09 json_decodeのオプションを第3パラメータに設定していたので修正。
 // 0.52.00 2024/11/14 マルチハンドル、非同期処理に対応。
 // 0.78.00 2025/03/01 タイムアウト時間を設定。予期しない長時間処理を防止するため。
+// 0.88.00 2025/05/10 マルチハンドルをクラス化し、他のcURLと合わせて非同期処理できるように対応。
+//                    標準のcURL関数をメソッド化。マルチハンドルの処理の記述を外部へ移動。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
-use CurlHandle, CurlMultiHandle;
+require_once __DIR__ . '/CurlMulti.php';
+use CurlHandle;
 
 /**
  * cURLクラス
  * 
  * @since 0.09.00
- * @version 0.78.00
+ * @version 0.88.00
  */
 class Curl {
     // ---------------------------------------------------------------------------------------------
@@ -35,10 +38,10 @@ class Curl {
 
     // ---------------------------------------------------------------------------------------------
     // プロパティ
-    /** @var CurlHandle cURLオブジェクト */
+    /** @var ?CurlHandle cURLオブジェクト */
     protected $curlHandle;
-    /** @var CurlMultiHandle cURLマルチオブジェクト */
-    protected $curlMultiHandle;
+    /** @var ?CurlMulti cURLマルチ */
+    protected $curlMulti;
     /** @var string URL */
     protected $url;
     /** @var ?int 接続タイムアウト時間(秒) */
@@ -70,15 +73,120 @@ class Curl {
      * @param ?string $url URL
      */
     public function __construct(?string $url = null) {
-        $this->curlHandle = curl_init($url);
-        if ($this->curlHandle === false)
-            throw new WebException('Failed to get a new cURL object');
         $this->setInit();
-        $this->url = $url;
+        $this->init($url);
+        if ($this->curlHandle === null)
+            throw new WebException('Failed to get a new cURL object');
     }
 
     // ---------------------------------------------------------------------------------------------
-    // メソッド
+    // メソッド(cURL関数)
+    /**
+     * 初期化
+     * 
+     * @since 0.88.00
+     */
+    public function init(?string $url = null) {
+        $curl = curl_init($url);
+        $this->curlHandle = $curl !== false ? $curl : null;
+        $this->url = $this->curlHandle !== null ? $url : null;
+        return $curl;
+    }
+
+    /**
+     * オプション値を変更
+     * 
+     * @since 0.88.00
+     * @param int $option オプションID(CURLOPT_*)
+     * @param mixed $value 値
+     * @return bool 成否
+     */
+    public function setopt(int $option, mixed $value): bool {
+        return curl_setopt($this->curlHandle, $option, $value);
+    }
+
+    /**
+     * 実行
+     * 
+     * @return string|false cURLの返り値、失敗時はfalse
+     */
+    public function exec(): string|false {
+        $this->prepare();
+
+        // 実行
+        $response = curl_exec($this->curlHandle);
+        $result = $this->receive($response);
+
+        // 破棄
+        if ($this->isAutoClose)
+            $this->close();
+
+        return $result;
+    }
+
+    /**
+     * 転送情報を取得
+     * 
+     * @param ?int $option オプション
+     */
+    public function getinfo(?int $option = null) {
+        return curl_getinfo($this->curlHandle, $option);
+    }
+
+    /**
+     * 直近のエラーコードを取得
+     * 
+     * @since 0.88.00
+     * @return int エラーコード(CURLE_*)
+     */
+    public function errno(): int {
+        return curl_errno($this->curlHandle);
+    }
+
+    /**
+     * 閉じる
+     * 
+     * @since 0.88.00
+     */
+    public function close() {
+        curl_close($this->curlHandle);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // メソッド(cURL関数、静的)
+    /**
+     * エラーコードよりメッセージを取得
+     * 
+     * @since 0.88.00
+     * @param int $errorCode エラーコード
+     * @return ?string メッセージ
+     */
+    static public function strerror(int $errorCode): ?string {
+        return curl_strerror($errorCode);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // メソッド(追加)
+    /**
+     * ハンドルを変更
+     * 
+     * @since 0.88.00
+     * @param ?CurlHandle $curlHandle ハンドル
+     */
+    public function setHandle(?CurlHandle $curlHandle) {
+        $this->curlHandle = $curlHandle;
+    }
+
+    /**
+     * ハンドルを取得
+     * 
+     * @since 0.88.00
+     * @return ?CurlHandle ハンドル
+     */
+    public function getHandle(): ?CurlHandle {
+        return $this->curlHandle;
+    }
+
     /**
      * 接続タイムアウト時間を変更
      * 
@@ -90,6 +198,16 @@ class Curl {
         $this->connectTimeout = $connectTimeout;
 
         return $this;
+    }
+
+    /**
+     * 接続タイムアウト時間を取得
+     * 
+     * @since 0.88.00
+     * @return ?int 接続タイムアウト時間(秒)
+     */
+    public function getConnectTimeout(): ?int {
+        return $this->connectTimeout;
     }
 
     /**
@@ -127,94 +245,92 @@ class Curl {
     }
 
     /**
-     * 実行
-     * 
-     * @return string|false cURLの返り値、失敗時はfalse
-     */
-    public function exec(): string|false {
-        $this->prepare();
-
-        // 実行
-        $response = curl_exec($this->curlHandle);
-        $result = $this->receive($response);
-
-        // 破棄
-        if ($this->isAutoClose)
-            curl_close($this->curlHandle);
-
-        return $result;
-    }
-
-    /**
-     * 転送情報を取得
-     * 
-     * @param ?int $option オプション
-     */
-    public function getInfo(?int $option = null) {
-        return curl_getinfo($this->curlHandle, $option);
-    }
-
-    /**
      * 転送結果のHTTPステータスを取得
      * 
      * @return int HTTPステータス
      */
     public function getHttpStatus(): int {
-        return $this->getInfo()['http_code'];
+        return $this->getinfo()['http_code'];
+    }
+
+    /**
+     * 接続が確立されているかどうかチェック
+     * 
+     * @since 0.88.00
+     * @return bool 結果
+     */
+    public function checkConnected(): bool {
+        return $this->getinfo(CURLINFO_PRETRANSFER_TIME) > 0;
+    }
+
+    /**
+     * 処理が完了しているかどうかチェック
+     * 
+     * @since 0.88.00
+     * @return bool 結果
+     */
+    public function checkFinished(): bool {
+        return $this->getinfo(CURLINFO_HTTP_CODE) > 0;
+    }
+
+    /**
+     * cURLマルチインスタンスを変更
+     * 
+     * @since 0.88.00
+     * @param ?CurlMulti $curlMulti cURLマルチインスタンス
+     */
+    public function setCurlMulti(?CurlMulti $curlMulti) {
+        $this->curlMulti = $curlMulti;
+    }
+
+    /**
+     * cURLマルチインスタンスを取得
+     * 
+     * @since 0.88.00
+     * @return ?CurlMulti cURLマルチインスタンス
+     */
+    public function getCurlMulti(): ?CurlMulti {
+        return $this->curlMulti;
+    }
+
+    /**
+     * 非同期処理へ登録
+     * 
+     * @since 0.88.00
+     * @return bool 成否
+     */
+    public function regist(): bool {
+        // 既にエラーまたは接続済であれば、何もしない
+        if ($this->errno()) return true;
+        if ($this->checkConnected()) return true;
+
+        // cURLマルチインスタンスを用意していなければ、新規で用意
+        if ($this->curlMulti === null)
+            $this->curlMulti = $this->makeCurlMultiInstance();
+
+        // 今回のcURLを登録
+        $this->prepare();
+        $this->curlMulti->addCurl($this);
+
+        return true;
     }
 
     /**
      * 非同期処理を開始
      * 
      * @since 0.52.00
-     * @param ?CurlMultiHandle $curlMultiHandle cURLのマルチハンドル
      * @return bool 成否
      */
-    public function async(?CurlMultiHandle $curlMultiHandle = null): bool {
-        // パラメータ指定があれば、1つのマルチハンドルの中で並行処理
-        if ($curlMultiHandle !== null)
-            $this->curlMultiHandle = $curlMultiHandle;
-        if ($this->curlMultiHandle === null)
-            $this->curlMultiHandle = curl_multi_init();
+    public function async(): bool {
+        // 既にエラーまたは接続済であれば、何もしない
+        if ($this->errno()) return true;
+        if ($this->checkConnected()) return true;
 
-        // 今回のcURLを登録
-        $this->prepare();
-        curl_multi_add_handle($this->curlMultiHandle, $this->curlHandle);
-        $status = curl_multi_exec($this->curlMultiHandle, $running);
-        if ($status !== CURLE_OK) return false;
+        // cURLマルチが用意されていなければ、失敗
+        if ($this->curlMulti === null) return false;
 
-        // cURLを実行するまで処理を進める
-        $count = curl_multi_select($this->curlMultiHandle);
-        while (!!$running) {
-            if ($count == -1) return false;
-
-            // どれかcURLにアクティビティ有り
-            if ($count > 0) {
-                while ($info = curl_multi_info_read($this->curlMultiHandle, $remain)) {
-                    // 今回のcURLであれば、ループ終了
-                    $curlHandle = $info['handle'];
-                    if ($curlHandle === $this->curlHandle)
-                        break 2;
-                }
-            }
-
-            // 次のアクティビティがあるまで、処理を進める
-            curl_multi_exec($this->curlMultiHandle, $running);
-            $count = curl_multi_select($this->curlMultiHandle);
-        }
-        curl_multi_exec($this->curlMultiHandle, $running);
-
-        return true;
-    }
-
-    /**
-     * cURLのマルチハンドルを取得
-     * 
-     * @since 0.52.00
-     * @return ?CurlMultiHandle cURLのマルチハンドル
-     */
-    public function getMultiHandle(): ?CurlMultiHandle {
-        return $this->curlMultiHandle;
+        // マルチハンドルを使用し、非同期処理を開始
+        return $this->curlMulti->async();
     }
 
     /**
@@ -224,14 +340,15 @@ class Curl {
      * @return bool 実行中かどうか
      */
     public function resume(): bool {
-        // アクティビティがあるかどうか
-        $count = curl_multi_select($this->curlMultiHandle);
-        if ($count == -1) return false;
-        if ($count == 0) return true;
+        // 既にエラーまたは完了済であれば、何もしない
+        if ($this->errno()) return true;
+        if ($this->checkFinished()) return true;
 
-        // あれば、実行
-        curl_multi_exec($this->curlMultiHandle, $running);
-        return !!$running;
+        // cURLマルチが用意されていなければ、失敗
+        if ($this->curlMulti === null) return false;
+
+        // マルチハンドルを使用し、非同期処理を再開
+        return $this->curlMulti->resume();
     }
 
     /**
@@ -242,24 +359,24 @@ class Curl {
      * @return string|false 結果
      */
     public function await(float $timeout = 30): string|false {
-        // 戻ってくるまで待機(実行中のものが0になるまで)
-        $limit = microtime(true) + $timeout;
-        curl_multi_select($this->curlMultiHandle);
-        curl_multi_exec($this->curlMultiHandle, $running);
-        while (microtime(true) < $limit and !!$running) {
-            curl_multi_select($this->curlMultiHandle);
-            curl_multi_exec($this->curlMultiHandle, $running);
-        }
-        if (!!$running) return false;
+        // 既にエラーであれば、失敗
+        if ($this->errno()) return false;
+
+        // cURLマルチが用意されていなければ、失敗
+        if ($this->curlMulti === null) return false;
+
+        // 戻ってくるまで待機
+        if (!$this->checkFinished())
+            if (!$this->curlMulti->await($timeout)) return false;
 
         // 取得
-        $response = curl_multi_getcontent($this->curlHandle);
+        $response = CurlMulti::getcontent($this->curlHandle);
         $result = $this->receive($response);
 
         // 破棄
-        curl_multi_remove_handle($this->curlMultiHandle, $this->curlHandle);
+        $this->curlMulti->removeCurlFromAsync($this);
         if ($this->isAutoClose)
-            curl_close($this->curlHandle);
+            $this->close();
 
         return $result;
     }
@@ -270,7 +387,9 @@ class Curl {
      * 初期設定
      */
     protected function setInit() {
-        $this->curlMultiHandle = null;
+        $this->curlHandle = null;
+        $this->curlMulti = null;
+        $this->url = null;
         $this->connectTimeout = 5;
         $this->timeout = 30;
         $this->isAutoClose = true;
@@ -285,22 +404,32 @@ class Curl {
     }
 
     /**
+     * cURLマルチインスタンスを生成
+     * 
+     * @since 0.88.00
+     * @return CurlMulti cURLマルチインスタンス
+     */
+    protected function makeCurlMultiInstance() {
+        return new CurlMulti();
+    }
+
+    /**
      * 実行前の準備
      * 
      * @since 0.52.00
      */
     protected function prepare() {
         // URL
-        curl_setopt($this->curlHandle, CURLOPT_URL, $this->url);
+        $this->setopt(CURLOPT_URL, $this->url);
 
         // タイムアウト
         if ($this->connectTimeout !== null)
-            curl_setopt($this->curlHandle, CURLOPT_CONNECTTIMEOUT, $this->connectTimeout);
+            $this->setopt(CURLOPT_CONNECTTIMEOUT, $this->connectTimeout);
         if ($this->timeout !== null)
-            curl_setopt($this->curlHandle, CURLOPT_TIMEOUT, $this->timeout);
+            $this->setopt(CURLOPT_TIMEOUT, $this->timeout);
 
         // 圧縮
-        curl_setopt($this->curlHandle, CURLOPT_ACCEPT_ENCODING, 'gzip, deflate');
+        $this->setopt(CURLOPT_ACCEPT_ENCODING, 'gzip, deflate');
 
         // リクエストヘッダ
         $headers = [];
@@ -312,35 +441,35 @@ class Curl {
                 sprintf('Content-Type: %s', $this->requestContentType);
         if ($this->responseCharset !== null)
             $headers[] = sprintf('Response-Charset: %s', $this->responseCharset);
-        curl_setopt($this->curlHandle, CURLOPT_HTTPHEADER, $headers);
+        $this->setopt(CURLOPT_HTTPHEADER, $headers);
 
         // ユーザエージェント
-        curl_setopt($this->curlHandle, CURLOPT_USERAGENT, sprintf(
+        $this->setopt(CURLOPT_USERAGENT, sprintf(
             'cURL from %s', $_SERVER['HTTP_HOST']
         ));
 
         // 送信メソッド
         if ($this->method === static::METHOD_POST)
-            curl_setopt($this->curlHandle, CURLOPT_POST, true);
+            $this->setopt(CURLOPT_POST, true);
 
         // 返り値を受け取るかどうか
         if ($this->isReturnTransfer)
-            curl_setopt($this->curlHandle, CURLOPT_RETURNTRANSFER, true);
+            $this->setopt(CURLOPT_RETURNTRANSFER, true);
 
         // 送信データ
         if ($this->method === static::METHOD_POST and $this->data !== null)
-            curl_setopt($this->curlHandle, CURLOPT_POSTFIELDS, http_build_query($this->data));
+            $this->setopt(CURLOPT_POSTFIELDS, http_build_query($this->data));
     }
 
     /**
      * 結果を受け取り
      * 
      * @since 0.52.00
-     * @param string|bool $response cURLより受け取った文字列
-     * @return string|false 結果
+     * @param ?string|bool $response cURLより受け取った文字列
+     * @return ?string|false 結果
      */
-    protected function receive(string|bool $response): string|false {
-        $info = $this->getInfo();
+    protected function receive(string|bool|null $response): string|false|null {
+        $info = $this->getinfo();
 
         // 受け取りデータ
         $this->receiveData = null;
@@ -409,7 +538,7 @@ class Curl {
      * @param mixed デコード後
      */
     protected function makeReceiveDataForJson($response) {
-        $info = $this->getInfo();
+        $info = $this->getinfo();
         $contentType = $info['content_type'];
 
         // 文字セット
@@ -474,7 +603,7 @@ class Curl {
      * @since 0.25.00
      */
     protected function error() {
-        $info = $this->getInfo();
+        $info = $this->getinfo();
 
         // JSONへエンコードのため、データの文字セットをUTF-8へ
         $data = $this->data;

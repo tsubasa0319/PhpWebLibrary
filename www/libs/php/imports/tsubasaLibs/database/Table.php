@@ -36,6 +36,7 @@
 // 0.84.00 2025/03/28 軽微な修正。
 // 0.87.04 2025/04/24 SELECT時に行単位の共有ロック/排他ロックを付与できるように対応。
 // 0.90.00 2025/05/16 実行者の項目IDリストをキャッシュ対応し、再取得を高速化。
+// 0.90.06 2025/05/30 最後に実行したクエリのエラー情報を取得できるように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -52,7 +53,7 @@ use Stringable;
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.87.04
+ * @version 0.90.06
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -89,6 +90,10 @@ class Table {
     public $baseTable;
     /** @var QueryPlanning クエリ予定クラス */
     protected $queryPlanning;
+    /** @var string エラーコード */
+    protected $errorCodeValue;
+    /** @var array{0:string, 1:?int, 2:?string} エラー情報 */
+    protected $errorInfoValue;
     /** @var ?string[] 実行者の項目IDリストのキャッシュ */
     protected $cachedExecutorIds;
     /** @var ?string[] 実行者の項目IDリストのキャッシュ(Insert用) */
@@ -141,7 +146,10 @@ class Table {
             DbBase::ATTR_STATEMENT_CLASS =>
                 [$this->statementClass, [WeakReference::create($this->db)]]
         ]);
-        if ($stmt === false) return false;
+        if ($stmt === false) {
+            $this->setErrorInfo($this->db);
+            return false;
+        }
 
         // テーブルのインスタンスを設定
         $stmt->setTable($this);
@@ -176,7 +184,7 @@ class Table {
         );
 
         // 実行
-        $stmt->execute();
+        if (!$stmt->execute()) $this->setErrorInfo($stmt);
         return $stmt;
     }
 
@@ -208,7 +216,7 @@ class Table {
         );
 
         // 実行
-        $stmt->execute();
+        if (!$stmt->execute()) $this->setErrorInfo($stmt);
         return $stmt;
     }
 
@@ -240,7 +248,7 @@ class Table {
         );
 
         // 実行
-        $stmt->execute();
+        if (!$stmt->execute()) $this->setErrorInfo($stmt);
         return $stmt;
     }
 
@@ -273,7 +281,7 @@ class Table {
         );
 
         // 実行
-        $stmt->execute();
+        if (!$stmt->execute()) $this->setErrorInfo($stmt);
         return $stmt;
     }
 
@@ -306,7 +314,7 @@ class Table {
         );
 
         // 実行
-        $stmt->execute();
+        if (!$stmt->execute()) $this->setErrorInfo($stmt);
         return $stmt;
     }
 
@@ -338,7 +346,7 @@ class Table {
         );
 
         // 実行
-        $stmt->execute();
+        if (!$stmt->execute()) $this->setErrorInfo($stmt);
         return $stmt;
     }
 
@@ -376,7 +384,7 @@ class Table {
         );
 
         // 実行
-        $stmt->execute();
+        if (!$stmt->execute()) $this->setErrorInfo($stmt);
         return $stmt;
     }
 
@@ -412,7 +420,7 @@ class Table {
         );
 
         // 実行
-        $stmt->execute();
+        if (!$stmt->execute()) $this->setErrorInfo($stmt);
         return $stmt;
     }
 
@@ -469,7 +477,10 @@ class Table {
         );
 
         // 実行
-        if (!$stmt->execute()) return false;
+        if (!$stmt->execute()) {
+            $this->setErrorInfo($stmt);
+            return false;
+        }
 
         // 変更前情報へ更新
         $record->previousRecord = clone $record;
@@ -509,7 +520,10 @@ class Table {
         );
 
         // 実行
-        if (!$stmt->execute()) return false;
+        if (!$stmt->execute()) {
+            $this->setErrorInfo($stmt);
+            return false;
+        }
 
         // 変更前情報へ更新
         foreach ($records as $record)
@@ -563,7 +577,10 @@ class Table {
         );
 
         // 実行
-        if (!$stmt->execute()) return false;
+        if (!$stmt->execute()) {
+            $this->setErrorInfo($stmt);
+            return false;
+        }
         return $stmt->rowCount();
     }
 
@@ -603,7 +620,10 @@ class Table {
         );
 
         // 実行
-        if (!$stmt->execute()) return false;
+        if (!$stmt->execute()) {
+            $this->setErrorInfo($stmt);
+            return false;
+        }
         return $stmt->rowCount();
     }
 
@@ -649,7 +669,10 @@ class Table {
         );
 
         // 実行
-        if (!$stmt->execute()) return false;
+        if (!$stmt->execute()) {
+            $this->setErrorInfo($stmt);
+            return false;
+        }
 
         // 変更前情報へ更新
         $record->previousRecord = clone $record;
@@ -699,7 +722,10 @@ class Table {
         );
 
         // 実行
-        if (!$stmt->execute()) return false;
+        if (!$stmt->execute()) {
+            $this->setErrorInfo($stmt);
+            return false;
+        }
         return $stmt->rowCount();
     }
 
@@ -746,7 +772,10 @@ class Table {
         );
 
         // 実行
-        if (!$stmt->execute()) return false;
+        if (!$stmt->execute()) {
+            $this->setErrorInfo($stmt);
+            return false;
+        }
         return $stmt->rowCount();
     }
 
@@ -781,7 +810,10 @@ class Table {
         );
 
         // 実行
-        if (!$stmt->execute()) return false;
+        if (!$stmt->execute()) {
+            $this->setErrorInfo($stmt);
+            return false;
+        }
         return $stmt->rowCount();
     }
 
@@ -828,7 +860,10 @@ class Table {
             $this->makeBindItemsWhereEq($key, ...$values));
 
         // 実行
-        if (!$stmt->execute()) return false;
+        if (!$stmt->execute()) {
+            $this->setErrorInfo($stmt);
+            return false;
+        }
         return $stmt->rowCount();
     }
 
@@ -846,7 +881,10 @@ class Table {
         if ($stmt === false) return false;
 
         // 実行
-        if (!$stmt->execute()) return false;
+        if (!$stmt->execute()) {
+            $this->setErrorInfo($stmt);
+            return false;
+        }
         return $stmt->rowCount();
     }
 
@@ -869,7 +907,10 @@ class Table {
         if ($stmt === false) return false;
 
         // 実行
-        if (!$stmt->execute()) return false;
+        if (!$stmt->execute()) {
+            $this->setErrorInfo($stmt);
+            return false;
+        }
         return true;
     }
 
@@ -985,7 +1026,7 @@ class Table {
         // DBへテンポラリテーブルを作成
         $query = sprintf('CREATE TEMPORARY TABLE %s LIKE %s',
             $this->getIdForSql($tempTableId), $this->getIdForSql($this->id));
-        $this->db->query($query);
+        if (!$this->db->query($query)) $this->setErrorInfo($this->db);
 
         return $tempTable;
     }
@@ -1059,6 +1100,26 @@ class Table {
      */
     public function executePlan() {
         $this->queryPlanning->execute();
+    }
+
+    /**
+     * エラーコードを取得
+     * 
+     * @since 0.90.06
+     * @return ?string エラーコード
+     */
+    public function errorCode(): ?string {
+        return $this->errorCodeValue;
+    }
+
+    /**
+     * エラー情報を取得
+     * 
+     * @since 0.90.06
+     * @return array{0:string, 1:?int, 2:?string} エラー情報
+     */
+    public function errorInfo(): array {
+        return $this->errorInfoValue;
     }
 
     /**
@@ -1165,6 +1226,8 @@ class Table {
         $this->tempTables = [];
         $this->isTemp = false;
         $this->queryPlanning = new QueryPlanning($this);
+        $this->errorCodeValue = '00000';
+        $this->errorInfoValue = ['00000', null, null];
         $this->cachedExecutorIds = null;
         $this->cachedExecutorIdsForInsert = null;
         $this->cachedExecutorIdsForInsertWithInput = null;
@@ -3932,5 +3995,18 @@ class Table {
         return sprintf(
             'TRUNCATE TABLE %s',
             $tableId);
+    }
+
+    /**
+     * エラー情報を設定
+     * 
+     * @since 0.90.06
+     * @param DbBase|TableStatement $stmt テーブルステートメント
+     */
+    protected function setErrorInfo(DbBase|TableStatement $stmt) {
+        if (!$stmt->errorCode()) return;
+
+        $this->errorCodeValue = $stmt->errorCode();
+        $this->errorInfoValue = $stmt->errorInfo();
     }
 }

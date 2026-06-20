@@ -5,6 +5,8 @@
 // History:
 // 0.88.00 2025/05/10 作成。
 // 0.90.00 2025/05/16 非同期処理の開始時、既に開始済があれば先に終わらせる。
+// 0.90.06 2025/05/30 非同期処理を開始時、cURLの準備処理を実行する。
+//                    cURLインスタンスを追加時、そのインスタンスのマルチハンドルに自身を設定。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use CurlHandle, CurlMultiHandle;
@@ -13,7 +15,7 @@ use CurlHandle, CurlMultiHandle;
  * cURLマルチクラス
  * 
  * @since 0.88.00
- * @version 0.90.00
+ * @version 0.90.06
  */
 class CurlMulti {
     // ---------------------------------------------------------------------------------------------
@@ -131,6 +133,17 @@ class CurlMulti {
     }
 
     /**
+     * 指定のcURLインスタンスを持っているかどうか
+     * 
+     * @since 0.90.06
+     * @param $curl Curl cURLインスタンス
+     * @return bool 結果
+     */
+    public function hasCurl(Curl $curl): bool {
+        return in_array($curl, $this->curls, true);
+    }
+
+    /**
      * cURLインスタンスを追加
      * 
      * @param Curl $curl cURLインスタンス
@@ -138,8 +151,14 @@ class CurlMulti {
      */
     public function addCurl(Curl $curl): int {
         $result = curl_multi_add_handle($this->curlMultiHandle, $curl->getHandle());
-        if ($result === CURLM_OK)
+        if ($result === CURLM_OK) {
             $this->curls[] = $curl;
+
+            // 登録したcURLに自身を設定
+            if ($curl->getCurlMulti() !== $this)
+                $curl->setCurlMulti($this);
+        }
+
         return $result;
     }
 
@@ -175,6 +194,10 @@ class CurlMulti {
             // 完了まで待機
             $this->await();
         }
+
+        // 準備
+        foreach ($this->curls as $curl)
+            $curl->prepare();
 
         // 実行
         if ($this->exec($running)) {

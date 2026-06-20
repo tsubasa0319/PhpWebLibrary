@@ -26,6 +26,9 @@
    0.46.01 2024/10/19 0.46.00の影響範囲を修正。
    0.66.00 2025/01/09 テーブルに配置するセレクトボックスの背景色を半透明化。
                       テーブルのヘッダ行に入力必須を表すクラスを追加。
+   0.70.00 2025/01/16 実行中/待機中のカーソル変更クラスを実装。
+                      ラベルにホバー時のカーソルを変更。
+                      テーブルの奇数行の背景色を白へ設定。
 ------------------------------------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------------------------------- */
 /* 変数定義 */
@@ -113,6 +116,10 @@ h1 {
 
 /* ---------------------------------------------------------------------------------------------- */
 /* ラベル */
+label {
+    cursor: text;
+}
+
 label.required::after {
     content: "*";
     color: red;
@@ -144,6 +151,12 @@ input[type="number"]:disabled {
     color: inherit;
     border-color: transparent;
     background-color: transparent;
+}
+
+input[type="text"]:disabled:not(.progress),
+input[type="password"]:disabled:not(.progress),
+input[type="number"]:disabled:not(.progress) {
+    cursor: text;
 }
 
 /* 数値は右寄せ */
@@ -425,6 +438,16 @@ table.list.general > tbody > tr > td {
     vertical-align: middle;
 }
 
+/* 奇数の明細行 */
+table.list.general > tbody:not(:has(> tr:first-child > th))
+    > tr:nth-child(2n-1):not(.selected):not(.deleted) > td,
+table.list.general > tbody:has(> tr:first-child > th):not(:has(> tr:nth-child(2) > th))
+    > tr:nth-child(2n):not(.selected):not(.deleted) > td,
+table.list.general > tbody:has(> tr:first-child > th):has(> tr:nth-child(2) > th)
+    > tr:nth-child(2n+1):not(.selected):not(.deleted) > td {
+    background-color: white;
+}
+
 /* 偶数の明細行 */
 table.list.general > tbody:not(:has(> tr:first-child > th))
     > tr:nth-child(2n):not(.selected):not(.deleted) > td,
@@ -551,4 +574,14 @@ table.list.general button {
 /* 非表示(レイアウトを詰める) */
 .none {
     display: none;
+}
+
+/* 待機中 */
+.wait {
+    cursor: wait;
+}
+
+/* 作業中 */
+.progress:not(.wait) {
+    cursor: progress;
 }

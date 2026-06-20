@@ -22,6 +22,9 @@
 // 0.59.00 2024/12/14 入力値が数値型の時、エレメントが別ウィンドウにある時に、パラメータエラーになっていたので修正
 // 0.62.00 2024/12/18 コードから名称を取得(オートコンプリート)メソッドを追加。
 // 0.63.00 2024/12/19 エレメントへ値を設定をNull値へ対応。
+// 0.70.00 2025/01/16 実行中/待機中のカーソルアイコンを変更。
+//                    画面遷移に暗転処理を追加。
+//                    コードから名称取得をFirefoxに対応。
 // -------------------------------------------------------------------------------------------------
 import forArray from "./forArray.js";
 import checker from "./checker.js";
@@ -31,7 +34,7 @@ import Ajax from "./Ajax.js";
  * Web処理
  * 
  * @since 0.05.00
- * @version 0.63.00
+ * @version 0.70.00
  */
 const web = {
     // ---------------------------------------------------------------------------------------------
@@ -223,6 +226,7 @@ const web = {
         elm.style.height = '100%';
         elm.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
         document.body.append(elm);
+        document.body.classList.add('wait');
     },
 
     /**
@@ -380,6 +384,8 @@ const web = {
             return true;
         });
         if (!paramCheck) return checker.paramCheckError('params', params);
+
+        self.setBlackout();
 
         const elmA = document.createElement('a');
         elmA.href = web.makeUrlWithParam(url, params);
@@ -791,11 +797,13 @@ const web = {
             if (event.isComposing) return;
 
             // 全角モードの入力文字を全て削除した時の二重発火を防止
+            // ただし、Firefoxは通り抜けてしまう
             if (event.key === 'Process' && event.code === 'Backspace') return;
             if (event.key === 'Process' && event.code === 'Delete') return;
 
-            // エンターは、全角モードの確定のみ
-            if (event.key !== 'Process' && event.code === 'Enter') return;
+            // エンターは、全角モードの確定のみ(Firefoxは除く)
+            if (!web.isFirefox())
+                if (event.key !== 'Process' && event.code === 'Enter') return;
 
             // Ctrlとの同時押しは除外
             // Ctrl+V、Ctrl+Xも、二重発火になるため除外
@@ -861,8 +869,13 @@ const web = {
         // inputイベントより実行
         if (event.type !== 'input') return;
 
-        // 入力イベントクラスではない
-        if (event instanceof InputEvent) return;
+        // 入力イベントクラスではない(Firefoxは除く)
+        if (!checker.isFirefox())
+            if (event instanceof InputEvent) return;
+
+        // 入力タイプがinsertReplacementText(Firefoxのみ)
+        if (checker.isFirefox())
+            if (event instanceof InputEvent && event.inputType !== 'insertReplacementText') return;
 
         // 自身の連結名
         const joinName = self.getJoinNameByElement(event.target);

@@ -13,6 +13,9 @@
    0.26.01 2024/06/22 bodyのイベントで長くなったため、折り返して整理。
    0.33.00 2024/08/27 ライブラリ名を訂正。直接に個人ライブラリ名を使用しないように変更。
    0.57.00 2024/12/11 フォームのエンコードタイプを指定できるように対応。
+   0.70.00 2025/01/16 画面描画が完了するまで、カーソルアイコンを変更。
+                      メニューを選択時、暗転処理を追加。
+                      FirefoxのFOUC対策。
 ------------------------------------------------------------------------------------------------- *}
 <!DOCTYPE html>
 <html lang="ja">
@@ -20,11 +23,13 @@
         <meta charset="utf-8">
         <title>{$general.title}</title>
         <link rel="stylesheet" href="{$general.css}">
+        <script>/* To prevent FOUC in Firefox*/</script>
         <script type="module" src="/js/libs/webLoader.js"></script>
         <script type="module" src="/js/subScreen/webLoader.js"></script>
-        <script defer src="{$general.js}"></script>
+        {if $general.js !== ''}<script defer src="{$general.js}"></script>{/if}
     </head>
     <body
+        class="wait"
         onload="libs.frame.body_load(event);"
         onpagehide="libs.frame.body_pagehide(event);"
         onkeydown="return libs.frame.body_keydown(event);"
@@ -66,7 +71,7 @@
                 </section>
                 <section id="bodyHeaderMenu">
                     <div>{foreach $general.menuItems as $item}
-                        <div class="valign-middle"><a href="{$item.url}">{$item.name}</a></div>
+                        <div class="valign-middle"><a href="{$item.url}" onclick="libs.web.setBlackout();">{$item.name}</a></div>
                         <div class="valign-middle">|</div>
                     {/foreach}</div>
                     <div class="valign-middle">

@@ -1,3 +1,13 @@
+0.40.00 2024/09/25 17:30:38
+[変更]
+メモリリーク対策のため、DBインスタンスの解放処理を追加。
+database/DbBase.php: 廃棄処理メソッド(dispose())を追加。PDO継承によりプログラム終了までインスタンスが解放されないため、後続処理がある場合は明示的に実行することでメモリを節約。
+database/Record.php: コンストラクタの受取パラメータをTableStatementからTableに変更。
+database/TableStatement.php: フェッチモードの変更を、テーブル設定時に行うように変更。
+api/Events.php、cli/TaskImportCsv.php、web/Events.php: デストラクタを追加し、DBインスタンスを可能な範囲で解放。
+database/DbStatement.php: 一時利用インスタンスかどうかを示すプロパティ($isTemp)を追加。
+database/DbStatement.php: クエリ履歴の長さに上限を設定(クエリ文字列1024文字、バインド値1023文字まで)。
+
 0.39.00 2024/09/20 18:46:11
 [変更]
 インデックスキーによるWHERE句を、Null値に対応。

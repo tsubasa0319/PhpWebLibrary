@@ -6,6 +6,7 @@
 // 0.00.00 2024/01/23 作成。
 // 0.10.00 2024/03/08 継承元がDB情報無しに対応したため、合わせる。
 // 0.22.00 2024/05/17 新規レコードを取得時、レコード(変更前)をnullへ変更。
+// 0.40.00 2024/09/25 フェッチモードの変更を、テーブルの設定時に行うように変更。メモリリーク対策のため。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/Record.php';
@@ -14,7 +15,7 @@ require_once __DIR__ . '/Record.php';
  * テーブルステートメントクラス
  * 
  * @since 0.00.00
- * @version 0.22.00
+ * @version 0.40.00
  */
 class TableStatement extends DbStatement {
     // ---------------------------------------------------------------------------------------------
@@ -31,11 +32,6 @@ class TableStatement extends DbStatement {
      */
     protected function __construct(?DbBase $db) {
         parent::__construct($db);
-        if ($db !== null)
-            // フェッチモードを変更、レコードインスタンスを返すようにする
-            $this->setFetchMode(
-                DbBase::FETCH_CLASS, $this->recordClass, [$this]
-            );
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -54,6 +50,12 @@ class TableStatement extends DbStatement {
      */
     public function setTable(Table $table) {
         $this->table = $table;
+
+        // フェッチモードを変更、レコードインスタンスを返すようにする
+        if (!$this->isTemp)
+            $this->setFetchMode(
+                DbBase::FETCH_CLASS, $this->recordClass, [$table]
+            );
     }
 
     /**
@@ -61,7 +63,7 @@ class TableStatement extends DbStatement {
      */
     public function getNewRecord() {
         /** @var Record */
-        $record = new $this->recordClass($this);
+        $record = new $this->recordClass($this->table);
         $record->setNothing();
         $record->previousRecord = null;
         return $record;

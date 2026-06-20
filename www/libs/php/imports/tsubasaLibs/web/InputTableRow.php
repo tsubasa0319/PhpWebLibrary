@@ -7,6 +7,7 @@
 // 0.18.02 2024/04/04 追加時の入力チェック、入力情報より行へ設定するメソッドを実装。選択/削除を実装。
 // 0.18.03 2024/04/09 選択済の場合に選択処理を実行した場合、選択を外すように変更。
 // 0.22.00 2024/05/17 更新処理(追加/変更/削除)、クエリを実行(追加/変更/削除)を実装。
+// 0.66.00 2025/01/09 頁内の行番号を取得が、非表示の行を含まないように修正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/InputItems.php';
@@ -16,7 +17,7 @@ use Exception;
  * 入力テーブルの行クラス
  * 
  * @since 0.18.01
- * @version 0.22.00
+ * @version 0.66.00
  */
 class InputTableRow extends InputItems {
     // ---------------------------------------------------------------------------------------------
@@ -96,12 +97,25 @@ class InputTableRow extends InputItems {
     }
 
     /**
+     * 行番号を取得(表示する行のみ)
+     * 
+     * @since 0.66.00
+     * @return ?int 行番号
+     */
+    public function getVisibleRowCount(): ?int {
+        foreach ($this->table->getVisibleRows() as $num => $row)
+            if ($row === $this)
+                return $num;
+        return null;
+    }
+
+    /**
      * 頁番号を取得
      * 
      * @return ?int 頁番号
      */
     public function getPageCount(): ?int {
-        $rowCount = $this->getRowCount();
+        $rowCount = $this->getVisibleRowCount();
         if ($rowCount === null) return null;
         return intdiv($rowCount, $this->table->getUnitRowCount());
     }
@@ -109,10 +123,10 @@ class InputTableRow extends InputItems {
     /**
      * 頁内の行番号を取得
      * 
-     * @return ?int エレメント番号
+     * @return ?int 頁内の行番号
      */
     public function getRowCountInPage(): ?int {
-        $rowCount = $this->getRowCount();
+        $rowCount = $this->getVisibleRowCount();
         if ($rowCount === null) return null;
         return $rowCount % $this->table->getUnitRowCount();
     }

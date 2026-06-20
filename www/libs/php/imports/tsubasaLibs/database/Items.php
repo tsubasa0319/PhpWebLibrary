@@ -4,6 +4,7 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
+// 0.48.00 2024/10/24 項目IDのリストを取得。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/Item.php';
@@ -15,7 +16,7 @@ require_once __DIR__ . '/advance/ItemsUpdaterItem.php';
  * 項目定義リストクラス
  * 
  * @since 0.00.00
- * @version 0.00.00
+ * @version 0.48.00
  */
 class Items {
     // ---------------------------------------------------------------------------------------------
@@ -37,6 +38,53 @@ class Items {
 
     // ---------------------------------------------------------------------------------------------
     // メソッド
+    /**
+     * 項目IDのリストを取得(通常項目)
+     * 
+     * @since 0.48.00
+     * @return string[] 項目IDのリスト
+     */
+    public function getNormalItemIds(): array {
+        $itemIds = [];
+
+        foreach (get_object_vars($this) as $name => $item) {
+            if (!($item instanceof Item)) continue;
+            if (in_array($name, $this->addedItems, true)) continue;
+            $itemIds[] = $name;
+        }
+
+        return $itemIds;
+    }
+
+    /**
+     * 項目IDのリストを取得(追加項目)
+     * 
+     * @since 0.48.00
+     * @return string[] 項目IDのリスト
+     */
+    public function getAddedItemIds(): array {
+        $itemIds = [];
+
+        foreach ($this->addedItems as $name) {
+            if (!property_exists($this, $name)) continue;
+            $item = $this->{$name};
+            if (!($item instanceof Item)) continue;
+            $itemIds[] = $name;
+        }
+
+        return $itemIds;
+    }
+
+    /**
+     * 項目IDのリストを取得
+     * 
+     * @since 0.48.00
+     * @return string[] 項目IDのリスト
+     */
+    public function getItemIds(): array {
+        return [...$this->getNormalItemIds(), ...$this->getAddedItemIds()];
+    }
+
     /**
      * 項目定義リストを連想配列型で取得
      * 

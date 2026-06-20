@@ -25,6 +25,7 @@
 // 0.40.02 2024/09/27 生成済テンポラリテーブルインスタンスは通常の参照へ戻す。途中でメモリ解放されてしまうため。
 //                    disposeメソッドを追加。
 // 0.43.00 2024/10/11 selectInのパラメータが単一項目により配列型ではなかった時へ対応。
+// 0.48.00 2024/10/24 WHERE句を短くした時に不具合が発生したので対処。構造を見直して整理。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -35,12 +36,13 @@ require_once __DIR__ . '/QueryPlanning.php';
 require_once __DIR__ . '/Records.php';
 require_once __DIR__ . '/advance/TableCamelCase.php';
 use WeakReference;
+use Stringable;
 
 /**
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.43.00
+ * @version 0.48.00
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -129,15 +131,18 @@ class Table {
      * @return TableStatement|false テーブルステートメント
      */
     public function select(...$values) {
+        // インデックスキー
+        $key = $this->indexKey;
+
         // プリペアドステートメント
         $stmt = $this->prepare($this->makeSqlSelect(
-            $this->makeSqlWhereEq(...$values)
+            $this->makeSqlWhereEq($key, ...$values)
         ));
         if ($stmt === false) return false;
 
         // バインド
         $this->bindValueSelect($stmt,
-            ...$this->makeBindItemsWhereEq(...$values)
+            $this->makeBindItemsWhereEq($key, ...$values)
         );
 
         // 実行
@@ -158,15 +163,18 @@ class Table {
      * @return TableStatement|false テーブルステートメント
      */
     public function selectGt(...$values) {
+        // インデックスキー
+        $key = $this->indexKey;
+
         // プリペアドステートメント
         $stmt = $this->prepare($this->makeSqlSelect(
-            $this->makeSqlWhereGt(...$values)
+            $this->makeSqlWhereGt($key, ...$values)
         ));
         if ($stmt === false) return false;
 
         // バインド
         $this->bindValueSelect($stmt,
-            ...$this->makeBindItemsWhereGt(...$values)
+            $this->makeBindItemsWhereGt($key, ...$values)
         );
 
         // 実行
@@ -187,15 +195,18 @@ class Table {
      * @return TableStatement|false テーブルステートメント
      */
     public function selectLt(...$values) {
+        // インデックスキー
+        $key = $this->indexKey;
+
         // プリペアドステートメント
         $stmt = $this->prepare($this->makeSqlSelect(
-            $this->makeSqlWhereLt(...$values)
+            $this->makeSqlWhereLt($key, ...$values)
         ));
         if ($stmt === false) return false;
 
         // バインド
         $this->bindValueSelect($stmt,
-            ...$this->makeBindItemsWhereLt(...$values)
+            $this->makeBindItemsWhereLt($key, ...$values)
         );
 
         // 実行
@@ -217,15 +228,18 @@ class Table {
      * @return TableStatement|false テーブルステートメント
      */
     public function selectGe(...$values) {
+        // インデックスキー
+        $key = $this->indexKey;
+
         // プリペアドステートメント
         $stmt = $this->prepare($this->makeSqlSelect(
-            $this->makeSqlWhereGe(...$values)
+            $this->makeSqlWhereGe($key, ...$values)
         ));
         if ($stmt === false) return false;
 
         // バインド
         $this->bindValueSelect($stmt,
-            ...$this->makeBindItemsWhereGe(...$values)
+            $this->makeBindItemsWhereGe($key, ...$values)
         );
 
         // 実行
@@ -247,15 +261,18 @@ class Table {
      * @return TableStatement|false テーブルステートメント
      */
     public function selectLe(...$values) {
+        // インデックスキー
+        $key = $this->indexKey;
+
         // プリペアドステートメント
         $stmt = $this->prepare($this->makeSqlSelect(
-            $this->makeSqlWhereLe(...$values)
+            $this->makeSqlWhereLe($key, ...$values)
         ));
         if ($stmt === false) return false;
 
         // バインド
         $this->bindValueSelect($stmt,
-            ...$this->makeBindItemsWhereLe(...$values)
+            $this->makeBindItemsWhereLe($key, ...$values)
         );
 
         // 実行
@@ -272,19 +289,22 @@ class Table {
      * ([IndexKey1] = ? AND [IndexKey2] = ? AND ...) OR  
      * ...
      * 
-     * @param mixed ...$valueLists 検索値リスト
+     * @param mixed ...$valuesList 検索値リスト
      * @return TableStatement|false テーブルステートメント
      */
-    public function selectIn(...$valueLists) {
+    public function selectIn(...$valuesList) {
+        // インデックスキー
+        $key = $this->indexKey;
+
         // プリペアドステートメント
         $stmt = $this->prepare($this->makeSqlSelect(
-            $this->makeSqlWhereIn(...$valueLists)
+            $this->makeSqlWhereIn($key, ...$valuesList)
         ));
         if ($stmt === false) return false;
 
         // バインド
         $this->bindValueSelect($stmt,
-            ...$this->makeBindItemsWhereIn(...$valueLists)
+            $this->makeBindItemsWhereIn($key, ...$valuesList)
         );
 
         // 実行
@@ -311,15 +331,18 @@ class Table {
      * @return TableStatement|false テーブルステートメント
      */
     public function selectBetween($values1, $values2) {
+        // インデックスキー
+        $key = $this->indexKey;
+
         // プリペアドステートメント
         $stmt = $this->prepare($this->makeSqlSelect(
-            $this->makeSqlWhereBetween($values1, $values2)
+            $this->makeSqlWhereBetween($key, $values1, $values2)
         ));
         if ($stmt === false) return false;
 
         // バインド
         $this->bindValueSelect($stmt,
-            ...$this->makeBindItemsWhereBetween($values1, $values2)
+            $this->makeBindItemsWhereBetween($key, $values1, $values2)
         );
 
         // 実行
@@ -344,15 +367,18 @@ class Table {
      * @return TableStatement|false テーブルステートメント
      */
     public function selectLike(...$values) {
+        // インデックスキー
+        $key = $this->indexKey;
+
         // プリペアドステートメント
         $stmt = $this->prepare($this->makeSqlSelect(
-            $this->makeSqlWhereLike(...$values)
+            $this->makeSqlWhereLike($key, ...$values)
         ));
         if ($stmt === false) return false;
 
         // バインド
         $this->bindValueSelect($stmt,
-            ...$this->makeBindItemsWhereLike(...$values)
+            $this->makeBindItemsWhereLike($key, ...$values)
         );
 
         // 実行
@@ -400,15 +426,17 @@ class Table {
      * @return int|false 件数
      */
     public function insert(Record $record): int|false {
-        // 実行者情報
-        $record->setValuesForInsert();
-
         // プリペアドステートメント
-        $stmt = $this->prepare($this->makeSqlInsert($record));
+        $stmt = $this->prepare($this->makeSqlInsert(
+            $this->makeSqlIntoItemsFromRecord($record),
+            $this->makeSqlValuesFromRecord($record)
+        ));
         if ($stmt === false) return false;
 
         // バインド
-        $this->bindValueInsert($stmt, $record);
+        $this->bindValueInsert($stmt,
+            $this->makeBindItemsValuesFromRecord($record)
+        );
 
         // 実行
         if (!$stmt->execute()) return false;
@@ -418,6 +446,8 @@ class Table {
     /**
      * レコード追加(複数)
      * 
+     * 対象項目は、1件目のレコードにより決まります。
+     *   
      * INSERT INTO [Table]  
      * ([Item1], [Item2], ...)  
      * VALUES  
@@ -430,19 +460,19 @@ class Table {
      * @return int|false 件数
      */
     public function insertMultiple(Record ...$records): int|false {
-        // レコードの対象項目リスト(リストに無い項目は、DBの既定値に依存)
-        $items = $this->getInsertMultipleItems(...$records);
-        if ($items === false) return 0;
-
-        // 実行者情報
-        foreach ($records as $record) $record->setValuesForInsert();
+        if (count($records) == 0) return 0;
 
         // プリペアドステートメント
-        $stmt = $this->prepare($this->makeSqlInsertMultiple($items, ...$records));
+        $stmt = $this->prepare($this->makeSqlInsert(
+            $this->makeSqlIntoItemsFromRecord($records[0]),
+            $this->makeSqlValuesFromRecord(...$records)
+        ));
         if ($stmt === false) return false;
 
         // バインド
-        $this->bindValueInsertMultiple($items, $stmt, ...$records);
+        $this->bindValueInsert($stmt,
+            $this->makeBindItemsValuesFromRecord(...$records)
+        );
 
         // 実行
         if (!$stmt->execute()) return false;
@@ -489,7 +519,9 @@ class Table {
         if ($stmt === false) return false;
 
         // バインド
-        $this->bindValueInsertFromTable($stmt);
+        $this->bindValueInsert($stmt,
+            $this->makeBindItemsValuesFromRecord($this->getNewRecord())
+        );
 
         // 実行
         if (!$stmt->execute()) return false;
@@ -527,7 +559,9 @@ class Table {
         if ($stmt === false) return false;
 
         // バインド
-        $this->bindValueInsertFromTable($stmt);
+        $this->bindValueInsert($stmt,
+            $this->makeBindItemsValuesFromRecord($this->getNewRecord())
+        );
 
         // 実行
         if (!$stmt->execute()) return false;
@@ -553,11 +587,15 @@ class Table {
      * @return int|false 件数
      */
     public function update(Record $record): int|false {
-        // 実行者情報
-        $record->setValuesForUpdate();
+        // プライマリキー
+        $key = $this->primaryKey;
 
         // SQL
-        $query = $this->makeSqlUpdate($record);
+        $query = $this->makeSqlUpdate(
+            $this->makeSqlSetItems($this->getSetIdsFromRecord($record)),
+            $this->makeSqlWhereAllEqFromRecord($key, $record),
+            $this->makeSqlWhereChangedOnlyFromRecord($record)
+        );
         if ($query === false) return 0;
 
         // プリペアドステートメント
@@ -565,7 +603,11 @@ class Table {
         if ($stmt === false) return false;
 
         // バインド
-        $this->bindValueUpdate($stmt, $record);
+        $this->bindValueUpdate($stmt,
+            $this->makeBindItemsSetFromRecord($record, $record->getChangedIds()),
+            $this->makeBindItemsWhereEqFromRecord($key, $record),
+            $this->makeBindItemsWhereChangedOnlyFromRecord($record)
+        );
 
         // 実行
         if (!$stmt->execute()) return false;
@@ -593,13 +635,15 @@ class Table {
      * ...
      * 
      * @since 0.38.00
-     * @param static $tempTable テーブル
-     * @param ?Record $recordForTarget 対象とする項目を決定するためのレコード
+     * @param static $tempTable 他のテーブル
+     * @param ?Record $tempRrecord 他のテーブルへINSERTした時のレコード
      * @return int|false 件数
      */
-    public function updateFromTable(self $tempTable, ?Record $recordForTarget = null): int|false {
+    public function updateFromTable(self $tempTable, ?Record $tempRecord = null): int|false {
         // SQL
-        $query = $this->makeSqlUpdateFromTable($tempTable, $recordForTarget);
+        $query = $this->makeSqlUpdateFromTable(
+            $tempTable,
+            $tempRecord !== null ? $this->getIntoIdsFromRecord($tempRecord) : null);
         if ($query === false) return 0;
 
         // プリペアドステートメント
@@ -607,7 +651,9 @@ class Table {
         if ($stmt === false) return false;
 
         // バインド
-        $this->bindValueUpdateFromTable($stmt);
+        $this->bindValueUpdate($stmt,
+            $this->makeBindItemsSetFromRecord($this->getNewRecord())
+        );
 
         // 実行
         if (!$stmt->execute()) return false;
@@ -642,14 +688,19 @@ class Table {
      * @return int|false 件数
      */
     public function delete(Record $record): int|false {
+        // プライマリキー
+        $key = $this->primaryKey;
+
         // プリペアドステートメント
         $stmt = $this->prepare($this->makeSqlDelete(
-            $this->makeSqlWherePrimaryKeyAllEq($record)
+            $this->makeSqlWhereAllEqFromRecord($key, $record)
         ));
         if ($stmt === false) return false;
 
         // バインド
-        $this->bindValueDelete($stmt, $record);
+        $this->bindValueDelete($stmt,
+            $this->makeBindItemsWhereEqFromRecord($key, $record)
+        );
 
         // 実行
         if (!$stmt->execute()) return false;
@@ -672,14 +723,19 @@ class Table {
     public function deleteMultiple(Record ...$records): int|false {
         if (count($records) == 0) return 0;
 
+        // プライマリキー
+        $key = $this->primaryKey;
+
         // プリペアドステートメント
         $stmt = $this->prepare($this->makeSqlDelete(
-            $this->makeSqlWherePrimaryKeyAllIn(...$records)
+            $this->makeSqlWhereAllInFromRecord($key, ...$records)
         ));
         if ($stmt === false) return false;
 
         // バインド
-        $this->bindValueDeleteMultiple($stmt, ...$records);
+        $this->bindValueDelete($stmt,
+            $this->makeBindItemsWhereInFromRecord($key, ...$records)
+        );
 
         // 実行
         if (!$stmt->execute()) return false;
@@ -715,12 +771,18 @@ class Table {
      * @return int|false 件数
      */
     public function deleteEq(...$values) {
+        // インデックスキー
+        $key = $this->indexKey;
+
         // プリペアドステートメント
-        $stmt = $this->prepare($this->makeSqlDelete($this->makeSqlWhereEq(...$values)));
+        $stmt = $this->prepare($this->makeSqlDelete(
+            $this->makeSqlWhereEq($key, ...$values)
+        ));
         if ($stmt === false) return false;
 
         // バインド
-        $this->bindValueDeleteCompare($stmt, ...$this->makeBindItemsWhereEq(...$values));
+        $this->bindValueDelete($stmt,
+            $this->makeBindItemsWhereEq($key, ...$values));
 
         // 実行
         if (!$stmt->execute()) return false;
@@ -782,10 +844,18 @@ class Table {
      * SQL用のテーブルID/項目IDを取得
      * 
      * @param string $id テーブルID/項目ID
+     * @param ?string $prefix テーブルの接頭語(項目IDの場合のみ)
      * @return string SQL用
      */
-    public function getIdForSql(string $id): string {
-        return $this->db->escapeWord($this->convertIdFromVarToSql($id));
+    public function getIdForSql(string $id, ?string $prefix = null): string {
+        if (in_array($id, ['*', '?'], true)) $prefix = null;
+
+        return $prefix === null ?
+            $this->db->escapeWord($this->convertIdFromVarToSql($id)) :
+            sprintf('%s.%s',
+                $this->db->escapeWord($this->convertIdFromVarToSql($prefix)),
+                $this->db->escapeWord($this->convertIdFromVarToSql($id))
+        );
     }
 
     /**
@@ -823,6 +893,16 @@ class Table {
         $this->db->query($query);
 
         return $tempTable;
+    }
+
+    /**
+     * プライマリキーを取得
+     * 
+     * @since 0.48.00
+     * @return Key プライマリキー
+     */
+    public function getPrimaryKey(): Key {
+        return $this->primaryKey;
     }
 
     /**
@@ -1018,16 +1098,139 @@ class Table {
     }
 
     /**
-     * 実行者情報の項目IDリストを取得
+     * 実行者の項目IDリストを取得
      * 
-     * @return string[]
+     * @return string[] 項目IDリスト
      */
-    protected function getExecutorIds() {
+    protected function getExecutorIds(): array {
         return [
             ...$this->items->getAddedItemIdsCreator(),
             ...$this->items->getAddedItemIdsInputter(),
             ...$this->items->getAddedItemIdsUpdater()
         ];
+    }
+
+    /**
+     * 実行者の項目IDリストを取得(INSERT用)
+     * 
+     * @since 0.48.00
+     * @return string[] 項目IDリスト
+     */
+    protected function getExecutorIdsForInsert(): array {
+        $isInput = $this->db->executor?->isInput ?? false;
+
+        return [
+            ...$this->items->getAddedItemIdsCreator(),
+            ...($isInput ? $this->items->getAddedItemIdsInputter() : []),
+            ...$this->items->getAddedItemIdsUpdater()
+        ];
+    }
+
+    /**
+     * 実行者の項目IDリストを取得(UPDATE用)
+     * 
+     * @since 0.48.00
+     * @return string[] 項目IDリスト
+     */
+    protected function getExecutorIdsForUpdate(): array {
+        $isInput = $this->db->executor?->isInput ?? false;
+
+        return [
+            ...($isInput ? $this->items->getAddedItemIdsInputter() : []),
+            ...$this->items->getAddedItemIdsUpdater()
+        ];
+    }
+
+    /**
+     * INSERT時に設定する項目IDリストを取得
+     * 
+     * @since 0.48.00
+     * @param string[] $targetIds 対象項目IDリスト
+     * @return string[] 項目IDのリスト
+     */
+    protected function getIntoIds(array $targetIds): array {
+        $ids = [];
+
+        // 通常項目
+        foreach ($this->items->getNormalItemIds() as $id) {
+            if (!in_array($id, $targetIds, true)) continue;
+
+            $ids[] = $id;
+        }
+
+        // 実行者項目
+        foreach ($this->getExecutorIdsForInsert() as $id)
+            $ids[] = $id;
+
+        return $ids;
+    }
+
+    /**
+     * INSERT時に設定する項目IDリストを取得(レコードより)
+     * 
+     * @since 0.48.00
+     * @param Record $record レコード
+     * @return string[] 項目IDのリスト
+     */
+    protected function getIntoIdsFromRecord(Record $record): array {
+        return $this->getIntoIds($record->getInputtedIds());
+    }
+
+    /**
+     * INSERT時に設定する項目IDリストを取得(別テーブルより)
+     * 
+     * @since 0.48.00
+     * @param static $table 別テーブル
+     * @return string[] 項目IDのリスト
+     */
+    protected function getIntoIdsFromTable(self $table): array {
+        return $this->getIntoIds($table->items->getNormalItemIds());
+    }
+
+    /**
+     * UPDATE時に設定する項目IDリストを取得
+     * 
+     * @since 0.48.00
+     * @param string[] $targetIds 対象項目IDリスト
+     * @return string[] 項目IDのリスト
+     */
+    protected function getSetIds(array $targetIds): array {
+        $ids = [];
+
+        // 通常項目
+        foreach ($this->items->getNormalItemIds() as $id) {
+            if (!in_array($id, $targetIds, true)) continue;
+
+            $ids[] = $id;
+        }
+
+        // 実行者項目
+        foreach ($this->getExecutorIdsForUpdate() as $id)
+            $ids[] = $id;
+
+        return $ids;
+    }
+
+    /**
+     * UPDATE時に設定する項目IDリストを取得(レコードより)
+     * 
+     * @since 0.48.00
+     * @param Record $record レコード
+     * @return string[] 項目IDのリスト
+     */
+    protected function getSetIdsFromRecord(Record $record): array {
+        return $this->getSetIds($record->getChangedIds());
+    }
+
+    /**
+     * UPDATE時に設定する項目IDリストを取得(別テーブルより)
+     * 
+     * @since 0.48.00
+     * @param static $table 別テーブル
+     * @return string[] 項目IDのリスト
+     */
+    protected function getSetIdsFromTable(self $table): array {
+        return $this->getSetIds($table->items->getNormalItemIds());
     }
 
     /**
@@ -1286,10 +1489,12 @@ class Table {
         }
 
         $equations = [];
-        if (count($inValues) > 0)
+        if (count($inValues) > 1)
             $equations[] = sprintf('%s IN (%s)', $sqlId, implode(', ', $inValues));
+        if (count($inValues) == 1)
+            $equations[] = $this->makeEquationEq($id, '');
         if ($existNull)
-            $equations[] = sprintf('%s IS NULL');
+            $equations[] = sprintf('%s IS NULL', $sqlId);
 
         return count($equations) == 1 ?
             $equations[0] :
@@ -1305,21 +1510,19 @@ class Table {
      * @param string $id 項目ID
      * @param mixed $value1 値(開始)
      * @param mixed $value2 値(終了)
-     * @return ?string 等式文字列、null:処理失敗
+     * @return ?string 等式文字列、false:必ず満たさない条件、null:処理失敗
      */
-    protected function makeEquationBetween($id, $value1, $value2): ?string {
+    protected function makeEquationBetween($id, $value1, $value2): string|false|null {
         $sqlId = $this->getIdForSql($id);
 
-        // 少なくとも、一方がNull値の場合
-        // [id1] >= [value1] AND [id1] IS NULL
-        if ($value1 === null or $value2 === null) {
+        // 一方がNull値の場合
+        // 開始がNull値
+        // [id1] IS NULL OR [id1] <= [value2]
+        if ($value1 === null and $value2 !== null) {
             $equations = [];
 
             // 開始
-            $equation = $this->makeEquationGe($id, $value1);
-            if ($equation === null) return null;
-            if ($equation !== true)
-                $equations[] = $equation;
+            $equations[] = $this->makeEquationEq($id, null);
 
             // 終了
             $equation = $this->makeEquationLe($id, $value2);
@@ -1328,15 +1531,22 @@ class Table {
 
             return count($equations) == 1 ?
                 $equations[0] :
-                $this->convertEquationWrap(implode(' AND ', $equations));
+                $this->convertEquationWrap(implode(' OR ', $equations));
         }
+
+        // 終了がNull値
+        // 必ず満たさない条件
+        if ($value1 !== null and $value2 === null)
+            return false;
 
         // 少なくとも、一方が配列値の場合
         if (is_array($value1) or is_array($value2))
             return null;
 
         // 双方が同値の場合
-        if ($value1 === $value2)
+        $_value1 = $value1 instanceof Stringable ? (string)$value1 : $value1;
+        $_value2 = $value2 instanceof Stringable ? (string)$value2 : $value2;
+        if ($_value1 === $_value2)
             return $this->makeEquationEq($id, $value1);
 
         // [id1] BETWEEN [value1] AND [value2]
@@ -1368,14 +1578,14 @@ class Table {
     }
 
     /**
-     * 項目IDと値の組み合わせのリストを生成(値リストより)
+     * キーの項目IDと値の組み合わせのリストを生成
      * 
      * @since 0.39.00
      * @param Key $key テーブルのキー
      * @param array $values 値リスト
      * @return ?array{0:string, 1:mixed}[] 項目IDと値の組み合わせのリスト
      */
-    protected function makeIdValuesFromValues(Key $key, mixed $values): ?array {
+    protected function makeKeyIdValues(Key $key, mixed $values): ?array {
         $keyItems = $key->getKeyItems();
         if (count($keyItems) == 0) return [];
 
@@ -1393,28 +1603,25 @@ class Table {
     }
 
     /**
-     * 項目IDと値の組み合わせのリストを生成(レコードより)
+     * キーの値リストを生成(レコードより)
      * 
-     * @since 0.39.00
-     * @param Key $key テーブルのキー
-     * @param array $values 値リスト
-     * @return ?array{0:string, 1:mixed}[] 項目IDと値の組み合わせのリスト
+     * @since 0.48.00
+     * @param Key $key キー
+     * @param Record $record レコード
+     * @return array 値リスト
      */
-    protected function makeIdValuesFromRecord(Key $key, mixed $record): ?array {
+    protected function makeKeyValuesFromRecord(Key $key, Record $record): array {
         $keyItems = $key->getKeyItems();
         if (count($keyItems) == 0) return [];
 
-        if (!($record instanceof Record)) return null;
-
-        $idValues = [];
+        $values = [];
         foreach ($keyItems as $keyItem) {
             $id = $keyItem->item->id;
             if (!property_exists($record, $id)) break;
 
-            $value = $record->{$id};
-            $idValues[] = [$id, $value];
+            $values[] = $record->{$id};
         }
-        return $idValues;
+        return $values;
     }
 
     /**
@@ -1508,6 +1715,15 @@ class Table {
 
         $equations = [];
         $idValueCount = count($idValues);
+
+        // 最下位項目がNull値の場合、1つ上の項目までを判定すれば良い
+        $idValue = $idValues[$idValueCount - 1];
+        $value = $idValue[1];
+        if ($value === null) {
+            array_pop($idValues);
+            return $this->makeEquationMultipleGe(...$idValues);
+        }
+
         for ($i = 0; $i < $idValueCount; $i++) {
             // 項目数が$i個の範囲で、
             //     [id1] = [value1] AND
@@ -1666,6 +1882,7 @@ class Table {
             // 値
             $idValue1 = $idValues1[$i];
             $value1 = $idValue1[1];
+            if ($value1 instanceof Stringable) $value1 = (string)$value1;
 
             // 全てのリストで一致するかどうか
             foreach ($idValuesList as $idValues2) {
@@ -1673,6 +1890,7 @@ class Table {
 
                 $idValue2 = $idValues2[$i];
                 $value2 = $idValue2[1];
+                if ($value2 instanceof Stringable) $value2 = (string)$value2;
                 if ($value2 !== $value1) break 2;
             }
 
@@ -1801,10 +2019,6 @@ class Table {
             if ($id1 !== $id2) return null;
         }
 
-        // 双方が同値の場合
-        if ($idValues1 === $idValues2)
-            return $this->makeEquationMultipleEq(...$idValues1);
-
         // 上位項目で、開始と終了の値が一致するものは先に抜き出す
         $topIdValues = [];
         $idValueCount = min(count($idValues1), count($idValues2));
@@ -1813,7 +2027,9 @@ class Table {
             $idValue2 = $idValues2[$i];
 
             $value1 = $idValue1[1];
+            if ($value1 instanceof Stringable) $value1 = (string)$value1;
             $value2 = $idValue2[1];
+            if ($value2 instanceof Stringable) $value2 = (string)$value2;
             if ($value1 !== $value2)
                 break;
 
@@ -1852,6 +2068,7 @@ class Table {
 
             $equation = $this->makeEquationBetween($id, $value1, $value2);
             if ($equation === null) return null;
+            if ($equation === false) return false;
             $equations[] = $equation;
 
             return count($equations) == 1 ?
@@ -1919,68 +2136,360 @@ class Table {
     }
 
     /**
-     * SQLステートメントを生成(WHERE句、主キー完全一致)
+     * バインド用の項目IDと値の組み合わせを生成(WHERE句、一致)
      * 
-     * @param Record $record レコード
-     * @return string|false SQLステートメント
+     * [id1] = ? AND [id2] = ? AND ...
+     * 
+     * @since 0.48.00
+     * @param array{0:string, 1:mixed}[] $idValues 項目IDと値の組み合わせリスト
+     * @return array{0:string, 1:mixed}[] バインド用の項目IDと値の組み合わせリスト
      */
-    protected function makeSqlWherePrimaryKeyAllEq($record): string|false {
-        // プライマリキー
-        $key = $this->primaryKey;
-        $idValues = $this->makeIdValuesFromRecord($key, $record);
-        if ($idValues === null) return $this->db->throwException('Failed to make id-value');
+    protected function makeBindIdValuesWhereEq(array $idValues): array {
+        // 1つも指定が無い場合は、無条件
+        $idValueCount = count($idValues);
+        if ($idValueCount == 0) return [];
 
-        // 全てのキーが揃っていること
-        if (count($idValues) != count($key->getKeyItems()))
-            $this->db->throwException('Not all key values are present');
+        $bindIdValues = [];
 
-        // 一致
-        $equation = $this->makeEquationMultipleEq(...$idValues);
-        if ($equation === null) $this->db->throwException('Failed to make a SQL statement');
-        if ($equation === true) return false;
-        if ($equation === false) return $this->makeEquationNothing();
-        return $this->convertEquationNoWrap($equation);
+        foreach ($idValues as $idValue) {
+            $value = $idValue[1];
+
+            // Null値はバインドしない
+            if ($value === null) continue;
+
+            // 配列値はIN演算子へ置換
+            if (is_array($value)) {
+                $id = $idValue[0];
+
+                $_idValuesList = [];
+                foreach ($value as $_value) {
+                    $_idValue = [];
+                    $_idValue[] = $id;
+                    $_idValue[] = $_value;
+
+                    $_idValuesList[] = [$_idValue];
+                }
+
+                foreach ($this->makeBindIdValuesWhereIn(...$_idValuesList) as $bindIdValue)
+                    $bindIdValues[] = $bindIdValue;
+
+                continue;
+            }
+
+            $bindIdValues[] = $idValue;
+        }
+
+        return $bindIdValues;
     }
 
     /**
-     * SQLステートメントを生成(WHERE句、主キー完全一致、In演算子)
+     * バインド用の項目IDと値の組み合わせを生成(WHERE句、より大きい)
      * 
-     * @param Record ...$records レコード
-     * @return string|false SQLステートメント
+     * [id1] > ? OR ([id1] = ? AND [id2] > ?) OR ...
+     * 
+     * @since 0.48.00
+     * @param array{0:string, 1:mixed}[] $idValues 項目IDと値の組み合わせリスト
+     * @return array{0:string, 1:mixed}[] バインド用の項目IDと値の組み合わせリスト
      */
-    protected function makeSqlWherePrimaryKeyAllIn(...$records): string|false {
-        // プライマリキー
-        $key = $this->primaryKey;
-        $idValuesList = [];
-        foreach ($records as $record) {
-            $idValues = $this->makeIdValuesFromRecord($key, $record);
-            if ($idValues === null) return $this->db->throwException('Failed to make id-value');
+    protected function makeBindIdValuesWhereGt(array $idValues): array {
+        // 1つも指定が無い場合は、無条件
+        $idValueCount = count($idValues);
+        if ($idValueCount == 0) return [];
 
-            // 全てのキーが揃っていること
-            if (count($idValues) != count($key->getKeyItems()))
-                $this->db->throwException('Not all key values are present');
+        $bindIdValues = [];
 
-            $idValuesList[] = $idValues;
+        for ($i = 0; $i < $idValueCount; $i++) {
+            for ($j = 0; $j <= $i; $j++) {
+                $idValue = $idValues[$j];
+                $value = $idValue[1];
+
+                // Null値はバインドしない
+                if ($value === null) continue;
+
+                // 配列値は不正
+                if (is_array($value)) return [];
+
+                $bindIdValues[] = $idValue;
+            }
         }
 
-        // Inリスト
-        $equation = $this->makeEquationMultipleIn(...$idValuesList);
-        if ($equation === null) $this->db->throwException('Failed to make a SQL statement');
-        if ($equation === true) return false;
-        if ($equation === false) return $this->makeEquationNothing();
-        return $this->convertEquationNoWrap($equation);
+        return $bindIdValues;
+    }
+
+    /**
+     * バインド用の項目IDと値の組み合わせを生成(WHERE句、より小さい)
+     * 
+     * [id1] < ? OR ([id1] = ? AND [id2] < ?) OR ...
+     * 
+     * @since 0.48.00
+     * @param array{0:string, 1:mixed}[] $idValues 項目IDと値の組み合わせリスト
+     * @return array{0:string, 1:mixed}[] バインド用の項目IDと値の組み合わせリスト
+     */
+    protected function makeBindIdValuesWhereLt(array $idValues): array {
+        // 1つも指定が無い場合は、無条件
+        $idValueCount = count($idValues);
+        if ($idValueCount == 0) return [];
+
+        $bindIdValues = [];
+
+        for ($i = 0; $i < $idValueCount; $i++) {
+            // [id0] = ? AND [id1] = ? AND ... [id$i] < ?
+            // 最下位項目がNull値の場合は、必ず満たさないので除外
+            $idValue = $idValues[$i];
+            $value = $idValue[1];
+
+            if ($value === null) continue;
+
+            for ($j = 0; $j <= $i; $j++) {
+                $idValue = $idValues[$j];
+                $value = $idValue[1];
+
+                // Null値はバインドしない
+                if ($value === null) continue;
+
+                // 配列値は不正
+                if (is_array($value)) return [];
+
+                $bindIdValues[] = $idValue;
+            }
+        }
+
+        return $bindIdValues;
+    }
+
+    /**
+     * バインド用の項目IDと値の組み合わせを生成(WHERE句、以上)
+     * 
+     * [id1] > ? OR ([id1] = ? AND [id2] > ?) OR ... ([id1] = ? AND ... [idLast] >= ?)
+     * 
+     * @since 0.48.00
+     * @param array{0:string, 1:mixed}[] $idValues 項目IDと値の組み合わせリスト
+     * @return array{0:string, 1:mixed}[] バインド用の項目IDと値の組み合わせリスト
+     */
+    protected function makeBindIdValuesWhereGe(array $idValues): array {
+        // 1つも指定が無い場合は、無条件
+        $idValueCount = count($idValues);
+        if ($idValueCount == 0) return [];
+
+        // 最下位項目がNull値の場合は、1つ上の項目まで判定すれば良い
+        $idValue = $idValues[$idValueCount - 1];
+        $value = $idValue[1];
+        if ($value === null) {
+            array_pop($idValues);
+            return $this->makeBindIdValuesWhereGe($idValues);
+        }
+
+        // 他はより大きい場合と同じ
+        return $this->makeBindIdValuesWhereGt($idValues);
+    }
+
+    /**
+     * バインド用の項目IDと値の組み合わせを生成(WHERE句、以下)
+     * 
+     * [id1] < ? OR ([id1] = ? AND [id2] < ?) OR ... ([id1] = ? AND ... [idLast] <= ?)
+     * 
+     * @since 0.48.00
+     * @param array{0:string, 1:mixed}[] $idValues 項目IDと値の組み合わせリスト
+     * @return array{0:string, 1:mixed}[] バインド用の項目IDと値の組み合わせリスト
+     */
+    protected function makeBindIdValuesWhereLe(array $idValues): array {
+        // より大きい場合と同じ
+        return $this->makeBindIdValuesWhereGt($idValues);
+    }
+
+    /**
+     * 全ての組み合わせで、値が一致する上位項目の数
+     * 
+     * @since 0.48.00
+     * @param array{0:string, 1:mixed}[] ...$idValuesList 項目IDと値の組み合わせリスト
+     * @return int 上位項目の数
+     */
+    protected function getTopIdValueCount(array ...$idValuesList): int {
+        $idValuesCount = count($idValuesList);
+        if ($idValuesCount == 0) return 0;
+
+        $topIdValueCount = 0;
+
+        // 比較用に1つ目の組み合わせを取得
+        $idValues1 = $idValuesList[0];
+        $idValue1Count = count($idValues1);
+
+        for ($i = 0; $i < $idValue1Count; $i++) {
+            // 比較値
+            $idValue1 = $idValues1[$i];
+            $value1 = $idValue1[1];
+            if ($value1 instanceof Stringable) $value1 = (string)$value1;
+
+            foreach ($idValuesList as $idValues) {
+                // 項目数が不足していれば、終了
+                $idValue = $idValues[$i] ?? null;
+                if ($idValue === null) break 2;
+
+                $value = $idValue[1];
+                if ($value instanceof Stringable) $value = (string)$value;
+
+                // 値が不一致であれば、終了
+                if ($value !== $value1) break 2;
+            }
+
+            $topIdValueCount++;
+        }
+
+        return $topIdValueCount;
+    }
+
+    /**
+     * バインド用の項目IDと値の組み合わせを生成(WHERE句、IN)
+     * 
+     * ([id1] = ? AND [id2] = ? AND ...) AND [idLast] IN (?, ?, ...)
+     * 
+     * @since 0.48.00
+     * @param array{0:string, 1:mixed}[] ...$idValuesList 項目IDと値の組み合わせリスト
+     * @return array{0:string, 1:mixed}[] バインド用の項目IDと値の組み合わせリスト
+     */
+    protected function makeBindIdValuesWhereIn(array ...$idValuesList): array {
+        $idValuesCount = count($idValuesList);
+        if ($idValuesCount == 0) return [];
+
+        // 全ての組み合わせで、値が一致する上位項目の数
+        $topIdValueCount = $this->getTopIdValueCount(...$idValuesList);
+
+        // 上位項目と下位項目へ分割
+        $topIdValues = array_slice($idValuesList[0], 0, $topIdValueCount);
+        $bottomIdValuesList = [];
+        $maxBottomIdValueCount = 0;
+        $minBottomIdValueCount = PHP_INT_MAX;
+        foreach ($idValuesList as $idValues) {
+            $bottomIdValues = array_slice($idValues, $topIdValueCount);
+            $bottomIdValueCount = count($bottomIdValues);
+
+            $bottomIdValuesList[] = $bottomIdValues;
+            $maxBottomIdValueCount = max($bottomIdValueCount, $maxBottomIdValueCount);
+            $minBottomIdValueCount = min($bottomIdValueCount, $minBottomIdValueCount);
+        }
+
+        // 上位項目は、一致条件
+        $topBindIdValues = $this->makeBindIdValuesWhereEq($topIdValues);
+
+        // 下位項目
+        // どれか1つが項目を持っていなければ、無条件
+        $bottomBindIdValues = [];
+
+        // どれか1つが複数項目であれば、OR条件
+        if ($minBottomIdValueCount > 0 and $maxBottomIdValueCount >= 2)
+            foreach ($bottomIdValuesList as $bottomIdValues)
+                foreach ($this->makeBindIdValuesWhereEq($bottomIdValues) as $bindIdValue)
+                    $bottomBindIdValues[] = $bindIdValue;
+
+        // 全てが単数項目であれば、IN演算子
+        if ($minBottomIdValueCount > 0 and $maxBottomIdValueCount == 1)
+            foreach ($bottomIdValuesList as $bottomIdValues) {
+                $idValue = $bottomIdValues[0];
+                $value = $idValue[1];
+
+                // Null値はバインドしない
+                if ($value === null) continue;
+
+                // 配列値は不正
+                if (is_array($value)) return [];
+
+                $bottomBindIdValues[] = $idValue;
+            }
+
+        return [
+            ...$topBindIdValues,
+            ...$bottomBindIdValues
+        ];
+    }
+
+    /**
+     * バインド用の項目IDと値の組み合わせを生成(WHERE句、LIKE)
+     * 
+     * [id1] < ? OR ([id1] = ? AND [id2] < ?) OR ... ([id1] = ? AND ... [idLast] <= ?)
+     * 
+     * @since 0.48.00
+     * @param array{0:string, 1:mixed}[] $idValues 項目IDと値の組み合わせリスト
+     * @return array{0:string, 1:mixed}[] バインド用の項目IDと値の組み合わせリスト
+     */
+    protected function makeBindIdValuesWhereLike(array $idValues): array {
+        // 一致の場合と同じ
+        return $this->makeBindIdValuesWhereEq($idValues);
+    }
+
+    /**
+     * バインド用の項目IDと値の組み合わせを生成(WHERE句、BETWEEN)
+     * 
+     * ([id1] = ? AND [id2] = ? AND ...) AND [idLast] BETWEEN ? AND ?
+     * 
+     * @since 0.48.00
+     * @param array{0:string, 1:mixed}[] $idValues1
+     * @param array{0:string, 1:mixed}[] $idValues2
+     * @return array{0:string, 1:mixed}[] バインド用の項目IDと値の組み合わせリスト
+     */
+    protected function makeBindIdValuesWhereBetween(array $idValues1, array $idValues2): array {
+        // 双方の組み合わせで、値が一致する上位項目の数
+        $topIdValueCount = $this->getTopIdValueCount($idValues1, $idValues2);
+
+        // 上位項目と下位項目へ分割
+        $topIdValues = array_slice($idValues1, 0, $topIdValueCount);
+        $bottomIdValues1 = array_slice($idValues1, $topIdValueCount);
+        $bottomIdValues2 = array_slice($idValues2, $topIdValueCount);
+        $maxBottomIdValueCount = max(count($bottomIdValues1), count($bottomIdValues2));
+        $minBottomIdValueCount = min(count($bottomIdValues1), count($bottomIdValues2));
+
+        // 上位項目は、一致条件
+        $topBindIdValues = $this->makeBindIdValuesWhereEq($topIdValues);
+
+        // 下位項目
+        $bottomBindIdValues = [];
+
+        // どちらかが単数項目でなければ、以上条件と以下条件でそれぞれ処理
+        if ($minBottomIdValueCount != 1 or $maxBottomIdValueCount != 1) {
+            foreach ($this->makeBindIdValuesWhereGe($bottomIdValues1) as $idValue)
+                $bottomBindIdValues[] = $idValue;
+            foreach ($this->makeBindIdValuesWhereLe($bottomIdValues2) as $idValue)
+                $bottomBindIdValues[] = $idValue;
+        }
+
+        // 双方が単数項目であれば、BETWEEN演算子
+        if ($minBottomIdValueCount == 1 and $maxBottomIdValueCount == 1) {
+            $idValue1 = $bottomIdValues1[0];
+            $value1 = $idValue1[1];
+            $idValue2 = $bottomIdValues2[0];
+            $value2 = $idValue2[1];
+
+            // 双方がNull値あれば、下位項目はバインド無し
+
+            // 終点のみがNull値あれば、上位項目も含めてバインド無し
+            if ($value1 !== null and $value2 === null) return [];
+
+            // 始点がNull値あれば、以下条件
+            if ($value1 === null and $value2 !== null)
+                foreach ($this->makeBindIdValuesWhereLe([$idValue2]) as $bindIdValue)
+                    $bottomBindIdValues[] = $bindIdValue;
+
+            if ($value1 !== null and $value2 !== null) {
+                $bottomBindIdValues[] = $idValue1;
+                $bottomBindIdValues[] = $idValue2;
+            }
+        }
+
+        return [
+            ...$topBindIdValues,
+            ...$bottomBindIdValues
+        ];
     }
 
     /**
      * SQLステートメントを生成(WHERE句、一致)
      * 
+     * @param Key $key キー
      * @param mixed ...$values 値リスト
      * @return string|false SQLステートメント
      */
-    protected function makeSqlWhereEq(...$values): string|false {
-        // インデックスキー
-        $key = $this->indexKey;
-        $idValues = $this->makeIdValuesFromValues($key, $values);
+    protected function makeSqlWhereEq(Key $key, ...$values): string|false {
+        // 項目IDと値の組み合わせのリスト
+        $idValues = $this->makeKeyIdValues($key, $values);
         if ($idValues === null) return $this->db->throwException('Failed to make id-value');
 
         // 一致
@@ -1994,13 +2503,13 @@ class Table {
     /**
      * SQLステートメントを生成(WHERE句、より大きい)
      * 
+     * @param Key $key キー
      * @param mixed ...$values 値リスト
      * @return string|false SQLステートメント
      */
-    protected function makeSqlWhereGt(...$values): string|false {
-        // インデックスキー
-        $key = $this->indexKey;
-        $idValues = $this->makeIdValuesFromValues($key, $values);
+    protected function makeSqlWhereGt(Key $key, ...$values): string|false {
+        // 項目IDと値の組み合わせのリスト
+        $idValues = $this->makeKeyIdValues($key, $values);
         if ($idValues === null) return $this->db->throwException('Failed to make id-value');
 
         // より大きい
@@ -2014,13 +2523,13 @@ class Table {
     /**
      * SQLステートメントを生成(WHERE句、より小さい)
      * 
+     * @param Key $key キー
      * @param mixed ...$values 値リスト
      * @return string|false SQLステートメント
      */
-    protected function makeSqlWhereLt(...$values): string|false {
-        // インデックスキー
-        $key = $this->indexKey;
-        $idValues = $this->makeIdValuesFromValues($key, $values);
+    protected function makeSqlWhereLt(Key $key, ...$values): string|false {
+        // 項目IDと値の組み合わせのリスト
+        $idValues = $this->makeKeyIdValues($key, $values);
         if ($idValues === null) return $this->db->throwException('Failed to make id-value');
 
         // より小さい
@@ -2034,13 +2543,13 @@ class Table {
     /**
      * SQLステートメントを生成(WHERE句、以上)
      * 
+     * @param Key $key キー
      * @param mixed ...$values 値リスト
      * @return string|false SQLステートメント
      */
-    protected function makeSqlWhereGe(...$values): string|false {
-        // インデックスキー
-        $key = $this->indexKey;
-        $idValues = $this->makeIdValuesFromValues($key, $values);
+    protected function makeSqlWhereGe(Key $key, ...$values): string|false {
+        // 項目IDと値の組み合わせのリスト
+        $idValues = $this->makeKeyIdValues($key, $values);
         if ($idValues === null) return $this->db->throwException('Failed to make id-value');
 
         // 以上
@@ -2054,13 +2563,13 @@ class Table {
     /**
      * SQLステートメントを生成(WHERE句、以下)
      * 
+     * @param Key $key キー
      * @param mixed ...$values 値リスト
      * @return string|false SQLステートメント
      */
-    protected function makeSqlWhereLe(...$values): string|false {
-        // インデックスキー
-        $key = $this->indexKey;
-        $idValues = $this->makeIdValuesFromValues($key, $values);
+    protected function makeSqlWhereLe(Key $key, ...$values): string|false {
+        // 項目IDと値の組み合わせのリスト
+        $idValues = $this->makeKeyIdValues($key, $values);
         if ($idValues === null) return $this->db->throwException('Failed to make id-value');
 
         // 以下
@@ -2074,21 +2583,21 @@ class Table {
     /**
      * SQLステートメントを生成(WHERE句、IN演算子)
      * 
+     * @param Key $key キー
      * @param mixed ...$valuesList 値リストのリスト
      * @return string|false SQLステートメント
      */
-    protected function makeSqlWhereIn(...$valuesList): string|false {
+    protected function makeSqlWhereIn(Key $key, ...$valuesList): string|false {
         // 値リストが配列型ではなかった時の対応
         $valuesCount = count($valuesList);
         for ($i = 0; $i < $valuesCount; $i++)
             if (!is_array($valuesList[$i]))
                 $valuesList[$i] = [$valuesList[$i]];
 
-        // インデックスキー
-        $key = $this->indexKey;
+        // 項目IDと値の組み合わせのリスト
         $idValuesList = [];
         foreach ($valuesList as $values) {
-            $idValues = $this->makeIdValuesFromValues($key, $values);
+            $idValues = $this->makeKeyIdValues($key, $values);
             if ($idValues === null) return $this->db->throwException('Failed to make id-value');
 
             $idValuesList[] = $idValues;
@@ -2105,16 +2614,22 @@ class Table {
     /**
      * SQLステートメントを生成(WHERE句、BETWEEN演算子)
      * 
+     * @param Key $key キー
      * @param mixed $values1 値リスト(始点)
      * @param mixed $values2 値リスト(終点)
      * @return string|false SQLステートメント
      */
-    protected function makeSqlWhereBetween($values1, $values2): string|false {
-        // インデックスキー
-        $key = $this->indexKey;
-        $idValues1 = $this->makeIdValuesFromValues($key, $values1);
+    protected function makeSqlWhereBetween(Key $key, $values1, $values2): string|false {
+        // 値リストが配列型ではなかった時の対応
+        if (!is_array($values1))
+            $values1 = [$values1];
+        if (!is_array($values2))
+            $values2 = [$values2];
+
+        // 項目IDと値の組み合わせのリスト
+        $idValues1 = $this->makeKeyIdValues($key, $values1);
         if ($idValues1 === null) return $this->db->throwException('Failed to make id-value');
-        $idValues2 = $this->makeIdValuesFromValues($key, $values2);
+        $idValues2 = $this->makeKeyIdValues($key, $values2);
         if ($idValues2 === null) return $this->db->throwException('Failed to make id-value');
 
         // BETWEEN
@@ -2128,13 +2643,13 @@ class Table {
     /**
      * SQLステートメントを生成(WHERE句、LIKE演算子)
      * 
+     * @param Key $key キー
      * @param mixed ...$values 値リスト
      * @return string|false SQLステートメント
      */
-    protected function makeSqlWhereLike(...$values): string|false {
-        // インデックスキー
-        $key = $this->indexKey;
-        $idValues = $this->makeIdValuesFromValues($key, $values);
+    protected function makeSqlWhereLike(Key $key, ...$values): string|false {
+        // 項目IDと値の組み合わせのリスト
+        $idValues = $this->makeKeyIdValues($key, $values);
         if ($idValues === null) return $this->db->throwException('Failed to make id-value');
 
         // LIKE
@@ -2143,6 +2658,118 @@ class Table {
         if ($equation === true) return false;
         if ($equation === false) return $this->makeEquationNothing();
         return $this->convertEquationNoWrap($equation);
+    }
+
+    /**
+     * SQLステートメントを生成(WHERE句、完全一致、レコードより)
+     * 
+     * @param Key $key キー
+     * @param Record $record レコード
+     * @return string|false SQLステートメント
+     */
+    protected function makeSqlWhereAllEqFromRecord(Key $key, Record $record): string|false {
+        // 値リスト
+        $values = $this->makeKeyValuesFromRecord($key, $record);
+
+        // 全てのキーが揃っていること
+        if (count($values) != count($key->getKeyItems()))
+            $this->db->throwException('Not all key values are present');
+
+        // 一致
+        return $this->makeSqlWhereEq($key, ...$values);
+    }
+
+    /**
+     * SQLステートメントを生成(WHERE句、完全一致、In演算子、レコードより)
+     * 
+     * @param Key $key キー
+     * @param Record ...$records レコード
+     * @return string|false SQLステートメント
+     */
+    protected function makeSqlWhereAllInFromRecord(Key $key, Record ...$records): string|false {
+        // 値リストのリスト
+        $valuesList = [];
+        foreach ($records as $record) {
+            // 値リスト
+            $values = $this->makeKeyValuesFromRecord($key, $record);
+
+            // 全てのキーが揃っていること
+            if (count($values) != count($key->getKeyItems()))
+                $this->db->throwException('Not all key values are present');
+
+            $valuesList[] = $values;
+        }
+
+        // Inリスト
+        return $this->makeSqlWhereIn($key, ...$valuesList);
+    }
+
+    /**
+     * SQLステートメントを生成(WHERE句、変更されたもののみ、レコードより)
+     * 
+     * @since 0.48.00
+     * @param Record $record レコード
+     * @return string|false SQLステートメント
+     */
+    protected function makeSqlWhereChangedOnlyFromRecord(Record $record): string|false {
+        if (!$this->isChangedOnlyForUpdate()) return false;
+
+        $setIds = $this->getSetIdsFromRecord($record);
+        $keyItemIds = $this->primaryKey->getItemIds();
+        $executorIds = $this->getExecutorIds();
+
+        $equations = [];
+
+        foreach ($setIds as $id) {
+            if (in_array($id, $executorIds, true)) continue;
+
+            // プライマリキーの値を変更の場合、無条件に更新
+            if (in_array($id, $keyItemIds)) return false;
+
+            $sqlId = $this->getIdForSql($id);
+            $value = $record->{$id};
+            $equations[] = $value !== null ?
+                sprintf('%s IS NULL OR %s <> ?', $sqlId, $sqlId) :
+                sprintf('%s IS NOT NULL', $sqlId);
+        }
+
+        return implode(' OR ', $equations);
+    }
+
+    /**
+     * SQLステートメントを生成(WHERE句、変更されたもののみ、テーブルより)
+     * 
+     * @since 0.48.00
+     * @param string[] $targetIds 対象項目IDリスト
+     * @param string $prefix 更新先テーブルの接頭語
+     * @param string $tempPrefix 更新元テーブルの接頭語
+     * @return string|false SQLステートメント
+     */
+    protected function makeSqlWhereChangedOnlyFromTable(
+        array $targetIds, string $prefix = 'tbl', string $tempPrefix = 'tmp'
+    ): string {
+        $keyItemIds = $this->primaryKey->getItemIds();
+        $executorIds = $this->getExecutorIds();
+
+        $equations = [];
+        foreach ($targetIds as $id) {
+            if (in_array($id, $executorIds, true)) continue;
+            if (in_array($id, $keyItemIds, true)) continue;
+
+            $sqlId = $this->getIdForSql($id, $prefix);
+            $tempSqlId = $this->getIdForSql($id, $tempPrefix);
+
+            $equations[] = sprintf(
+                '(' .
+                    '(%s IS NOT NULL OR %s IS NOT NULL) AND ' .
+                    '(%s IS NULL OR %s IS NULL OR %s <> %s)' .
+                ')',
+                $sqlId, $tempSqlId,
+                $sqlId, $tempSqlId, $sqlId, $tempSqlId
+            );
+        }
+
+        return implode(' OR ', $equations);
     }
 
     /**
@@ -2170,30 +2797,101 @@ class Table {
     }
 
     /**
-     * SQLステートメントを生成(SELECTクエリ)
+     * SQLステートメントを生成(SELECTの項目部)
      * 
-     * @param string|false $whereSql WHERE句
+     * @since 0.48.00
+     * @param string[] $ids 項目IDリスト
+     * @param ?string $prefix 接頭語
      * @return string SQLステートメント
      */
-    protected function makeSqlSelect($whereSql): string {
-        // テーブルID
-        $tableId = $this->getIdForSql($this->id);
+    protected function makeSqlSelectItems(array $ids, ?string $prefix = null): string|false {
+        $sqlIds = [];
 
-        // ORDER句
-        $orderSql = $this->makeSqlOrder();
+        foreach ($ids as $id)
+            $sqlIds[] = $this->getIdForSql($id, $prefix);
 
-        // ORDER句が無い場合(WHERE句も無い)
-        if ($orderSql === false) return sprintf(
-            'SELECT * FROM %s',
-            $tableId);
+        return implode(', ', $sqlIds);
+    }
 
-        // WHERE句が無い場合
-        if ($whereSql === false) return sprintf(
-            'SELECT * FROM %s ORDER BY %s',
-            $tableId, $orderSql);
+    /**
+     * SQLステートメントを生成(INTO句の項目部)
+     * 
+     * @since 0.48.00
+     * @param string[] $ids 項目IDリスト
+     * @return string SQLステートメント
+     */
+    protected function makeSqlIntoItems(array $ids): string|false {
+        $sqlIds = [];
 
-        return sprintf('SELECT * FROM %s WHERE %s ORDER BY %s',
-            $tableId, $whereSql, $orderSql);
+        foreach ($ids as $id)
+            $sqlIds[] = $this->getIdForSql($id);
+
+        return sprintf('(%s)', implode(', ', $sqlIds));
+    }
+
+    /**
+     * SQLステートメントを生成(INTO句の項目部、レコードより)
+     * 
+     * @since 0.48.00
+     * @param Record $record レコード
+     * @return string SQLステートメント
+     */
+    protected function makeSqlIntoItemsFromRecord(Record $record): string|false {
+        return $this->makeSqlIntoItems(
+            $this->getIntoIdsFromRecord($record)
+        );
+    }
+
+    /**
+     * SQLステートメントを生成(VALUES句)
+     * 
+     * @since 0.48.00
+     * @param string[] $ids 項目IDリスト
+     * @param int $count レコード件数
+     * @return string|false SQLステートメント
+     */
+    protected function makeSqlValues(array $ids, int $count): string|false {
+        $idCount = count($ids);
+        if ($idCount == 0) return false;
+        if ($count <= 0) return false;
+
+        // 1レコード分を生成
+        $unit = sprintf('(%s)', '?' . str_repeat(', ?', $idCount - 1));
+
+        return $unit . str_repeat(', ' . $unit, $count - 1);
+    }
+
+    /**
+     * SQLステートメントを生成(VALUES句、レコードより)
+     * 
+     * @since 0.48.00
+     * @param Record ...$records レコード
+     * @return string SQLステートメント
+     */
+    protected function makeSqlValuesFromRecord(Record ...$records): string|false {
+        // 0件ならば、処理失敗
+        if (count($records) == 0) return false;
+
+        return $this->makeSqlValues(
+            $this->getIntoIdsFromRecord($records[0]),
+            count($records)
+        );
+    }
+
+    /**
+     * SQLステートメントを生成(SET句)
+     * 
+     * @since 0.48.00
+     * @param string[] $ids 項目IDリスト
+     * @return string SQLステートメント
+     */
+    protected function makeSqlSetItems(array $ids): string|false {
+        $setItems = [];
+
+        foreach ($ids as $id)
+            $setItems[] = sprintf('%s = ?', $this->getIdForSql($id));
+
+        return implode(', ', $setItems);
     }
 
     /**
@@ -2247,16 +2945,37 @@ class Table {
      * 
      * [id1] = ? AND [id2] = ? AND ...
      * 
+     * @param Key $key キー
      * @param mixed ...$values 値リスト
      * @return array{item: Item, value: mixed} バインドリスト
      */
-    protected function makeBindItemsWhereEq(...$values): array {
-        // インデックスキー
-        $key = $this->indexKey;
-        $idValues = $this->makeIdValuesFromValues($key, $values);
+    protected function makeBindItemsWhereEq(Key $key, ...$values): array {
+        $idValues = $this->makeKeyIdValues($key, $values);
         if ($idValues === null) return [];
 
-        return $this->makeBindItems(...$idValues) ?? [];
+        return $this->makeBindItems(
+            ...$this->makeBindIdValuesWhereEq($idValues)
+        ) ?? [];
+    }
+
+    /**
+     * バインド項目のリストを生成(WHERE句、一致、レコードより)
+     * 
+     * [id1] = ? AND [id2] = ? AND ...
+     * 
+     * @since 0.48.00
+     * @param Key $key キー
+     * @param Record $record レコード
+     * @return array{item: Item, value: mixed} バインドリスト
+     */
+    protected function makeBindItemsWhereEqFromRecord(Key $key, Record $record): array {
+        // 変更前のレコード
+        $previousRecord = $record->previousRecord ?? $record;
+
+        // 値リスト
+        $values = $this->makeKeyValuesFromRecord($key, $previousRecord);
+
+        return $this->makeBindItemsWhereEq($key, $values);
     }
 
     /**
@@ -2264,23 +2983,17 @@ class Table {
      * 
      * [id1] > ? OR ([id1] = ? AND [id2] > ?) OR ...
      * 
+     * @param Key $key キー
      * @param mixed ...$values 値リスト
      * @return array{item: Item, value: mixed} バインドリスト
      */
-    protected function makeBindItemsWhereGt(...$values): array {
-        // インデックスキー
-        $key = $this->indexKey;
-        $idValues = $this->makeIdValuesFromValues($key, $values);
+    protected function makeBindItemsWhereGt(Key $key, ...$values): array {
+        $idValues = $this->makeKeyIdValues($key, $values);
         if ($idValues === null) return [];
-        $idValueCount = count($idValues);
 
-        // リスト生成
-        $bindIdValues = [];
-        for ($i = 0; $i < $idValueCount; $i++)
-            for ($j = 0; $j <= $i; $j++)
-                $bindIdValues[] = $idValues[$j];
-
-        return $this->makeBindItems(...$bindIdValues) ?? [];
+        return $this->makeBindItems(
+            ...$this->makeBindIdValuesWhereGt($idValues)
+        ) ?? [];
     }
 
     /**
@@ -2288,11 +3001,17 @@ class Table {
      * 
      * [id1] < ? OR ([id1] = ? AND [id2] < ?) OR ...
      * 
+     * @param Key $key キー
      * @param mixed ...$values 値リスト
      * @return array{item: Item, value: mixed} バインドリスト
      */
-    protected function makeBindItemsWhereLt(...$values): array {
-        return $this->makeBindItemsWhereGt(...$values);
+    protected function makeBindItemsWhereLt(Key $key, ...$values): array {
+        $idValues = $this->makeKeyIdValues($key, $values);
+        if ($idValues === null) return [];
+
+        return $this->makeBindItems(
+            ...$this->makeBindIdValuesWhereLt($idValues)
+        ) ?? [];
     }
 
     /**
@@ -2301,11 +3020,17 @@ class Table {
      * [id1] > ? OR ([id1] = ? AND [id2] > ?) OR ...  
      * ([id1] = ? AND [id2] = ? AND ... [idLast] >= ?)
      * 
+     * @param Key $key キー
      * @param mixed ...$values 値リスト
      * @return array{item: Item, value: mixed} バインドリスト
      */
-    protected function makeBindItemsWhereGe(...$values): array {
-        return $this->makeBindItemsWhereGt(...$values);
+    protected function makeBindItemsWhereGe(Key $key, ...$values): array {
+        $idValues = $this->makeKeyIdValues($key, $values);
+        if ($idValues === null) return [];
+
+        return $this->makeBindItems(
+            ...$this->makeBindIdValuesWhereGe($idValues)
+        ) ?? [];
     }
 
     /**
@@ -2314,81 +3039,73 @@ class Table {
      * [id1] < ? OR ([id1] = ? AND [id2] < ?) OR ...  
      * ([id1] = ? AND [id2] = ? AND ... [idLast] <= ?)
      * 
+     * @param Key $key キー
      * @param mixed ...$values 値リスト
      * @return array{item: Item, value: mixed} バインドリスト
      */
-    protected function makeBindItemsWhereLe(...$values): array {
-        return $this->makeBindItemsWhereGt(...$values);
+    protected function makeBindItemsWhereLe(Key $key, ...$values): array {
+        $idValues = $this->makeKeyIdValues($key, $values);
+        if ($idValues === null) return [];
+
+        return $this->makeBindItems(
+            ...$this->makeBindIdValuesWhereLe($idValues)
+        ) ?? [];
     }
 
     /**
      * バインド項目のリストを生成(WHERE句、IN演算子)
      * 
-     * ([id1] = ? AND [id2] = ? AND ...) OR ([id1] = ? AND [id2] = ? AND ...) OR ...
+     * ([id1] = ? AND [id2] = ? AND ...) OR ([id1] = ? AND [id2] = ? AND ...) OR ...  
+     *   
+     * 上位項目の値が、全てのリストで一致した場合は、  
+     * [id1] = ? AND (([id2] = ? AND ...) OR ([id2] = ? AND ...) OR ...)
      * 
+     * @param Key $key キー
      * @param mixed ...$valuesList 値リストのリスト
      * @return array{item: Item, value: mixed} バインドリスト
      */
-    protected function makeBindItemsWhereIn(...$valuesList): array {
-        // 値リストが配列型ではなかった時の対応
-        $valuesCount = count($valuesList);
-        for ($i = 0; $i < $valuesCount; $i++)
-            if (!is_array($valuesList[$i]))
-                $valuesList[$i] = [$valuesList[$i]];
+    protected function makeBindItemsWhereIn(Key $key, ...$valuesList): array {
+        $idValuesList = [];
+        foreach ($valuesList as $values) {
+            // 値リストが配列型ではなかった時の対応
+            if (!is_array($values))
+                $values = [$values];
 
-        $bindIdValues = [];
-
-        // インデックスキー
-        $key = $this->indexKey;
-
-        // 上位項目で、値が一致する項目の数
-        $topItemCount = 0;
-        if (count($valuesList) > 0) {
-            $values1 = $valuesList[0];
-            $valueCount = count($values1);
-            for ($i = 0; $i < $valueCount; $i++) {
-                $value1 = $values1[$i];
-
-                foreach ($valuesList as $values2) {
-                    if (count($values2) < $i + 1) break 2;
-
-                    $value2 = $values2[$i];
-                    if ($value1 !== $value2) break 2;
-                }
-
-                $topItemCount++;
-            }
-        }
-
-        // 上位項目を登録
-        if ($topItemCount > 0) {
-            $values = $valuesList[0];
-            $idValues = $this->makeIdValuesFromValues($key, $values);
+            $idValues = $this->makeKeyIdValues($key, $values);
             if ($idValues === null) return [];
 
-            while (count($idValues) > $topItemCount)
-                array_pop($idValues);
-            foreach ($idValues as $idValue)
-                $bindIdValues[] = $idValue;
+            $idValuesList[] = $idValues;
         }
 
-        // 件数分、下位項目を登録
-        $partBindIdValues = [];
-        foreach ($valuesList as $values) {
-            $idValues = $this->makeIdValuesFromValues($key, $values);
-            for ($i = 0; $i < $topItemCount; $i++)
-                array_shift($idValues);
-            if (count($idValues) == 0) {
-                $partBindIdValues = [];
-                break;
-            }
-            foreach ($idValues as $idValue)
-                $partBindIdValues[] = $idValue;
-        }
-        foreach ($partBindIdValues as $idValue)
-            $bindIdValues[] = $idValue;
+        return $this->makeBindItems(
+            ...$this->makeBindIdValuesWhereIn(...$idValuesList)
+        ) ?? [];
+    }
 
-        return $this->makeBindItems(...$bindIdValues) ?? [];
+    /**
+     * バインド項目のリストを生成(WHERE句、IN演算子、レコードより)
+     * 
+     * ([id1] = ? AND [id2] = ? AND ...) OR ([id1] = ? AND [id2] = ? AND ...) OR ...
+     * 
+     * @since 0.48.00
+     * @param Key $key キー
+     * @param Record ...$records レコード
+     * @return array{item: Item, value: mixed} バインドリスト
+     */
+    protected function makeBindItemsWhereInFromRecord(Key $key, Record ...$records): array {
+        // 値リストのリスト
+        $valuesList = [];
+        foreach ($records as $record) {
+            // 変更前のレコード
+            $previousRecord = $record->previousRecord ?? $record;
+
+            // 値リスト
+            $values = $this->makeKeyValuesFromRecord($key, $previousRecord);
+
+            $valuesList[] = $values;
+        }
+
+        return $this->makeBindItemsWhereIn($key, ...$valuesList);
     }
 
     /**
@@ -2397,80 +3114,182 @@ class Table {
      * ([id1] > ? OR ([id1] = ? AND [id2] > ?) OR ... ([id1] = ? AND [id2] = ? AND ... [idLast] >= ?)) AND  
      * ([id1] < ? OR ([id1] = ? AND [id2] < ?) OR ... ([id1] = ? AND [id2] = ? AND ... [idLast] <= ?))
      * 
+     * @param Key $key キー
      * @param mixed $values1 値リスト(始点)
      * @param mixed $values2 値リスト(終点)
      * @return array{item: Item, value: mixed} バインドリスト
      */
-    protected function makeBindItemsWhereBetween($values1, $values2): array {
-        $bindIdValues = [];
+    protected function makeBindItemsWhereBetween(Key $key, $values1, $values2): array {
+        // 値リストが配列型ではなかった時の対応
+        if (!is_array($values1))
+            $values1 = [$values1];
+        if (!is_array($values2))
+            $values2 = [$values2];
 
-        // インデックスキー
-        $key = $this->indexKey;
+        $idValues1 = $this->makeKeyIdValues($key, $values1);
+        $idValues2 = $this->makeKeyIdValues($key, $values2);
 
-        // 上位項目で、値が一致する項目の数
-        $topItemCount = 0;
-        $valueCount = min(count($values1), count($values2));
-        for ($i = 0; $i < $valueCount; $i++) {
-            $value1 = $values1[$i];
-            $value2 = $values2[$i];
-            if ($value1 !== $value2) break;
-
-            $topItemCount++;
-        }
-
-        // 上位項目を登録
-        $idValues = $this->makeIdValuesFromValues($key, $values1);
-        if ($idValues === null) return [];
-
-        while (count($idValues) > $topItemCount)
-            array_pop($idValues);
-        foreach ($idValues as $idValue)
-            $bindIdValues[] = $idValue;
-
-        // 下位項目を登録、以上
-        // [id1] > ? OR ([id1] = ? AND [id2] > ?) OR ...
-        $idValues = $this->makeIdValuesFromValues($key, $values1);
-        if ($idValues === null) return [];
-
-        for ($i = 0; $i < $topItemCount; $i++)
-            array_shift($idValues);
-        $idValueCount = count($idValues);
-        for ($i = 0; $i < $idValueCount; $i++)
-            for ($j = 0; $j <= $i; $j++)
-                $bindIdValues[] = $idValues[$j];
-
-        // 下位項目を登録、以下
-        // [id1] < ? OR ([id1] = ? AND [id2] < ?) OR ...
-        $idValues = $this->makeIdValuesFromValues($key, $values2);
-        if ($idValues === null) return [];
-
-        for ($i = 0; $i < $topItemCount; $i++)
-            array_shift($idValues);
-        $idValueCount = count($idValues);
-        for ($i = 0; $i < $idValueCount; $i++)
-            for ($j = 0; $j <= $i; $j++)
-                $bindIdValues[] = $idValues[$j];
-
-        return $this->makeBindItems(...$bindIdValues) ?? [];
+        return $this->makeBindItems(
+            ...$this->makeBindIdValuesWhereBetween($idValues1, $idValues2)
+        ) ?? [];
     }
 
     /**
      * バインド項目のリストを生成(WHERE句、LIKE演算子)
      * 
+     * @since 0.48.00
+     * @param Key $key キー
      * @param mixed ...$values 値リスト
      * @return array{item: Item, value: mixed} バインドリスト
      */
-    protected function makeBindItemsWhereLike(...$values): array {
-        return $this->makeBindItemsWhereEq(...$values);
+    protected function makeBindItemsWhereLike(Key $key, ...$values): array {
+        $idValues = $this->makeKeyIdValues($key, $values);
+        if ($idValues === null) return [];
+
+        return $this->makeBindItems(
+            ...$this->makeBindIdValuesWhereLike($idValues)
+        ) ?? [];
     }
 
     /**
-     * 値をバインド(SELECTクエリ)
+     * バインド項目のリストを生成(WHERE句、変更されたもののみ)
+     * 
+     * @since 0.48.00
+     * @param array<string, mixed> ...$values 値リスト
+     * @return array{item: Item, value: mixed} バインドリスト
+     */
+    protected function makeBindItemsWhereChangedOnly(array ...$values): array {
+        if (!$this->isChangedOnlyForUpdate()) return [];
+
+        $bindIdValues = [];
+
+        $setIds = $this->getSetIds(array_keys($values));
+        $executorIds = $this->getExecutorIdsForUpdate();
+        $keyItemIds = $this->primaryKey->getItemIds();
+
+        foreach ($setIds as $id) {
+            if (in_array($id, $executorIds, true)) continue;
+
+            // キー項目を変更した場合は、無条件
+            if (in_array($id, $keyItemIds, true)) return [];
+
+            $value = $values[$id];
+            if ($value === null) continue;
+
+            $bindIdValues[] = [$id, $value];
+        }
+
+        return $this->makeBindItems(...$bindIdValues) ?? [];
+    }
+
+    /**
+     * バインド項目のリストを生成(WHERE句、変更されたもののみ、レコードより)
+     * 
+     * @since 0.48.00
+     * @param Record ...$record レコード
+     * @return array{item: Item, value: mixed} バインドリスト
+     */
+    protected function makeBindItemsWhereChangedOnlyFromRecord(Record $record): array {
+        if (!$this->isChangedOnlyForUpdate()) return [];
+
+        $bindIdValues = [];
+
+        $setIds = $this->getSetIdsFromRecord($record);
+        $executorIds = $this->getExecutorIdsForUpdate();
+        $keyItemIds = $this->primaryKey->getItemIds();
+
+        foreach ($setIds as $id) {
+            if (in_array($id, $executorIds, true)) continue;
+
+            // キー項目を変更した場合は、無条件
+            if (in_array($id, $keyItemIds, true)) return [];
+
+            $value = $record->{$id};
+            if ($value === null) continue;
+
+            $bindIdValues[] = [$id, $value];
+        }
+
+        return $this->makeBindItems(...$bindIdValues) ?? [];
+    }
+
+    /**
+     * バインド項目のリストを生成(VALUES句、レコードより)
+     * 
+     * @since 0.48.00
+     * @param Record ...$records レコード
+     * @return array{item: Item, value: mixed} バインドリスト
+     */
+    protected function makeBindItemsValuesFromRecord(Record ...$records): array {
+        $bindIdValues = [];
+
+        $intoIds = $this->getIntoIdsFromRecord($records[0]);
+        $executorIds = $this->getExecutorIdsForInsert();
+        $newRecord = $this->getNewRecord()->setValuesForInsert();
+
+        $recordCount = count($records);
+        for ($i = 0; $i < $recordCount; $i++) {
+            $record = $records[$i];
+
+            // 通常項目
+            foreach ($intoIds as $id) {
+                if (in_array($id, $executorIds, true)) continue;
+                if (!$record->isInputted($id))
+                    $this->db->throwException(sprintf('[%s件目]%sに値が設定されていません。',
+                        $i + 1, $id));
+
+                $value = $record->{$id};
+                $bindIdValues[] = [$id, $value];
+            }
+
+            // 実行者項目
+            foreach ($executorIds as $id) {
+                $value = $newRecord->{$id};
+                $bindIdValues[] = [$id, $value];
+            }
+        }
+
+        return $this->makeBindItems(...$bindIdValues) ?? [];
+    }
+
+    /**
+     * バインド項目のリストを生成(SET句、レコードより)
+     * 
+     * @since 0.48.00
+     * @param Record $record レコード
+     * @return array{item: Item, value: mixed} バインドリスト
+     */
+    protected function makeBindItemsSetFromRecord(Record $record): array|false {
+        $bindIdValues = [];
+
+        $setIds = $this->getSetIdsFromRecord($record);
+        $executorIds = $this->getExecutorIdsForUpdate();
+        $newRecord = $this->getNewRecord()->setValuesForUpdate();
+
+        // 通常項目
+        foreach ($setIds as $id) {
+            if (in_array($id, $executorIds, true)) continue;
+
+            $value = $record->{$id};
+            $bindIdValues[] = [$id, $value];
+        }
+
+        // 実行者項目
+        foreach ($executorIds as $id) {
+            $value = $newRecord->{$id};
+            $bindIdValues[] = [$id, $value];
+        }
+
+        return $this->makeBindItems(...$bindIdValues) ?? [];
+    }
+
+    /**
+     * 値をバインド
      * 
      * @param TableStatement $stmt テーブルステートメント
      * @param array{item: Item, value: mixed} ...$bindItems バインド項目のリスト
      */
-    protected function bindValueSelect(TableStatement $stmt, ...$bindItems) {
+    protected function bindValue(TableStatement $stmt, ...$bindItems) {
         // バインド番号
         $num = 0;
 
@@ -2485,178 +3304,67 @@ class Table {
     }
 
     /**
-     * SQLステートメントを生成(INSERTクエリ)
+     * SQLステートメントを生成(SELECTクエリ)
      * 
-     * @param Record $record レコード
+     * @param string|false $whereSql WHERE句
      * @return string SQLステートメント
      */
-    protected function makeSqlInsert(Record $record): string {
+    protected function makeSqlSelect($whereSql): string {
+        // テーブルID
         $tableId = $this->getIdForSql($this->id);
-        $itemsArray = $this->items->getItemsArray();
-        $executorIds = $this->getExecutorIds();
-        $itemIds = [];
-        $values = [];
 
-        // 通常項目
-        foreach (array_keys($itemsArray) as $id) {
-            if (in_array($id, $executorIds, true)) continue;
-            if (!$record->isInputted($id)) continue;
-            $itemIds[] = $this->getIdForSql($id);
-            $values[] = '?';
-        }
+        // 項目群
+        $itemsSql = $this->makeSqlSelectItems(['*']);
 
-        // 実行者項目
-        $recordForExecutor = $this->getNewRecord();
-        $recordForExecutor->setValuesForInsert();
-        foreach ($executorIds as $id) {
-            if (!$recordForExecutor->isInputted($id)) continue;
-            $itemIds[] = $this->getIdForSql($id);
-            $values[] = '?';
-        }
+        // ORDER句
+        $orderSql = $this->makeSqlOrder();
 
-        return sprintf('INSERT INTO %s (%s) VALUES (%s)',
-            $tableId, implode(', ', $itemIds), implode(', ', $values));
+        // ORDER句が無い場合(WHERE句も無い)
+        if ($orderSql === false) return sprintf(
+            'SELECT %s FROM %s',
+            $itemsSql, $tableId);
+
+        // WHERE句が無い場合
+        if ($whereSql === false) return sprintf(
+            'SELECT %s FROM %s ORDER BY %s',
+            $itemsSql, $tableId, $orderSql);
+
+        return sprintf('SELECT %s FROM %s WHERE %s ORDER BY %s',
+            $itemsSql, $tableId, $whereSql, $orderSql);
+    }
+
+    /**
+     * 値をバインド(SELECTクエリ)
+     * 
+     * @param TableStatement $stmt テーブルステートメント
+     * @param array{item: Item, value: mixed}[] $bindItemsWhere WHERE句のバインド項目のリスト
+     */
+    protected function bindValueSelect(TableStatement $stmt, array $bindItemsWhere) {
+        $this->bindValue($stmt, ...$bindItemsWhere);
+    }
+
+    /**
+     * SQLステートメントを生成(INSERTクエリ)
+     * 
+     * @param string|false $sqlIntoItems INTO句の項目部
+     * @param string|false $sqlValues VALUES句
+     * @return string SQLステートメント
+     */
+    protected function makeSqlInsert(string|false $sqlIntoItems, string|false $sqlValues): string {
+        $tableId = $this->getIdForSql($this->id);
+
+        return sprintf('INSERT INTO %s %s VALUES %s',
+            $tableId, $sqlIntoItems, $sqlValues);
     }
 
     /**
      * 値をバインド(INSERTクエリ)
      * 
      * @param TableStatemtne $stmt テーブルステートメント
-     * @param Record $record レコード
+     * @param array{item: Item, value: mixed}[] $bindItemsValues VALUES句のバインド項目のリスト
      */
-    protected function bindValueInsert(TableStatement $stmt, Record $record) {
-        $itemsArray = $this->items->getItemsArray();
-        $executorIds = $this->getExecutorIds();
-
-        // バインド番号
-        $num = 0;
-
-        // 通常項目
-        foreach ($itemsArray as $id => $item) {
-            if (in_array($id, $executorIds, true)) continue;
-            if (!$record->isInputted($id)) continue;
-
-            // バインド
-            $value = $record->{$id};
-            $type = $item->type;
-            $stmt->bindValue(++$num, $value, $type);
-        }
-
-        // 実行者項目
-        $recordForExecutor = $this->getNewRecord();
-        $recordForExecutor->setValuesForInsert();
-        foreach ($executorIds as $id) {
-            if (!$recordForExecutor->isInputted($id)) continue;
-
-            // バインド
-            $value = $record->{$id};
-            $type = $itemsArray[$id]->type;
-            $stmt->bindValue(++$num, $value, $type);
-        }
-    }
-
-    /**
-     * 更新対象とする項目リストを取得(INSERTクエリ、複数)
-     * 
-     * @param Record ...$records レコード
-     * @return array<string, Item>|false INSERT対象項目
-     */
-    protected function getInsertMultipleItems(Record ...$records) {
-        if (count($records) == 0) return false;
-        $itemsArray = $this->items->getItemsArray();
-        $executorIds = $this->getExecutorIds();
-        $insertItems = [];
-
-        // 1件目より、対象とする項目リストを決定する
-        $record = $records[0];
-
-        foreach ($itemsArray as $id => $item) {
-            if (in_array($id, $executorIds, true)) continue;
-            if (!$record->isInputted($id)) continue;
-            $insertItems[$id] = $item;
-        }
-        return $insertItems;
-    }
-
-    /**
-     * SQLステートメントを生成(INSERTクエリ、複数)
-     * 
-     * @param array<string, Item> $insertItems INSERT対象項目
-     * @param Record ...$records レコード
-     * @return string SQLステートメント
-     */
-    protected function makeSqlInsertMultiple(array $insertItems, Record ...$records): string {
-        $tableId = $this->getIdForSql($this->id);
-        $executorIds = $this->getExecutorIds();
-        $itemIds = [];
-        $values = [];
-
-        // 通常項目
-        foreach (array_keys($insertItems) as $id) {
-            $itemIds[] = $this->getIdForSql($id);
-            $values[] = '?';
-        }
-
-        // 実行者項目
-        $recordForExecutor = $this->getNewRecord();
-        $recordForExecutor->setValuesForInsert();
-        foreach ($executorIds as $id) {
-            if (!$recordForExecutor->isInputted($id)) continue;
-            $itemIds[] = $this->getIdForSql($id);
-            $values[] = '?';
-        }
-
-        $valuesStr = sprintf('(%s)', implode(', ', $values));
-        $valuesList = [];
-        foreach ($records as $record) $valuesList[] = $valuesStr;
-        return sprintf('INSERT INTO %s (%s) VALUES %s',
-            $tableId, implode(', ', $itemIds), implode(', ', $valuesList));
-    }
-
-    /**
-     * 値をバインド(INSERTクエリ、複数)
-     * 
-     * @param array<string, Item> $insertItems INSERT対象項目
-     * @param TableStatement テーブルステートメント
-     * @param Record ...$records レコード
-     */
-    protected function bindValueInsertMultiple(
-        array $insertItems, TableStatement $stmt, Record ...$records
-    ) {
-        // バインド番号
-        $num = 0;
-
-        $rowNum = 0;
-        $itemsArray = $this->items->getItemsArray();
-        $executorIds = $this->getExecutorIds();
-        $recordForExecutor = $this->getNewRecord();
-        $recordForExecutor->setValuesForInsert();
-        foreach ($records as $record) {
-            $rowNum++;
-
-            // 通常項目
-            foreach ($insertItems as $id => $item) {
-                if (!$record->isInputted($id))
-                    $this->db->throwException(
-                        sprintf('未設定の項目があるため、失敗しました。[%s件目の%s]', $rowNum, $id)
-                    );
-
-                // バインド
-                $value = $record->{$id};
-                $type = $item->type;
-                $stmt->bindValue(++$num, $value, $type);
-            }
-
-            // 実行者項目
-            foreach ($executorIds as $id) {
-                if (!$recordForExecutor->isInputted($id)) continue;
-
-                // バインド
-                $value = $recordForExecutor->{$id};
-                $type = $itemsArray[$id]->type;
-                $stmt->bindValue(++$num, $value, $type);
-            }
-        }
+    protected function bindValueInsert(TableStatement $stmt, array $bindItemsValues) {
+        $this->bindValue($stmt, ...$bindItemsValues);
     }
 
     /**
@@ -2668,74 +3376,56 @@ class Table {
     protected function makeSqlInsertFromTable(self $tempTable): string {
         $tableId = $this->getIdForSql($this->id);
         $tempTableId = $this->getIdForSql($tempTable->id);
-        $keyItems = $this->primaryKey->getKeyItems();
-        $itemsArray = $this->items->getItemsArray();
-        $tempItemIds = array_keys($tempTable->items->getItemsArray());
-        $executorIds = $this->getExecutorIds();
-        $record = $this->getNewRecord();
-        $record->setValuesForInsert();
+
+        $normalItemIds = $this->items->getNormalItemIds();
+        $tempNormalItemIds = $tempTable->items->getNormalItemIds();
+        $executorIds = $this->getExecutorIdsForInsert();
+        $keyItemIds = $this->primaryKey->getItemIds();
+
+        // 共通の通常項目IDリスト
+        $commonNormalItemIds = [];
+        foreach ($normalItemIds as $id) {
+            if (!in_array($id, $tempNormalItemIds, true)) continue;
+
+            $commonNormalItemIds[] = $id;
+        }
 
         // 更新先の項目リスト
-        $insertToItemIds = [];
-        foreach (array_keys($itemsArray) as $id) {
-            if (in_array($id, $executorIds, true)) {
-                if (!$record->isInputted($id)) continue;
-            } else {
-                if (!in_array($id, $tempItemIds)) continue;
-            }
-            $insertToItemIds[] = $this->getIdForSql($id);
+        $toItemsSql = $this->makeSqlSelectItems([
+            ...$commonNormalItemIds,
+            ...$executorIds
+        ]);
+
+        // 更新元のバインドリスト
+        $fromBindParams = [];
+        if (count($executorIds) > 0) {
+            $str = str_repeat('? ', count($executorIds));
+            $fromBindParams = explode(' ', trim($str));
         }
 
         // 更新元の項目リスト
-        $insertFromItemIds = [];
-        foreach ($insertToItemIds as $sqlId) {
-            $id = $this->getIdForVar($sqlId);
-            if (in_array($id, $executorIds, true)) {
-                $insertFromItemIds[] = '?';
-                continue;
-            }
-            $insertFromItemIds[] = sprintf('tmp.%s', $sqlId);
-        }
+        $fromItemsSql = $this->makeSqlSelectItems([
+            ...$commonNormalItemIds,
+            ...$fromBindParams
+        ], 'tmp');
 
         // JOINの等式リスト
         $joinEquations = [];
-        foreach ($keyItems as $keyItem) {
-            $id = $keyItem->item->id;
+        foreach ($keyItemIds as $id) {
             $sqlId = $this->getIdForSql($id);
             $joinEquations[] = sprintf('tmp.%s = tbl.%s', $sqlId, $sqlId);
         }
 
         // プライマリキーの第1項目ID
-        $keyFirstId = $this->getIdForSql($keyItems[0]->item->id);
+        $keyFirstId = $this->getIdForSql($keyItemIds[0]);
+
         return sprintf(
             'INSERT INTO %s (%s) ' .
             'SELECT %s FROM %s AS tmp LEFT JOIN %s AS tbl ON %s WHERE tbl.%s IS NULL',
-            $tableId, implode(', ', $insertToItemIds),
-            implode(', ', $insertFromItemIds), $tempTableId, $tableId, implode(' AND ', $joinEquations),
+            $tableId, $toItemsSql,
+            $fromItemsSql, $tempTableId, $tableId, implode(' AND ', $joinEquations),
             $keyFirstId
         );
-    }
-
-    /**
-     * 値をバインド(INSERTクエリ、別のテーブルより、キー重複分は除外)
-     * 
-     * @param TableStatement テーブルステートメント
-     */
-    protected function bindValueInsertFromTable(TableStatement $stmt) {
-        $itemsArray = $this->items->getItemsArray();
-        $record = $this->getNewRecord();
-        $record->setValuesForInsert();
-
-        // バインド番号
-        $num = 0;
-        foreach ($itemsArray as $id => $item) {
-            if (!$record->isInputted($id)) continue;
-
-            // バインド
-            $value = $record->{$id};
-            $type = $item->type;
-            $stmt->bindValue(++$num, $value, $type);
-        }
     }
 
     /**
@@ -2748,257 +3438,135 @@ class Table {
     protected function makeSqlInsertAllFromTable(self $tempTable): string {
         $tableId = $this->getIdForSql($this->id);
         $tempTableId = $this->getIdForSql($tempTable->id);
-        $itemsArray = $this->items->getItemsArray();
-        $tempItemIds = array_keys($tempTable->items->getItemsArray());
-        $executorIds = $this->getExecutorIds();
-        $record = $this->getNewRecord();
-        $record->setValuesForInsert();
+
+        $normalItemIds = $this->items->getNormalItemIds();
+        $tempNormalItemIds = $tempTable->items->getNormalItemIds();
+        $executorIds = $this->getExecutorIdsForInsert();
+
+        // 共通の通常項目IDリスト
+        $commonNormalItemIds = [];
+        foreach ($normalItemIds as $id) {
+            if (!in_array($id, $tempNormalItemIds, true)) continue;
+
+            $commonNormalItemIds[] = $id;
+        }
 
         // 更新先の項目リスト
-        $insertToItemIds = [];
-        foreach (array_keys($itemsArray) as $id) {
-            if (in_array($id, $executorIds, true)) {
-                if (!$record->isInputted($id)) continue;
-            } else {
-                if (!in_array($id, $tempItemIds)) continue;
-            }
-            $insertToItemIds[] = $this->getIdForSql($id);
+        $toItemsSql = $this->makeSqlSelectItems([
+            ...$commonNormalItemIds,
+            ...$executorIds
+        ]);
+
+        // 更新元のバインドリスト
+        $fromBindParams = [];
+        if (count($executorIds) > 0) {
+            $str = str_repeat('? ', count($executorIds));
+            $fromBindParams = explode(' ', trim($str));
         }
 
         // 更新元の項目リスト
-        $insertFromItemIds = [];
-        foreach ($insertToItemIds as $sqlId) {
-            $id = $this->getIdForVar($sqlId);
-            if (in_array($id, $executorIds, true)) {
-                $insertFromItemIds[] = '?';
-                continue;
-            }
-            $insertFromItemIds[] = sprintf('tmp.%s', $sqlId);
-        }
+        $fromItemsSql = $this->makeSqlSelectItems([
+            ...$commonNormalItemIds,
+            ...$fromBindParams
+        ]);
 
         return sprintf(
             'INSERT INTO %s (%s) ' .
-            'SELECT %s FROM %s AS tmp',
-            $tableId, implode(', ', $insertToItemIds),
-            implode(', ', $insertFromItemIds), $tempTableId
+            'SELECT %s FROM %s',
+            $tableId, $toItemsSql,
+            $fromItemsSql, $tempTableId
         );
-    }
-
-    /**
-     * 値をバインド(INSERTクエリ、別のテーブルより、全レコード)
-     * 
-     * @since 0.37.00
-     * @param TableStatement テーブルステートメント
-     */
-    protected function bindInsertAllFromTableValue(TableStatement $stmt) {
-        $itemsArray = $this->items->getItemsArray();
-        $record = $this->getNewRecord();
-        $record->setValuesForInsert();
-
-        // バインド番号
-        $num = 0;
-
-        foreach ($itemsArray as $id => $item) {
-            if (!$record->isInputted($id)) continue;
-
-            // バインド
-            $value = $record->{$id};
-            $type = $item->type;
-            $stmt->bindValue(++$num, $value, $type);
-        }
     }
 
     /**
      * SQLステートメントを生成(UPDATEクエリ)
      * 
-     * @param Record $record レコード
+     * @param string|false $sqlSet SET句
+     * @param string|false $sqlWhere WHERE句
      * @return string|false SQLステートメント、更新対象とする項目がなければfalse
      */
-    protected function makeSqlUpdate(Record $record): string|false {
-        $isChangedOnly = $this->isChangedOnlyForUpdate();
+    protected function makeSqlUpdate(
+        string|false $sqlSet, string|false $sqlWhere, string|false $sqlWhereChangedOnly
+    ): string|false {
         $tableId = $this->getIdForSql($this->id);
-        $keyItems = $this->primaryKey->getKeyItems();
-        $itemsArray = $this->items->getItemsArray();
-        $executorIds = $this->getExecutorIds();
-        $setEquations = [];
 
-        // 通常項目
-        foreach (array_keys($itemsArray) as $id) {
-            if (in_array($id, $executorIds, true)) continue;
-            if (!$record->isInputted($id)) continue;
-            $setEquations[] = sprintf('%s = ?', $this->getIdForSql($id));
-        }
-        if (count($setEquations) == 0) return false;
+        if ($sqlSet === false) return false;
+        if ($sqlWhere === false) return false;
 
-        // 実行者項目
-        $recordForExecutor = $this->getNewRecord();
-        $recordForExecutor->setValuesForUpdate();
-        foreach ($executorIds as $id) {
-            if (!$recordForExecutor->isInputted($id)) continue;
-            $setEquations[] = sprintf('%s = ?', $this->getIdForSql($id));
-        }
-
-        // WHERE句
-        $whereEquations = [];
-        foreach ($keyItems as $keyItem) {
-            $id = $keyItem->item->id;
-            $whereEquations[] = sprintf('%s = ?', $this->getIdForSql($id));
-        }
-
-        // 変更分のみの場合
-        if ($isChangedOnly) {
-            $changedEquations = [];
-            $keyItemIds = [];
-            foreach ($keyItems as $keyItem) $keyItemIds[] = $keyItem->item->id;
-            foreach (array_keys($this->items->getItemsArray()) as $id) {
-                if (in_array($id, $keyItemIds, true)) continue;
-                if (in_array($id, $executorIds, true)) continue;
-                if (!$record->isInputted($id)) continue;
-                $value = $record->{$id};
-                $sqlId = $this->getIdForSql($id);
-                if ($value === null) {
-                    $changedEquations[] = sprintf('%s IS NOT NULL', $sqlId);
-                } else {
-                    $changedEquations[] = sprintf('%s IS NULL OR %s <> ?', $sqlId, $sqlId);
-                }
-            }
-            if (count($changedEquations) == 0)
-                $this->db->throwException('1つも項目に値を設定していません。');
-            $whereEquations[] = sprintf('(%s)', implode(' OR ', $changedEquations));
+        if ($sqlWhereChangedOnly !== false) {
+            $equations = [];
+            $equations[] = $this->convertEquationWrap($sqlWhere);
+            $equations[] = $this->convertEquationWrap($sqlWhereChangedOnly);
+            $sqlWhere = implode(' AND ', $equations);
         }
 
         return sprintf('UPDATE %s SET %s WHERE %s',
-            $tableId, implode(', ', $setEquations), implode(' AND ', $whereEquations));
+            $tableId, $sqlSet, $sqlWhere);
     }
 
     /**
      * 値をバインド(UPDATEクエリ)
      * 
      * @param TableStatement $stmt テーブルステートメント
-     * @param Record $record レコード
+     * @param array{item: Item, value: mixed}[] $bindItemsSet SET句のバインド項目のリスト
+     * @param array{item: Item, value: mixed}[] $bindItemsWhere WHERE句のバインド項目のリスト
+     * @param array{item: Item, value: mixed}[] $bindItemsWhereChangedOnly WHERE句のバインド項目のリスト(変更されたもののみ)
      */
-    protected function bindValueUpdate(TableStatement $stmt, Record $record) {
-        $isChangedOnly = $this->isChangedOnlyForUpdate();
-        $keyItems = $this->primaryKey->getKeyItems();
-        $itemsArray = $this->items->getItemsArray();
-        $executorIds = $this->getExecutorIds();
-
-        // バインド番号
-        $num = 0;
-
-        // 通常項目
-        foreach ($itemsArray as $id => $item) {
-            if (in_array($id, $executorIds, true)) continue;
-            if (!$record->isInputted($id)) continue;
-
-            // バインド
-            $value = $record->{$id};
-            $type = $item->type;
-            $stmt->bindValue(++$num, $value, $type);
-        }
-
-        // 実行者項目
-        $recordForExecutor = $this->getNewRecord();
-        $recordForExecutor->setValuesForUpdate();
-        foreach ($executorIds as $id) {
-            if (!$recordForExecutor->isInputted($id)) continue;
-
-            // バインド
-            $value = $recordForExecutor->{$id};
-            $type = $item = $itemsArray[$id]->type;
-            $stmt->bindValue(++$num, $value, $type);
-        }
-
-        // WHERE句
-        $recordForKey = $record->previousRecord ?? $record;
-        foreach ($keyItems as $keyItem) {
-            $id = $keyItem->item->id;
-            if (!$recordForKey->isInputted($id))
-                $this->db->throwException(sprintf('レコードにキー情報が不足しています。[%s]', $id));
-
-            // バインド
-            $value = $recordForKey->{$id};
-            $type = $keyItem->item->type;
-            $stmt->bindValue(++$num, $value, $type);
-        }
-
-        // 変更分のみの場合
-        if ($isChangedOnly) {
-            $keyItemIds = [];
-            foreach ($keyItems as $keyItem) $keyItemIds[] = $keyItem->item->id;
-            foreach ($itemsArray as $id => $item) {
-                if (in_array($id, $keyItemIds, true)) continue;
-                if (in_array($id, $executorIds, true)) continue;
-                if (!$record->isInputted($id)) continue;
-
-                // バインド
-                $value = $record->{$id};
-                if ($value === null) continue;
-                $type = $item->type;
-                $stmt->bindValue(++$num, $value, $type);
-            }
-        }
+    protected function bindValueUpdate(
+        TableStatement $stmt, array $bindItemsSet, array $bindItemsWhere = [], array $bindItemsWhereChangedOnly = []
+    ) {
+        return $this->bindValue($stmt, ...$bindItemsSet, ...$bindItemsWhere, ...$bindItemsWhereChangedOnly);
     }
 
     /**
      * SQLステートメントを生成(UPDATEクエリ、他のテーブルより)
      * 
      * @param static $tempTable 他のテーブル
-     * @param ?Record $recordForTarget 更新対象とする項目を決定するためのレコード
+     * @param ?string[] $tempIntoItemIds 他のテーブルへINSERTした時の項目IDリスト
      * @return string|false SQLステートメント、更新対象とする項目がなければfalse
      */
     protected function makeSqlUpdateFromTable(
-        self $tempTable, ?Record $recordForTarget
+        self $tempTable, ?array $tempIntoItemIds
     ): string|false {
-        // テーブルID
         $tableId = $this->getIdForSql($this->id);
         $tempTableId = $this->getIdForSql($tempTable->id);
-
-        // プライマリキー
-        $keyItems = $this->primaryKey->getKeyItems();
-        $keyItemIds = [];
-        foreach ($keyItems as $keyItem) $keyItemIds[] = $keyItem->item->id;
-
-        // 更新対象の項目リスト
-        $itemsArray = $this->items->getItemsArray();
-
-        // 項目IDリスト
-        $tempItemIds = array_keys($tempTable->items->getItemsArray());
+        $keyItemIds = $this->primaryKey->getItemIds();
         $executorIds = $this->getExecutorIds();
-
-        // 変更されたもののみを更新するかどうか
+        $executorIdsForUpdate = $this->getExecutorIdsForUpdate();
         $isChangedOnly = $this->isChangedOnlyForUpdate();
 
-        // SQL生成
+        // 更新対象項目
+        $setIds = $tempIntoItemIds ?? [];
+        if ($tempIntoItemIds === null) {
+            $normalItemIds = $this->items->getNormalItemIds();
+            $tempNormalItemIds = $tempTable->items->getNormalItemIds();
+            foreach ($normalItemIds as $id)
+                if (in_array($id, $tempNormalItemIds, true))
+                    $setIds[] = $id;
+        }
+
         // 項目リスト
         $setEquations = [];
 
         // 通常項目
-        foreach (array_keys($itemsArray) as $id) {
-            if (in_array($id, $keyItemIds, true)) continue;
+        foreach ($setIds as $id) {
             if (in_array($id, $executorIds, true)) continue;
-            if (!in_array($id, $tempItemIds, true)) continue;
-            if ($recordForTarget instanceof Record) {
-                if (!$recordForTarget->isInputted($id)) continue;
-            }
+            if (in_array($id, $keyItemIds, true)) continue;
+
             $sqlId = $this->getIdForSql($id);
             $setEquations[] = sprintf('tbl.%s = tmp.%s', $sqlId, $sqlId);
         }
         if (count($setEquations) == 0) return false;
 
         // 実行者項目
-        $recordForExecutor = $this->getNewRecord();
-        $recordForExecutor->setValuesForUpdate();
-        foreach ($executorIds as $id) {
-            if (!$recordForExecutor->isInputted($id)) continue;
+        foreach ($executorIdsForUpdate as $id) {
             $sqlId = $this->getIdForSql($id);
             $setEquations[] = sprintf('tbl.%s = ?', $sqlId);
         }
 
         // JOINの等式リスト
         $joinEquations = [];
-        foreach ($keyItems as $keyItem) {
-            $id = $keyItem->item->id;
+        foreach ($keyItemIds as $id) {
             $sqlId = $this->getIdForSql($id);
             $joinEquations[] = sprintf('tbl.%s = tmp.%s', $sqlId, $sqlId);
         }
@@ -3007,25 +3575,8 @@ class Table {
         $whereEquations = [];
 
         // 変更分のみの場合
-        if ($isChangedOnly) {
-            $changedEquations = [];
-            foreach (array_keys($itemsArray) as $id) {
-                if (in_array($id, $keyItemIds, true)) continue;
-                if (in_array($id, $executorIds, true)) continue;
-                if ($recordForTarget instanceof Record) {
-                    if (!$recordForTarget->isInputted($id)) continue;
-                }
-                $sqlId = $this->getIdForSql($id);
-                $changedEquations[] = sprintf(
-                    '(' .
-                        '(tbl.%s IS NOT NULL OR tmp.%s IS NOT NULL) AND ' .
-                        '(tbl.%s IS NULL OR tmp.%s IS NULL OR tbl.%s <> tmp.%s)' .
-                    ')',
-                    $sqlId, $sqlId, $sqlId, $sqlId, $sqlId, $sqlId
-                );
-            }
-            $whereEquations[] = sprintf('(%s)', implode(' OR ', $changedEquations));
-        }
+        if ($isChangedOnly)
+            $whereEquations[] = $this->makeSqlWhereChangedOnlyFromTable($setIds);
 
         // WHERE句が無い場合
         if (count($whereEquations) == 0) {
@@ -3040,31 +3591,6 @@ class Table {
             $tableId, $tempTableId, implode(' AND ', $joinEquations), implode(', ', $setEquations),
             implode(' AND ', $whereEquations)
         );
-    }
-
-    /**
-     * 値をバインド(UPDATEクエリ、他のテーブルより)
-     * 
-     * @param TableStatement $stmt テーブルステートメント
-     */
-    protected function bindValueUpdateFromTable(TableStatement $stmt) {
-        $itemsArray = $this->items->getItemsArray();
-        $executorIds = $this->getExecutorIds();
-
-        // バインド番号
-        $num = 0;
-
-        // 実行者項目
-        $recordForExecutor = $this->getNewRecord();
-        $recordForExecutor->setValuesForUpdate();
-        foreach ($executorIds as $id) {
-            if (!$recordForExecutor->isInputted($id)) continue;
-
-            // バインド
-            $value = $recordForExecutor->{$id};
-            $type = $itemsArray[$id]->type;
-            $stmt->bindValue(++$num, $value, $type);
-        }
     }
 
     /**
@@ -3091,86 +3617,10 @@ class Table {
      * 値をバインド(DELETEクエリ)
      * 
      * @param TableStatement $stmt テーブルステートメント
-     * @param Record $record レコード
+     * @param array{item: Item, value: mixed}[] $bindItemsWhere WHERE句のバインド項目のリスト
      */
-    protected function bindValueDelete(TableStatement $stmt, Record $record) {
-        // バインド番号
-        $num = 0;
-
-        // プライマリキー
-        $keyItems = $this->primaryKey->getKeyItems();
-
-        // キー値取得用のレコード情報
-        $recordForKey = $record->previousRecord ?? $record;
-
-        // バインド
-        foreach ($keyItems as $keyItem) {
-            // 項目ID
-            $id = $keyItem->item->id;
-            if (!$recordForKey->isInputted($id))
-                $this->db->throwException(sprintf('レコードにキー情報が不足しています。[%s]', $id));
-
-            // 値
-            $value = $recordForKey->{$id};
-
-            // データ型
-            $type = $keyItem->item->type;
-
-            $stmt->bindValue(++$num, $value, $type);
-        }
-    }
-
-    /**
-     * 値をバインド(DELETEクエリ、複数)
-     * 
-     * DELETE FROM [Table]  
-     * WHERE  
-     * ([Key1-1] = ? AND [Key1-2] = ? AND ...) OR  
-     * ([Key2-1] = ? AND [Key2-2] = ? AND ...) OR  
-     * ...
-     * 
-     * @param TableStatement $stmt テーブルステートメント
-     * @param Record ...$records レコード
-     */
-    protected function bindValueDeleteMultiple(TableStatement $stmt, Record ...$records) {
-        if (count($records) == 0) return;
-
-        // バインド番号
-        $num = 0;
-
-        // プライマリキー
-        $keyItems = $this->primaryKey->getKeyItems();
-
-        foreach ($records as $record) {
-            // キー値取得用のレコード情報
-            $recordForKey = $record->previousRecord ?? $record;
-
-            // バインド
-            foreach ($keyItems as $keyItem) {
-                // 項目ID
-                $id = $keyItem->item->id;
-                if (!$recordForKey->isInputted($id))
-                    $this->db->throwException(sprintf('レコードにキー情報が不足しています。[%s]', $id));
-
-                // 値
-                $value = $recordForKey->{$id};
-
-                // データ型
-                $type = $keyItem->item->type;
-
-                $stmt->bindValue(++$num, $value, $type);
-            }
-        }
-    }
-
-    /**
-     * 値をバインド(DELETEクエリ、比較)
-     * 
-     * @param TableStatement $stmt テーブルステートメント
-     * @param array{item: Item, value: mixed} ...$binds バインドリスト
-     */
-    protected function bindValueDeleteCompare(TableStatement $stmt, ...$binds) {
-        $this->bindValueSelect($stmt, ...$binds);
+    protected function bindValueDelete(TableStatement $stmt, array $bindItemsWhere) {
+        $this->bindValue($stmt, ...$bindItemsWhere);
     }
 
     /**

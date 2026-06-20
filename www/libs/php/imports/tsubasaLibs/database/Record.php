@@ -10,6 +10,7 @@
 // 0.40.00 2024/09/25 コンストラクタの受取パラメータを、テーブルインスタンスへ変更。メモリリーク対策のため。
 // 0.40.01 2024/09/26 原因は別にあったので、キャンセル。
 // 0.40.02 2024/09/27 一時利用のため、ステートメントインスタンスがNullである場合を考慮。
+// 0.48.00 2024/10/24 入力/変更されている項目IDのリストを取得を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/advance/RecordCreatorItem.php';
@@ -17,12 +18,13 @@ require_once __DIR__ . '/advance/RecordInputterItem.php';
 require_once __DIR__ . '/advance/RecordUpdaterItem.php';
 use tsubasaLibs\type;
 use WeakReference;
+use Stringable;
 
 /**
  * レコードクラス
  * 
  * @since 0.00.00
- * @version 0.40.02
+ * @version 0.48.00
  */
 class Record {
     // ---------------------------------------------------------------------------------------------
@@ -31,7 +33,7 @@ class Record {
     protected $stmt;
     /** @var array<string, mixed> 受け取りに失敗した項目 */
     protected $failedItems;
-    /** @var static レコード(変更前) */
+    /** @var ?static レコード(変更前) */
     public $previousRecord;
 
     // ---------------------------------------------------------------------------------------------
@@ -223,6 +225,59 @@ class Record {
         foreach ($key->getKeyItems() as $keyItem)
             $values[] = $this->{$keyItem->item->id};
         return $values;
+    }
+
+    /**
+     * 入力されている項目IDのリストを取得
+     * 
+     * @since 0.48.00
+     * @return string[] 項目IDリスト
+     */
+    public function getInputtedIds(): array {
+        $ids = [];
+
+        foreach (array_keys($this->stmt->table->items->getItemsArray()) as $id)
+            if ($this->isInputted($id))
+                $ids[] = $id;
+
+        return $ids;
+    }
+
+    /**
+     * 変更されている項目IDのリストを取得
+     * 
+     * @since 0.48.00
+     * @return string[] 項目IDリスト
+     */
+    public function getChangedIds(): array {
+        if ($this->previousRecord === null) {
+            // プライマリキーを除く
+            $ids = [];
+            $keyItemIds = $this->stmt->table->getPrimaryKey()->getItemIds();
+            foreach ($this->getInputtedIds() as $id)
+                if (!in_array($id, $keyItemIds, true))
+                    $ids[] = $id;
+            return $ids;
+        }
+
+        $ids = [];
+
+        foreach ($this->getInputtedIds() as $id) {
+            if (!$this->previousRecord->isInputted($id)) {
+                $ids[] = $id;
+                continue;
+            }
+
+            $value = $this->{$id};
+            if ($value instanceof Stringable) $value = (string)$value;
+            $previousValue = $this->previousRecord->{$id};
+            if ($previousValue instanceof Stringable) $previousValue = (string)$previousValue;
+
+            if ($value !== $previousValue)
+                $ids[] = $id;
+        }
+
+        return $ids;
     }
 
     // ---------------------------------------------------------------------------------------------

@@ -9,6 +9,8 @@
 // 0.20.00 2024/04/23 クエリ関連の失敗時、エラーログへSQLステートメントを出力するように対応。
 // 0.22.00 2024/05/17 クエリ関連の失敗時、エラーログへ"Query failed !"の文字列を出力するように変更。
 // 0.40.00 2024/09/25 廃棄処理を追加。
+// 0.40.01 2024/09/26 子クラスのインスタンスは、弱い参照でプロパティに持つように変更。
+//                    ステートメントクラス属性のパラメータが循環参照のため、弱い参照へ変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/DbStatement.php';
@@ -18,13 +20,14 @@ require_once __DIR__ . '/Table.php';
 require_once __DIR__ . '/Executor.php';
 require_once __DIR__ . '/ExecuteLog.php';
 use PDO, PDOException;
+use WeakReference;
 use Throwable;
 
 /**
  * DBクラス(PDOベース)
  * 
  * @since 0.00.00
- * @version 0.40.00
+ * @version 0.40.01
  */
 class DbBase extends PDO {
     // ---------------------------------------------------------------------------------------------
@@ -50,8 +53,8 @@ class DbBase extends PDO {
     public $executeLog;
     /** @var string[] DBエンジンの予約語 */
     protected $reservedWords;
-    /** @var Table[] 生成したテーブルインスタンスリスト */
-    protected $tableInstances;
+    /** @var WeakReference<Table>[] 生成したテーブルインスタンスの参照リスト */
+    protected $tableInstanceRefs;
     /** @var Executor 実行者 */
     public $executor;
 
@@ -73,6 +76,17 @@ class DbBase extends PDO {
         $this->setInit();
         $log->setEndTime();
         if ($this->isDebug) $this->executeLog->add($log);
+    }
+
+    /**
+     * @since 0.40.01
+     */
+    public function __destruct() {
+        if ($this->isDebug) {
+            // CLIのみ
+            if (isset($_SERVER['argv']))
+                printf("[Debug]%s is closed\n", static::class);
+        }
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -253,16 +267,13 @@ class DbBase extends PDO {
     /**
      * 廃棄処理
      * 
-     * PDOより継承しているため、プログラムが終了するまでインスタンスが解放されません。  
-     * そのため、この後も別な処理を控えている場合は、実行した方がメモリの節約になります。
+     * ATTR_STATEMENT_CLASS属性を設定し、このクラスをパラメータに循環参照している場合は、  
+     * 最後にこの処理を実行してください。
      * 
      * @since 0.40.00
      */
     public function dispose() {
-        $this->executeLog = null;
-        $this->reservedWords = null;
-        $this->tableInstances = null;
-        $this->executor = null;
+        $this->setAttribute(static::ATTR_STATEMENT_CLASS, [\PDOStatement::class]);
     }
 
     /**
@@ -342,14 +353,16 @@ class DbBase extends PDO {
         $this->isSafeForPersistent = false;
         $this->executeLog = new ExecuteLog();
         $this->reservedWords = $this->getReservedWords();
-        $this->tableInstances = [];
+        $this->tableInstanceRefs = [];
 
         // 属性
         $this->setAttribute(static::ATTR_ERRMODE, static::ERRMODE_EXCEPTION);
         $this->setAttribute(static::ATTR_AUTOCOMMIT, false);
         $this->setAttribute(static::ATTR_EMULATE_PREPARES, false);
         $this->setAttribute(static::ATTR_DEFAULT_FETCH_MODE, static::FETCH_ASSOC);
-        $this->setAttribute(static::ATTR_STATEMENT_CLASS, [DbStatement::class, [$this]]);
+        $this->setAttribute(static::ATTR_STATEMENT_CLASS,
+            // 自身を循環参照するため、弱い参照
+            [DbStatement::class, [WeakReference::create($this)]]);
     }
 
     /**
@@ -435,10 +448,15 @@ class DbBase extends PDO {
      * @return Table テーブルインスタンス
      */
     protected function getTableInstance(string $tableClass): Table {
-        foreach ($this->tableInstances as $tableInstance)
+        // 再利用
+        foreach ($this->tableInstanceRefs as $tableInstanceRef) {
+            $tableInstance = $tableInstanceRef->get();
             if ($tableInstance instanceof $tableClass) return $tableInstance;
+        }
+
+        // 生成し、キャッシュを取る
         $tableInstance = new $tableClass($this);
-        $this->tableInstances[] = $tableInstance;
+        $this->tableInstanceRefs[] = WeakReference::create($tableInstance);
         return $tableInstance;
     }
 

@@ -21,6 +21,7 @@
 //                    ・deletes → deleteMultiple
 // 0.39.00 2024/09/20 インデックスキーによるWHERE句を、Null値に対応。
 //                    selectIn、selectBetweenのWHERE句を短くなるように工夫。
+// 0.40.01 2024/09/26 子クラスのインスタンスは、弱い参照でプロパティに持つように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -30,12 +31,13 @@ require_once __DIR__ . '/Indexes.php';
 require_once __DIR__ . '/QueryPlanning.php';
 require_once __DIR__ . '/Records.php';
 require_once __DIR__ . '/advance/TableCamelCase.php';
+use WeakReference;
 
 /**
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.39.00
+ * @version 0.40.01
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -54,8 +56,8 @@ class Table {
     protected $indexKey;
     /** @var Indexes インデックスリスト */
     public $indexes;
-    /** @var array<string, static> テンポラリテーブルリスト */
-    protected $tempTables;
+    /** @var array<string, WeakReference<static>> テンポラリテーブルの参照リスト */
+    protected $tempTableRefs;
     /** @var bool テンポラリテーブルかどうか */
     protected $isTemp;
     /** @var ?static 基のテーブル */
@@ -66,7 +68,7 @@ class Table {
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
-     * @param ?DbBase $db DBクラス
+     * @param ?DbBase $db DBインスタンス
      */
     public function __construct(?DbBase $db = null) {
         $this->db = $db;
@@ -76,6 +78,17 @@ class Table {
         $this->setIndexKey();
         if (count($this->indexKey->getKeyItems()) == 0)
             $this->indexKey = $this->primaryKey;
+    }
+
+    /**
+     * @since 0.40.01
+     */
+    public function __destruct() {
+        if ($this->db?->isDebug) {
+            // CLIのみ
+            if (isset($_SERVER['argv']))
+                printf("[Debug]%s is closed\n", $this->id);
+        }
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -90,7 +103,8 @@ class Table {
         // プリペアドステートメント、ステートメントクラスをテーブルステートメントへ変更
         /** @var TableStatement|false */
         $stmt = $this->db->prepare($query, [
-            DbBase::ATTR_STATEMENT_CLASS => [$this->statementClass, [$this->db]]
+            DbBase::ATTR_STATEMENT_CLASS =>
+                [$this->statementClass, [WeakReference::create($this->db)]]
         ]);
         if ($stmt === false) return false;
 
@@ -785,12 +799,17 @@ class Table {
 
         // テーブルID
         $tempTableId = $tempTableId ?? sprintf('$%s', $this->id);
-        if (array_key_exists($tempTableId, $this->tempTables))
-            return $this->tempTables[$tempTableId];
+
+        // 再利用
+        if (array_key_exists($tempTableId, $this->tempTableRefs)) {
+            $tempTable = $this->tempTableRefs[$tempTableId]->get();
+            if ($tempTable !== null)
+                return $tempTable;
+        }
 
         // インスタンスを生成、自身のクローンより
         $tempTable = clone $this;
-        $this->tempTables[$tempTableId] = $tempTable;
+        $this->tempTableRefs[$tempTableId] = WeakReference::create($tempTable);
         $tempTable->id = $tempTableId;
         $tempTable->isTemp = true;
         $tempTable->baseTable = $this;
@@ -937,7 +956,7 @@ class Table {
      * $this->items = new |class_name|();
      */
     protected function setInit() {
-        $this->tempTables = [];
+        $this->tempTableRefs = [];
         $this->isTemp = false;
         $this->queryPlanning = new QueryPlanning($this);
     }

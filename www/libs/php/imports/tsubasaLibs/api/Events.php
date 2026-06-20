@@ -30,6 +30,8 @@
 //                    デバッグモードを実装。
 // 0.90.03 2025/05/21 エラーハンドリングを整理。
 // 0.90.04 2025/05/24 コンストラクタでexitするとデストラクタが呼ばれないため、シャットダウン時処理で実行。
+// 0.90.05 2025/05/28 監視1回のループ当たりの待ち時間を設定できるように対応。
+//                    履歴用のDB接続をイベント用のDB接続と別に持つことができるように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
@@ -40,7 +42,7 @@ use Stringable;
  * APIイベントクラス
  * 
  * @since 0.09.00
- * @version 0.90.04
+ * @version 0.90.05
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -49,6 +51,8 @@ class Events {
     protected $now;
     /** @var database\DbBase|false DB */
     protected $db;
+    /** @var database\DbBase|false DB(履歴用) */
+    protected $dbForHistory;
     /** @var ?string[] 許可するホスト名リスト */
     protected $allowHosts;
     /** @var string リモートホスト名 */
@@ -88,6 +92,10 @@ class Events {
 
     // ---------------------------------------------------------------------------------------------
     // プロパティ(アクセス過多に対する制限)
+    /** @var int ループ1回当たりの待ち時間(マイクロ秒) */
+    protected $waitTimePerLoopForMonitoring;
+    /** @var int 最大待ち時間(マイクロ秒) */
+    protected $maxWaitTimeForMonitoring;
     /** @var int 最大同時処理数 */
     protected $maxNumberOfProcesses;
     /** @var int 同一ホストによるアクセスを監視する直近の時間幅(マイクロ秒) */
@@ -117,12 +125,8 @@ class Events {
         // 現在日時を取得
         $this->now = new type\TimeStamp();
 
-        // 設定
-        $this->isSentError = false;
-        $this->canceledMonitoring = false;
-        $this->setMonitorInfo();
-        $this->setRequestInfo();
-        $this->logFilePath = $this->getLogFilePath();
+        // 初期設定(起動時)
+        $this->setInitAtStartup();
 
         // ログファイルを開く
         if ($this->logFilePath !== null) {
@@ -144,6 +148,13 @@ class Events {
         $this->db->setExecutor();
         $this->db->executor->userId = 'api';
 
+        // DB接続(履歴用)
+        $this->dbForHistory = $this->getDbForHistory();
+        if ($this->dbForHistory !== $this->db) {
+            $this->dbForHistory->setExecutor();
+            $this->dbForHistory->executor->userId = 'api';
+        }
+
         // 実行開始時間を設定
         if (!$this->setExecuteStartTime())
             $this->error('Too many requests');
@@ -154,6 +165,10 @@ class Events {
         // 待機
         if (!$this->wait())
             $this->error('Too long wait-time');
+
+        // デバッグ
+        if ($this->isDebug)
+            $this->log('[Debug]Start a main process');
 
         // 初期設定
         $this->setInit();
@@ -166,9 +181,9 @@ class Events {
         $this->eventAfter();
 
         // 履歴を更新(完了)
-        $this->db->executor->time = (new type\TimeStamp())->toDateTime();
+        $this->dbForHistory->executor->time = (new type\TimeStamp())->toDateTime();
         $this->updateHistoryForEndTime();
-        $this->db->executor->time = $this->now->toDateTime();
+        $this->dbForHistory->executor->time = $this->now->toDateTime();
 
         // 処理数から除外
         $this->destroyProcessFile();
@@ -191,6 +206,10 @@ class Events {
         // DB
         if ($this->db !== null)
             $this->db->dispose();
+
+        // DB(履歴用)
+        if ($this->dbForHistory !== null)
+            $this->dbForHistory->dispose();
 
         // ログファイルを閉じる
         $this->closeFile($this->logFilePointer);
@@ -244,18 +263,33 @@ class Events {
     }
 
     /**
+     * 初期設定(起動時)
+     * 
+     * @since 0.90.05
+     */
+    protected function setInitAtStartup() {
+        $this->isSentError = false;
+        $this->canceledMonitoring = false;
+        $this->setMonitorInfo();
+        $this->setRequestInfo();
+        $this->logFilePath = $this->getLogFilePath();
+    }
+
+    /**
      * アクセス過多に対する制限情報を設定
      * 
      * @since 0.86.00
      */
     protected function setMonitorInfo() {
-        $this->maxNumberOfProcesses = 100;  // 同時に処理する数は100個まで
-        $this->monitorTimeSpan = 1000000;   // 直近1秒間のアクセスを監視
-        $this->maxNumberOfAccesses = 50;    // 監視期間内に許容するアクセス数は50個まで
-        $this->maxRetryTimes = 100;         // 実行開始を延期するリトライ回数は100回まで
-        $this->maxWaitTime = 30000000;      // 実行開始までの待ち時間は最大30秒間
-        $this->gcRateForMonitoring = 200;   // ガベージコレクション率は2%
-        $this->isDebug = false;             // デバッグモード
+        $this->waitTimePerLoopForMonitoring = 1000;     // 監視ループ1回あたり0.001秒
+        $this->maxWaitTimeForMonitoring = 30000000;     // 監視最大待ち時間30秒
+        $this->maxNumberOfProcesses = 100;              // 同時に処理する数は100個まで
+        $this->monitorTimeSpan = 1000000;               // 直近1秒間のアクセスを監視
+        $this->maxNumberOfAccesses = 50;                // 監視期間内に許容するアクセス数は50個まで
+        $this->maxRetryTimes = 100;                     // 実行開始を延期するリトライ回数は100回まで
+        $this->maxWaitTime = 30000000;                  // 実行開始までの待ち時間は最大30秒間
+        $this->gcRateForMonitoring = 200;               // ガベージコレクション率は2%
+        $this->isDebug = false;                         // デバッグモード
     }
 
     /**
@@ -383,10 +417,10 @@ class Events {
      * @return bool 結果
      */
     protected function checkNumberOfProcesses(): bool {
-        $onceWaitTime = 10000;                              // ループ1回当たりの待ち時間0.01秒
-        $maxWaitTime = 1800000000;                          // 最大待ち時間30分
+        $waitTimePerLoop = $this->waitTimePerLoopForMonitoring;
+        $maxWaitTime = $this->maxWaitTimeForMonitoring;
         $times = 0;                                         // 試行回数
-        $maxTimes = intdiv($maxWaitTime, $onceWaitTime);    // 最大試行回数
+        $maxTimes = intdiv($maxWaitTime, $waitTimePerLoop); // 最大試行回数
 
         // 保存するベースディレクトリパスを取得
         $baseDir = $this->getSaveDirPathForProcess();
@@ -406,7 +440,7 @@ class Events {
         if (!$this->prepareDirectory($idsDir)) return false;
 
         // プロセスIDを発行
-        $processId = $this->makeProcessId($idsDir, $onceWaitTime, $maxTimes, $times);
+        $processId = $this->makeProcessId($idsDir, $waitTimePerLoop, $maxTimes, $times);
         if ($processId === null) {
             $this->log('Could not generate a process-id', true);
             return false;
@@ -414,19 +448,19 @@ class Events {
 
         // 順番待ち
         if (!$this->waitMyTurnForProcess(
-            $childDir, $processId, $onceWaitTime, $maxTimes, $times)) {
+            $childDir, $processId, $waitTimePerLoop, $maxTimes, $times)) {
             $this->log('My turn didn\'t come', true);
             return false;
         }
 
         // 処理数が少なくなるまで待機
-        if (!$this->ajustNumberOfProcessing($childDir, $onceWaitTime, $maxTimes, $times)) {
+        if (!$this->ajustNumberOfProcessing($childDir, $waitTimePerLoop, $maxTimes, $times)) {
             $this->log('Too many processes', true);
             return false;
         }
 
         // API処理中ファイルを生成、ロック
-        if (!$this->lockProcessFile($childDir, $processId, $onceWaitTime, $maxTimes, $times)) {
+        if (!$this->lockProcessFile($childDir, $processId, $waitTimePerLoop, $maxTimes, $times)) {
             $this->log(sprintf('Could not lock a process-file: %s', $processId), true);
             return false;
         }
@@ -454,22 +488,38 @@ class Events {
     }
 
     /**
+     * スリープ処理
+     * 
+     * @since 0.90.05
+     * @param int $waitTimePerLoop 1回当たりの待機時間(マイクロ秒)
+     * @param float $startTime ループ内の開始時間
+     */
+    protected function sleepForProcess(int $waitTimePerLoop, float &$startTime) {
+        // 経過時間(マイクロ秒)
+        $elapsedTime = intval((microtime(true) - $startTime) * 1000000);
+
+        usleep(max($waitTimePerLoop - $elapsedTime, 1));
+        $startTime = microtime(true);
+    }
+
+    /**
      * プロセスIDを発行
      * 
      * @since 0.88.00
      * @param string $dir プロセスファイルのディレクトリパス
-     * @param int $onceWaitTime 1回当たりの待機時間(秒)
+     * @param int $waitTimePerLoop 1回当たりの待機時間(マイクロ秒)
      * @param int $maxTimes 最大試行回数
      * @param int $times 現在の試行回数
      * @return ?string プロセスID
      */
     protected function makeProcessId(
-        string $dir, int $onceWaitTime, int $maxTimes, int &$times
+        string $dir, int $waitTimePerLoop, int $maxTimes, int &$times
     ): ?string {
         $savedTimes = $times;
+        $startTime = microtime(true);
         while ($times++ < $maxTimes) {
             // 2回目以降は、待機
-            if ($times > $savedTimes + 1) usleep($onceWaitTime);
+            if ($times > $savedTimes + 1) $this->sleepForProcess($waitTimePerLoop, $startTime);
 
             // 発行
             $id = uniqid((new type\TimeStamp())->format('YmdHisu'), true);
@@ -520,18 +570,18 @@ class Events {
      * @since 0.88.00
      * @param string $dir プロセスファイルのディレクトリパス
      * @param string $id プロセスID
-     * @param int $onceWaitTime 1回当たりの待機時間(秒)
+     * @param int $waitTimePerLoop 1回当たりの待機時間(マイクロ秒)
      * @param int $maxTimes 最大試行回数
      * @param int $times 現在の試行回数
      * @return bool 成否
      */
     protected function waitMyTurnForProcess(
-        string $dir, string $id, int $onceWaitTime, int $maxTimes, int &$times
+        string $dir, string $id, int $waitTimePerLoop, int $maxTimes, int &$times
     ): bool {
         // 順番待ちファイルを生成し、排他ロック
         $path = sprintf('%s/wait_%s', $dir, $id);
         $filePointer = $this->repeatOpenFileWithLock(
-            $path, 'w', LOCK_EX, $onceWaitTime, $maxTimes, $times);
+            $path, 'w', LOCK_EX, $waitTimePerLoop, $maxTimes, $times);
         if (!$filePointer) return false;
         $this->waitFilePointer = $filePointer;
 
@@ -549,7 +599,8 @@ class Events {
 
         // 先頭が自身になるまでループ
         $savedTimes = $times;
-        $perTimes = intdiv(60000000, $onceWaitTime);    // 1分間あたりの回数
+        $perTimes = intdiv(60000000, $waitTimePerLoop);     // 1分間あたりの回数
+        $startTime = microtime(true);
         while ($times++ < $maxTimes and count($paths) > 0 and $path !== $paths[0]) {
             // デバッグ
             if ($this->isDebug and ($times - $savedTimes) % $perTimes === 1) {
@@ -565,7 +616,7 @@ class Events {
                     $this->destroyNoXLockFile($_path);
 
             // 待機
-            usleep($onceWaitTime);
+            $this->sleepForProcess($waitTimePerLoop, $startTime);
 
             // 再取得
             $paths = glob(sprintf('%s/wait_*', $dir));
@@ -591,13 +642,13 @@ class Events {
      * 
      * @since 0.88.00
      * @param string $dir プロセスファイルのディレクトリパス
-     * @param int $onceWaitTime 1回当たりの待機時間(秒)
+     * @param int $waitTimePerLoop 1回当たりの待機時間(マイクロ秒)
      * @param int $maxTimes 最大試行回数
      * @param int $times 現在の試行回数
      * @return bool 成否
      */
     protected function ajustNumberOfProcessing(
-        string $dir, int $onceWaitTime, int $maxTimes, int &$times
+        string $dir, int $waitTimePerLoop, int $maxTimes, int &$times
     ): bool {
         // プロセス一覧を取得
         $paths = glob(sprintf('%s/process_*', $dir));
@@ -608,7 +659,8 @@ class Events {
 
         // プロセス数が少なくなるまでループ
         $savedTimes = $times;
-        $perTimes = intdiv(60000000, $onceWaitTime);    // 1分間あたりの回数
+        $perTimes = intdiv(60000000, $waitTimePerLoop);     // 1分間あたりの回数
+        $startTime = microtime(true);
         while ($times++ < $maxTimes and count($paths) >= $this->maxNumberOfProcesses) {
             // 万一ロックされていないファイルがあれば、削除
             clearstatcache();
@@ -616,7 +668,7 @@ class Events {
                 $this->destroyNoXLockFile($path);
 
             // 待機(1分間に1回通知)
-            usleep($onceWaitTime);
+            $this->sleepForProcess($waitTimePerLoop, $startTime);
             if ((($times - $savedTimes) % $perTimes) == 1)
                 $this->log(sprintf('Number of processes: %s ...', number_format(count($paths))));
 
@@ -644,17 +696,17 @@ class Events {
      * @since 0.88.00
      * @param string $dir プロセスファイルのディレクトリパス
      * @param string $id プロセスID
-     * @param int $onceWaitTime 1回当たりの待機時間(秒)
+     * @param int $waitTimePerLoop 1回当たりの待機時間(マイクロ秒)
      * @param int $maxTimes 最大試行回数
      * @param int $times 現在の試行回数
      * @return bool 成否
      */
     protected function lockProcessFile(
-        string $dir, string $id, int $onceWaitTime, int $maxTimes, int &$times
+        string $dir, string $id, int $waitTimePerLoop, int $maxTimes, int &$times
     ): bool {
         $path = sprintf('%s/process_%s', $dir, $id);
         $filePointer = $this->repeatOpenFileWithLock(
-            $path, 'w', LOCK_EX, $onceWaitTime, $maxTimes, $times);
+            $path, 'w', LOCK_EX, $waitTimePerLoop, $maxTimes, $times);
         if (!$filePointer) return false;
         $this->processFilePointer = $filePointer;
 
@@ -768,7 +820,7 @@ class Events {
      * @param string $path ファイルパス
      * @param string $openMode 開くモード
      * @param int $lockMode ロックモード
-     * @param int $onceWaitTime 1回当たりの待機時間(秒)
+     * @param int $waitTimePerLoop 1回当たりの待機時間(マイクロ秒)
      * @param int $maxTimes 最大試行回数
      * @param int $times 現在の試行回数
      * @param bool $isLogged ログを取るかどうか
@@ -776,13 +828,14 @@ class Events {
      */
     protected function repeatOpenFileWithLock(
         string $path, string $openMode, int $lockMode,
-        int $onceWaitTime, int $maxTimes, int &$times, bool $isLogged = true
+        int $waitTimePerLoop, int $maxTimes, int &$times, bool $isLogged = true
     ): mixed {
         // ループ
         $filePointer = false;
+        $startTime = microtime(true);
         while ($times++ < $maxTimes and !$filePointer)
             if (!$filePointer = $this->openFileWithLock($path, $openMode, $lockMode, false))
-                usleep($onceWaitTime);
+                $this->sleepForProcess($waitTimePerLoop, $startTime);
 
         // 失敗時
         if (!$filePointer and $isLogged)
@@ -923,6 +976,16 @@ class Events {
     }
 
     /**
+     * DBを取得(履歴用)
+     * 
+     * @since 0.90.05
+     * @return database\DbBase|false DB
+     */
+    protected function getDbForHistory(): database\DbBase|false {
+        return $this->getDb();
+    }
+
+    /**
      * 実行開始日時を設定
      * 
      * @since 0.86.00
@@ -991,8 +1054,8 @@ class Events {
      * @return bool 成否
      */
     protected function wait(): bool {
-        $onceWaitTime = 10000;  // ループ1回当たりの待ち時間0.01秒
-        $maxTimes = intdiv($this->maxWaitTime, $onceWaitTime);
+        $waitTimePerLoop = 1000;   // ループ1回当たりの待ち時間0.001秒
+        $maxTimes = intdiv($this->maxWaitTime, $waitTimePerLoop);
 
         // 実行者情報を一時保存
         $executor = $this->db->executor;
@@ -1000,6 +1063,7 @@ class Events {
         // 開始日時まで待機
         $now = new type\TimeStamp();
         $times = 0;
+        $startTime = microtime(true);
         while ($times++ < $maxTimes and $now->compare($this->executeStartTime) < 0) {
             // DB接続を一時的に切る
             if ($this->db !== null) {
@@ -1008,7 +1072,7 @@ class Events {
             }
 
             // 待機
-            usleep($onceWaitTime);
+            $this->sleepForProcess($waitTimePerLoop, $startTime);
             $now = new type\TimeStamp();
         }
 

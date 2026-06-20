@@ -5,15 +5,17 @@
 // History:
 // 0.87.00 2025/04/05 作成。
 // 0.87.02 2025/04/08 リファレンスの更新を自動化。
+// 0.87.04 2025/04/24 メソッドが動的から静的に変わった分を対応。
+//                    引き継ぎ先へ切り替える時の存在チェックの方法を変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
-use DateTime, DateInterval;
+use tsubasaLibs\type;
 
 /**
  * セッション引き継ぎ先クラス
  * 
  * @since 0.87.00
- * @version 0.87.02
+ * @version 0.87.04
  */
 class SessionHandOver {
     // ---------------------------------------------------------------------------------------------
@@ -29,8 +31,13 @@ class SessionHandOver {
     protected $refference;
     /** @var ?string 引き継ぎ先のセッションID */
     protected $sessionId;
-    /** @var ?DateTime 引き継ぎ有効期限 */
+    /** @var ?type\TimeStamp 引き継ぎ有効期限 */
     protected $limitTime;
+    /** @var bool 引き継ぎ中かどうか */
+    public $isWorking;
+
+    // ---------------------------------------------------------------------------------------------
+    // プロパティ(設定)
     /** @var int 引き継ぎ可能な時間(マイクロ秒) */
     protected $limitTimeMicroSecond;
 
@@ -49,10 +56,13 @@ class SessionHandOver {
     public function setRefference() {
         if (!isset($_SESSION[static::ID])) $_SESSION[static::ID] = [];
         foreach ([
-            'sessionId', 'limitTime'
+            'sessionId', 'limitTime', 'isWorking'
         ] as $key)
             if (!isset($_SESSION[static::ID][$key]))
-                $_SESSION[static::ID][$key] = null;
+                $_SESSION[static::ID][$key] = match ($key) {
+                    'isWorking' =>  false,
+                    default     =>  null
+                };
 
         $this->refference =& $_SESSION[static::ID];
         $this->setInfoFromRefference();
@@ -73,49 +83,87 @@ class SessionHandOver {
      * @return bool 成否
      */
     public function switch(): bool {
-        $now = $this->getNow();
+        $now = new type\TimeStamp();
 
         // 有効期限切れ
-        if ($this->limitTime !== null and $now > $this->limitTime) {
-            // セッションIDを変更し、追放
-            $this->session->regenerateId();
-            $this->session->destroy();
-            throw new WebException('The session has expired');
-        }
+        if ($this->limitTime !== null and $now->compare($this->limitTime) > 0)
+            $this->session->abortProgramWithDestroy('The session has expired');
 
         // 不正
-        if ($this->limitTime !== null and $this->sessionId === null) {
-            // セッションを破棄し、追放
-            $this->session->destroy();
-            throw new WebException('The session is invalid');
-        }
+        if ($this->limitTime !== null and $this->sessionId === null)
+            $this->session->abortProgramWithDestroy('The session is invalid');
 
         // 切り替え先のセッションIDが未設定の場合は、失敗
-        if ($this->sessionId === null)
+        if ($this->sessionId === null) {
+            trigger_error('Session-id is empty value', E_USER_WARNING);
             return false;
+        }
+
+        // 切り替え先のセッションが存在するかどうか
+        if (!Session::sessionExists($this->sessionId)) {
+            trigger_error(sprintf('Session file is not found: %s', $this->sessionId), E_USER_WARNING);
+            return false;
+        }
 
         // 現在のセッションID
-        $sessionId = $this->session->id();
-        if (!$sessionId) return false;
+        $sessionId = $this->session->sessionId;
+        if (!$sessionId) {
+            trigger_error('Current session is not started', E_USER_WARNING);
+            return false;
+        }
+
+        // 保存前のセッション値
+        $savedData = $_SESSION;
+        if (!$this->session->reset()) {
+            trigger_error('Could not get value before change', E_USER_WARNING);
+            return false;
+        }
+        $savedDataBefore = $_SESSION;
+        $this->session->setSession($savedData);
 
         // 現在のセッションを保存し、終了
-        $this->session->writeClose();
+        if (!$this->session->writeClose()) {
+            trigger_error('Could not save a current value', E_USER_WARNING);
+            return false;
+        }
 
         // セッションIDを変更
-        $this->session->id($this->sessionId);
+        if (!Session::id($this->sessionId)) {
+            trigger_error('Could not change a session-id', E_USER_WARNING);
+            if (!Session::id($sessionId) or
+                !$this->session->start(true))
+                $this->session->abortProgramWithDestroy('Failed to recover a session');
+            $this->session->setSession($savedDataBefore);
+            if (!$this->session->writeClose() or
+                !$this->session->start(true))
+                $this->session->abortProgramWithDestroy('Failed to recover a session');
+            $this->session->setSession($savedData);
+            return false;
+        }
 
         // 開始
-        $isStart = $this->session->start(true);
+        $times = 0;
+        while ($times++ < 1000 and $isStarted = $this->session->start(true)) {
+            // 処理中でなければ、続行
+            if (!$this->isWorking) break;
 
-        // 失敗していたら、破棄して戻す
-        if ($isStart and $this->session->checkNew()) {
-            $this->session->destroy();
-            $isStart = false;
+            // 終わるまで待機
+            $isStarted = false;
+            if (!$this->session->abort()) break;
+            usleep(1000);
         }
-        if (!$isStart) {
-            $this->session->id($sessionId);
-            if (!$this->session->start(true))
-                throw new WebException('Failed to switch session');
+        if (!$isStarted) {
+            trigger_error(
+                sprintf('Could not start a next session: %s', $this->sessionId),
+                E_USER_WARNING);
+            if (!Session::id($sessionId) or
+                !$this->session->start(true))
+                $this->session->abortProgramWithDestroy('Failed to recover a session');
+            $this->session->setSession($savedDataBefore);
+            if (!$this->session->writeClose() or
+                !$this->session->start(true))
+                $this->session->abortProgramWithDestroy('Failed to recover a session');
+            $this->session->setSession($savedData);
             return false;
         }
 
@@ -128,10 +176,21 @@ class SessionHandOver {
      * @return bool 成否
      */
     public function switchToLast(): bool {
+        // 現在のセッションID
+        $sessionId = $this->session->sessionId;
+
         $times = 0;
         while ($times++ < 100 and ($this->sessionId !== null or $this->limitTime !== null))
             if (!$this->switch())
+                if ($this->session->sessionId === $sessionId)
+                    return false;
+                else
+                    $this->session->abortProgramWithDestroy('Failed to switch a session');
+        if ($this->sessionId !== null or $this->limitTime !== null)
+            if ($this->session->sessionId === $sessionId)
                 return false;
+            else
+                $this->session->abortProgramWithDestroy('Too many switching times');
 
         return true;
     }
@@ -143,40 +202,57 @@ class SessionHandOver {
      */
     public function regenerateId(): bool {
         // セッションを開始していなければ、失敗
-        if (!$this->session->statusIsActive()) return false;
+        if (!Session::statusIsActive()) {
+            trigger_error('Not active', E_USER_WARNING);
+            return false;
+        }
 
         // 引き継ぎ先が既にあれば、失敗
-        if ($this->sessionId !== null) return false;
+        if ($this->sessionId !== null) {
+            trigger_error('Already regenerated', E_USER_WARNING);
+            return false;
+        }
 
         // 現在のセッションIDを保持
-        $sessionId = $this->session->id();
+        $sessionId = $this->session->sessionId;
+
+        // 引き継ぎ処理を開始
+        $this->setIsWorking(true);
 
         // 引き継ぎ
-        $this->session->regenerateId();
+        if (!$this->session->regenerateId()) {
+            trigger_error('Could not regenerate a session-id');
+            $this->setIsWorking(false);
+            return false;
+        }
 
         // 新規のセッションIDを保持
-        $newSessionId = $this->session->id();
+        $newSessionId = $this->session->sessionId;
 
         // 保存し、元のセッションへ戻る
-        $this->session->writeClose();
-        $this->session->id($sessionId);
-        $this->session->start(true);
+        if (!$this->session->writeClose() or
+            !Session::id($sessionId) or
+            !$this->session->start(true))
+            $this->session->abortProgramWithDestroy('Failed to hand over a session');
 
         // 引き継ぎ先を設定、他を削除
         $this->setSessionId($newSessionId);
-        $now = $this->getNow();
-        $this->setLimitTime($now->setTime(
-            (int)$now->format('H'), (int)$now->format('i'), (int)$now->format('s'),
-            (int)$now->format('u') + $this->limitTimeMicroSecond
-        ));
+        $this->setLimitTime((new type\TimeStamp())->addMicroseconds($this->limitTimeMicroSecond));
         foreach (array_keys($_SESSION) as $key)
             if ($key !== static::ID)
                 unset($_SESSION[$key]);
 
+        // 元のセッションは、引き継ぎ処理を終了
+        $this->setIsWorking(false);
+
         // 保存し、新規のセッションへ戻る
-        $this->session->writeClose();
-        $this->session->id($newSessionId);
-        $this->session->start(true);
+        if (!$this->session->writeClose() or
+            !Session::id($newSessionId) or
+            !$this->session->start(true))
+            $this->session->abortProgramWithDestroy('Failed to hand over a session');
+
+        // 新規のセッションも、引き継ぎ処理を終了
+        $this->setIsWorking(false);
 
         return true;
     }
@@ -195,8 +271,10 @@ class SessionHandOver {
      * セッションより情報設定
      */
     protected function setInfoFromRefference() {
-        $this->sessionId = $this->refference['sessionId'];
-        $this->limitTime = $this->getTimeFromString($this->refference['limitTime']);
+        $this->sessionId = $this->refference['sessionId'] ?? null;
+        $this->limitTime = type\TimeStamp::checkTimeStamp($this->refference['limitTime'] ?? null) ?
+            new type\TimeStamp($this->refference['limitTime']) : null;
+        $this->isWorking = (bool)($this->refference['isWorking'] ?? null);
     }
 
     /**
@@ -212,34 +290,21 @@ class SessionHandOver {
     /**
      * 有効期限を変更
      * 
-     * @param ?DateTime $limitTime 有効期限
+     * @param ?type\TimeStamp $limitTime 有効期限
      */
-    protected function setLimitTime(?DateTime $limitTime) {
+    protected function setLimitTime(?type\TimeStamp $limitTime) {
         $this->limitTime = $limitTime;
         $this->refference['limitTime'] = $limitTime?->format('Y/m/d H:i:s.u');
     }
 
     /**
-     * 現在日時を取得
+     * 引き継ぎ中かどうかを変更
      * 
-     * @return ?DateTime
+     * @since 0.87.04
+     * @param bool $isWorking 引き継ぎ中かどうか
      */
-    protected function getNow(): ?DateTime {
-        $mtimeArr = explode(' ', microtime());
-        $timeString = sprintf('%s%s',
-            date('Y/m/d H:i:s', (int)$mtimeArr[1]),
-            substr($mtimeArr[0], 1));
-        return $this->getTimeFromString($timeString);
-    }
-
-    /**
-     * 日時変換(文字列型→日時型)
-     * 
-     * @param ?string $timeString
-     * @return ?DateTime
-     */
-    protected function getTimeFromString(?string $timeString): ?DateTime {
-        if ($timeString === null) return null;
-        return new DateTime($timeString);
+    protected function setIsWorking(bool $isWorking) {
+        $this->isWorking = $isWorking;
+        $this->refference['isWorking'] = $isWorking;
     }
 }

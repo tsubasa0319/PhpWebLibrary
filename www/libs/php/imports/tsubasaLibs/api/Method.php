@@ -8,6 +8,7 @@
 // 0.30.00 2024/08/03 Curlに失敗した時の通知精度を強化。
 // 0.45.00 2024/10/17 キャッシュに対応。
 // 0.47.01 2024/10/19 2回目の実行時、1回目のパラメータを再度実行してしまうため修正。
+// 0.51.00 2024/11/13 検索速度を上げるため、キャッシュの持ち方を変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\web;
@@ -16,7 +17,7 @@ use tsubasaLibs\web;
  * APIメソッドクラス
  * 
  * @since 0.12.00
- * @version 0.47.01
+ * @version 0.51.00
  */
 class Method {
     // ---------------------------------------------------------------------------------------------
@@ -36,10 +37,12 @@ class Method {
     protected $webRoot;
     /** @var bool キャッシュを取るかどうか */
     protected $isCaching;
-    /** @var string[] キャッシュキー */
+    /** @var array<string, int> キャッシュキー */
     protected $cacheKeys;
     /** @var array キャッシュデータ */
     protected $cacheDatas;
+    /** @var int キャッシュ数(削除済を含む) */
+    protected $indexCount;
 
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
@@ -113,11 +116,11 @@ class Method {
         $cacheKey = $this->getCacheKey($key);
 
         // 検索
-        $index = array_search($cacheKey, $this->cacheKeys, true);
+        $index = $this->cacheKeys[$cacheKey] ?? false;
         if ($index === false) return;
 
         // 削除
-        unset($this->cacheKeys[$index]);
+        unset($this->cacheKeys[$cacheKey]);
         unset($this->cacheDatas[$index]);
     }
 
@@ -130,6 +133,7 @@ class Method {
         $this->isCaching = true;
         $this->cacheKeys = [];
         $this->cacheDatas = [];
+        $this->indexCount = 0;
         $this->clearParams();
     }
 
@@ -206,11 +210,11 @@ class Method {
         $cacheKey = $this->getCacheKey($key);
 
         // 存在チェック
-        if (in_array($cacheKey, $this->cacheKeys, true))
+        if (isset($this->cacheKeys[$cacheKey]))
             return;
 
         // 登録
-        $this->cacheKeys[] = $cacheKey;
+        $this->cacheKeys[$cacheKey] = $this->indexCount++;
         $this->cacheDatas[] = $data;
     }
 
@@ -227,7 +231,7 @@ class Method {
         $cacheKey = $this->getCacheKey($key);
 
         // 検索
-        $index = array_search($cacheKey, $this->cacheKeys, true);
+        $index = $this->cacheKeys[$cacheKey] ?? false;
         if ($index === false) return null;
 
         return $this->cacheDatas[$index];

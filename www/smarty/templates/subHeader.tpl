@@ -5,6 +5,8 @@
    0.20.00 2024/04/23 作成。
    0.33.00 2024/08/27 ライブラリ名を訂正。直接に個人ライブラリ名を使用しないように変更。
    0.57.00 2024/12/11 フォームのエンコードタイプを指定できるように対応。
+   0.70.00 2025/01/16 画面描画が完了するまで、カーソルアイコンを変更。
+                      FirefoxのFOUC対策。
 ------------------------------------------------------------------------------------------------- *}
 <!DOCTYPE html>
 <html lang="ja">
@@ -12,11 +14,17 @@
         <meta charset="utf-8">
         <title>{$general.title}</title>
         <link rel="stylesheet" href="{$general.css}">
+        <script>/* To prevent FOUC in Firefox*/</script>
         <script type="module" src="/js/libs/webLoader.js"></script>
         <script type="module" src="/js/subScreen/webLoader.js"></script>
-        <script defer src="{$general.js}"></script>
+        {if $general.js !== ''}<script defer src="{$general.js}"></script>{/if}
     </head>
-    <body onload="libs.frame.body_load(event);" onkeydown="return libs.frame.body_keydown(event);">
+    <body
+        class="wait"
+        onload="libs.frame.body_load(event);"
+        onpagehide="libs.frame.body_pagehide(event);"
+        onkeydown="return libs.frame.body_keydown(event);"
+    >
         <form method="post" {attributes items=[
                 'enctype' => $formEnctype|default:false
             ]} onsubmit="libs.frame.form_submit(event);">

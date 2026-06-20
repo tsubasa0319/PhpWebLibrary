@@ -32,6 +32,7 @@
 .area.general.label-underline > div > div.label:not(:first-child) {
     margin-left: 10px;
 }
+
 /* 背景ラベル */
 .area.general.label-background > div > div.label {
     margin-top: 2px;

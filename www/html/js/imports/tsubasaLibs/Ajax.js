@@ -5,13 +5,14 @@
 // 0.05.00 2024/02/20 作成。
 // 0.54.00 2024/11/22 送信パラメータの生成に失敗していたので修正。
 // 0.59.00 2024/12/14 コンソールにエラー出力時、スタックトレースを出力するように対応。
+// 0.70.00 2025/01/16 実行中のカーソルアイコンを変更。
 // -------------------------------------------------------------------------------------------------
 
 /**
  * Ajaxクラス
  * 
  * @since 0.05.00
- * @version 0.59.00
+ * @version 0.70.00
  */
 export default class Ajax {
     // ---------------------------------------------------------------------------------------------
@@ -48,6 +49,11 @@ export default class Ajax {
     #reciever;
     /** @type {((request: XMLHttpRequest) => void)|null} 失敗時受取関数 */
     #errorHandler;
+
+    // ---------------------------------------------------------------------------------------------
+    // プロパティ(静的)
+    /** @type {XMLHttpRequest[]|null} 実行中のリクエストリスト */
+    static #requests;
 
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ
@@ -177,6 +183,47 @@ export default class Ajax {
     }
 
     // ---------------------------------------------------------------------------------------------
+    // メソッド(静的)
+    /**
+     * リクエストリストへ追加
+     * 
+     * @since 0.70.00
+     * @param {XMLHttpRequest} request XMLHttpリクエスト
+     */
+    static addRequest(request) {
+        // 初期化
+        if (this.#requests === undefined) this.#requests = [];
+
+        // 追加
+        this.#requests.push(request);
+
+        // Web処理の場合、カーソルを変更
+        if (document !== undefined && document.body !== undefined)
+            document.body.classList.add('progress');
+    }
+
+    /**
+     * リクエストリストをチェック
+     * 
+     * @since 0.70.00
+     */
+    static checkRequests() {
+        if (this.#requests === undefined) return;
+
+        // 完了したリクエストを除去
+        for (let i = 0; i < this.#requests.length; i++) {
+            const request = this.#requests[i];
+            if (request.readyState === request.DONE)
+                this.#requests.splice(i, 1);
+        }
+
+        // Web処理かつ全て完了の場合、カーソルを変更
+        if (document !== undefined && document.body !== undefined)
+            if (this.#requests.length == 0)
+            document.body.classList.remove('progress');
+    }
+
+    // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
      * GETメソッド送信
@@ -194,6 +241,7 @@ export default class Ajax {
         if (request.responseType !== null)
             request.responseType = this.#responseType;
         request.send(null);
+        self.addRequest(request);
     }
 
     /**
@@ -210,6 +258,7 @@ export default class Ajax {
         if (request.responseType !== null)
             request.responseType = this.#responseType;
         request.send(this.#makeParam());
+        self.addRequest(request);
     }
 
     /**
@@ -246,6 +295,7 @@ export default class Ajax {
                     console.trace();
                 }
             }
+            self.checkRequests();
         }
     }
 }

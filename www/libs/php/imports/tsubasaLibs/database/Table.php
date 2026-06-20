@@ -28,6 +28,7 @@
 // 0.48.00 2024/10/24 WHERE句を短くした時に不具合が発生したので対処。構造を見直して整理。
 // 0.48.01 2024/10/24 Null値へ更新する処理を修正。
 // 0.53.00 2024/11/21 SQLステートメントを生成(SET句)にて、日時の実行者項目に対してパラメータ指定するように修正。
+// 0.56.00 2024/12/10 SELECTの並び順を逆にできるように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -44,7 +45,7 @@ use Stringable;
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.53.00
+ * @version 0.56.00
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -63,6 +64,8 @@ class Table {
     protected $indexKey;
     /** @var Indexes インデックスリスト */
     public $indexes;
+    /** @var bool 逆順かどうか */
+    protected $isReversedOrder;
     /** @var array<string, static> 生成済テンポラリテーブルのリスト */
     protected $tempTables;
     /** @var bool テンポラリテーブルかどうか */
@@ -874,6 +877,17 @@ class Table {
     }
 
     /**
+     * 1回のみ、SELECTの並び順を逆にする
+     * 
+     * @since 0.56.00
+     * @return static チェーン用
+     */
+    public function reverseOrder(): static {
+        $this->isReversedOrder = !$this->isReversedOrder;
+        return $this;
+    }
+
+    /**
      * テンポラリテーブルを作成
      * 
      * 現段階では、MySQLにのみ対応しています。
@@ -1077,6 +1091,7 @@ class Table {
      * $this->items = new |class_name|();
      */
     protected function setInit() {
+        $this->isReversedOrder = false;
         $this->tempTables = [];
         $this->isTemp = false;
         $this->queryPlanning = new QueryPlanning($this);
@@ -2812,11 +2827,14 @@ class Table {
         $orderItemIds = [];
         foreach ($keyItems as $keyItem) {
             $sqlId = $this->getIdForSql($keyItem->item->id);
+            $isAscend = $keyItem->isAscend;
+            if ($this->isReversedOrder) $isAscend = !$isAscend;
             $orderItemIds[] = sprintf('%s%s',
                 $sqlId,
-                $keyItem->isAscend ? '' : ' desc'
+                $isAscend ? '' : ' desc'
             );
         }
+        $this->isReversedOrder = false;
         return implode(', ', $orderItemIds);
     }
 

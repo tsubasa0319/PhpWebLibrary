@@ -6,17 +6,19 @@
 // 0.00.00 2024/01/23 作成。
 // 0.03.00 2024/02/07 画面単位セッションを追加。
 // 0.87.00 2025/04/05 常にセッションIDを取り直すことができるように対応。
+// 0.87.02 2025/04/08 安全性確保処理を追加。リファレンスの更新を自動化。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/SessionHandOver.php';
 require_once __DIR__ . '/SessionUser.php';
 require_once __DIR__ . '/SessionUnit.php';
+require_once __DIR__ . '/SessionSecure.php';
 
 /**
  * セッションクラス
  * 
  * @since 0.00.00
- * @version 0.87.00
+ * @version 0.87.02
  */
 class Session {
     // ---------------------------------------------------------------------------------------------
@@ -27,6 +29,8 @@ class Session {
     public $user;
     /** @var SessionUnit 画面単位セッション */
     public $unit;
+    /** @var SessionSecure 安全性確保処理 */
+    public $secure;
     /** @var ?bool 保存された厳格モードの使用(変更時のみ) */
     protected $savedUseStrictMode;
 
@@ -48,17 +52,10 @@ class Session {
         $isNew = $this->checkNew();
 
         // 引き継ぎされていれば、最新へ変更
-        $this->handOver = $this->getHandOver();
         $this->handOver->switchToLast();
 
         // セッションハイジャック対策
-        // 既存セッションであれば、新規セッションを発行し、引き継ぎ
-        if ($this->isRegeneratingAlways and !$isNew)
-            $this->handOver->regenerateId();
-
-        // ログインユーザ情報、画面単位セッション情報
-        $this->user = $this->getUser();
-        $this->unit = $this->getUnit();
+        if (!$isNew) $this->secure->execute();
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -139,6 +136,9 @@ class Session {
         if ($isForce) $this->setIniUseStrictMode(false);
         $isStart = session_start();
 
+        // リファレンスを更新
+        if ($isStart) $this->setRefference();
+
         return $isStart;
     }
 
@@ -162,7 +162,12 @@ class Session {
      * @return bool 成否
      */
     public function regenerateId(): bool {
-        return session_regenerate_id();
+        $isRegenerate = session_regenerate_id();
+
+        // リファレンスを更新
+        if ($isRegenerate) $this->setRefference();
+
+        return $isRegenerate;
     }
 
     /**
@@ -199,6 +204,21 @@ class Session {
     }
 
     /**
+     * 全てのセッション値を削除
+     * 
+     * @since 0.87.01
+     * @return bool 成否
+     */
+    public function unset(): bool {
+        $isUnset = session_unset();
+
+        // リファレンスを更新
+        $this->setRefference();
+
+        return $isUnset;
+    }
+
+    /**
      * セッションを破棄
      * 
      * @since 0.87.00
@@ -215,6 +235,18 @@ class Session {
 
     // ---------------------------------------------------------------------------------------------
     // メソッド(追加)
+    /**
+     * セッション情報のリファレンスを設定
+     * 
+     * @since 0.87.02
+     */
+    public function setRefference() {
+        $this->handOver->setRefference();
+        $this->user->setRefference();
+        $this->unit->setRefference();
+        $this->secure->setRefference();
+    }
+
     /**
      * セッションをまだ開始していないかどうか
      * 
@@ -307,40 +339,51 @@ class Session {
      * @since 0.87.00
      */
     protected function setInit() {
-        $this->handOver = null;
-        $this->user = null;
-        $this->unit = null;
+        $this->handOver = $this->makeSessionHandOver();
+        $this->user = $this->makeSessionUser();
+        $this->unit = $this->makeSessionUnit();
+        $this->secure = $this->makeSessionSecure();
         $this->savedUseStrictMode = null;
         $this->isRegeneratingAlways = false;
     }
 
     /**
-     * 引き継ぎ先情報取得
+     * 引き継ぎ先情報を生成
      * 
      * @since 0.87.00
      * @return SessionHandOver セッション引き継ぎ先
      */
-    protected function getHandOver(): SessionHandOver {
+    protected function makeSessionHandOver(): SessionHandOver {
         return new SessionHandOver($this);
     }
 
     /**
-     * ユーザ情報取得
+     * ユーザ情報を生成
      * 
      * @return SessionUser ログインユーザ
      */
-    protected function getUser(): SessionUser {
-        return new SessionUser();
+    protected function makeSessionUser(): SessionUser {
+        return new SessionUser($this);
     }
 
     /**
-     * 画面単位セッションを取得
+     * 画面単位セッションを生成
      * 
      * @since 0.03.00
      * @return SessionUnit 画面単位セッション
      */
-    protected function getUnit(): SessionUnit {
-        return new SessionUnit();
+    protected function makeSessionUnit(): SessionUnit {
+        return new SessionUnit($this);
+    }
+
+    /**
+     * 安全性確保処理を生成
+     * 
+     * @since 0.87.02
+     * @return SessionSecure 安全性確保処理
+     */
+    protected function makeSessionSecure(): SessionSecure {
+        return new SessionSecure($this);
     }
 
     /**

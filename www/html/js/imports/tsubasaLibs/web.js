@@ -27,6 +27,7 @@
 //                    コードから名称取得をFirefoxに対応。
 // 0.71.01 2025/01/21 Firefoxかどうか判定するメソッドの名前空間を訂正。
 // 0.79.00 2025/03/05 Spaceキーによるアンカークリック処理を追加。
+// 0.80.00 2025/03/06 頁を遷移するボタンが複数あった時、階層が一番近いものを選択するように変更。
 // -------------------------------------------------------------------------------------------------
 import forArray from "./forArray.js";
 import checker from "./checker.js";
@@ -36,7 +37,7 @@ import Ajax from "./Ajax.js";
  * Web処理
  * 
  * @since 0.05.00
- * @version 0.79.00
+ * @version 0.80.00
  */
 const web = {
     // ---------------------------------------------------------------------------------------------
@@ -284,7 +285,7 @@ const web = {
         elmHidden.type = 'hidden';
         elmHidden.name = element.name;
         elmHidden.value = value;
-        element.parentNode.insertBefore(elmHidden, element.nextElementSibling);
+        element.parentElement.insertBefore(elmHidden, element.nextElementSibling);
     },
 
     /**
@@ -726,27 +727,36 @@ const web = {
         // 変換中は、元のイベントを続行
         if (event.isComposing) return true;
 
-        if (Array.from(document.querySelectorAll(
-            event.code === 'PageUp' ? '[name="nextPageButtonName"]' : '[name="prevPageButtonName"]'
-        )).some(elmName => {
-            if (!(elmName instanceof HTMLInputElement)) return false;
+        // 対象ボタンのName値を持ったエレメントを取得
+        const condition = event.code === 'PageUp' ?
+            '[name="nextPageButtonName[]"]' : '[name="prevPageButtonName[]"]';
+        let elmBlock = event.target instanceof HTMLElement ? event.target : document.body;
+        for (let times = 0; times < 100; times++) {
+            if (!(elmBlock instanceof HTMLElement)) break;
 
-            // 対象ボタンを取得
-            const elmButtons = document.getElementsByName(elmName.value);
-            if (elmButtons.length == 0) return false;
-            const elmButton = elmButtons[0];
-            if (!(elmButton instanceof HTMLInputElement) &&
-                !(elmButton instanceof HTMLButtonElement))
+            if (Array.from(elmBlock.querySelectorAll(condition)).some(elmName => {
+                if (!(elmName instanceof HTMLInputElement)) return false;
+
+                // 対象ボタンを取得
+                const elmButtons = document.getElementsByName(elmName.value);
+                if (elmButtons.length == 0) return false;
+                const elmButton = elmButtons[0];
+                if (!(elmButton instanceof HTMLInputElement) &&
+                    !(elmButton instanceof HTMLButtonElement))
+                    return false;
+                if (!['button', 'submit'].includes(elmButton.type)) return false;
+
+                // クリックできるかどうか
+                if (window.getComputedStyle(elmButton).disabled) return true;
+
+                elmButton.click();
+                return true;
+            }))
+                // クリックしていたら、イベントはここで中断
                 return false;
-            if (!['button', 'submit'].includes(elmButton.type)) return false;
 
-            // クリックできるかどうか
-            if (window.getComputedStyle(elmButton).disabled) return false;
-
-            elmButton.click();
-            return true;
-        }))
-            return false;
+            elmBlock = elmBlock.parentElement;
+        }
 
         return true;
     },

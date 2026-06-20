@@ -11,7 +11,8 @@
 // 0.22.00 2024/05/17 登録完了/変更完了/削除完了のメッセージを追加。
 // 0.25.00 2024/05/21 HTTPリクエストエラーのメッセージを追加。
 // 0.26.01 2024/06/22 データ出力開始のメッセージを追加。
-// 0.28.00 2024/06/   帳票出力開始のメッセージを追加。
+// 0.28.00 2024/06/26 帳票出力開始のメッセージを追加。
+// 0.46.00 2024/10/18 未取消/取消済/復元期限超過のメッセージを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 
@@ -19,7 +20,7 @@ namespace tsubasaLibs\web;
  * メッセージクラス
  * 
  * @since 0.01.00
- * @version 0.25.00
+ * @version 0.46.00
  */
 class Message {
     // ---------------------------------------------------------------------------------------------
@@ -64,26 +65,32 @@ class Message {
     const ID_UNREGISTERED = 'Err00009';
     /** メッセージID(登録済) */
     const ID_ALREADY_REGISTERED = 'Err00010';
+    /** メッセージID(未取消) */
+    const ID_UNCANCELED = 'Err00011';
+    /** メッセージID(取消済) */
+    const ID_ALREADY_CANCELED = 'Err00012';
+    /** メッセージID(復元期間超過) */
+    const ID_RESTORE_DEADLINE_PASSED = 'Err00013';
     /** メッセージID(最小字数エラー) */
-    const ID_MIN_COUNTS_ERROR = 'Err00011';
+    const ID_MIN_COUNTS_ERROR = 'Err00014';
     /** メッセージID(最大字数エラー) */
-    const ID_MAX_COUNTS_ERROR = 'Err00012';
+    const ID_MAX_COUNTS_ERROR = 'Err00015';
     /** メッセージID(字数範囲エラー) */
-    const ID_RANGE_COUNTS_ERROR = 'Err00013';
+    const ID_RANGE_COUNTS_ERROR = 'Err00016';
     /** メッセージID(固定字数エラー) */
-    const ID_FIXED_COUNTS_ERROR = 'Err00014';
+    const ID_FIXED_COUNTS_ERROR = 'Err00017';
     /** メッセージID(最小値エラー) */
-    const ID_MIN_VALUE_ERROR = 'Err00015';
+    const ID_MIN_VALUE_ERROR = 'Err00018';
     /** メッセージID(最大値エラー) */
-    const ID_MAX_VALUE_ERROR = 'Err00016';
+    const ID_MAX_VALUE_ERROR = 'Err00019';
     /** メッセージID(値範囲エラー) */
-    const ID_RANGE_VALUE_ERROR = 'Err00017';
+    const ID_RANGE_VALUE_ERROR = 'Err00020';
     /** メッセージID(小数点以下の最大桁数エラー) */
-    const ID_MAX_DEGITS_AFTER_POINT_ERROR = 'Err00018';
+    const ID_MAX_DEGITS_AFTER_POINT_ERROR = 'Err00021';
     /** メッセージID(不正な日付) */
-    const ID_VALUE_INVALID_DATE = 'Err00019';
+    const ID_VALUE_INVALID_DATE = 'Err00022';
     /** メッセージID(HTTPリクエストエラー) */
-    const ID_HTTP_REQUEST_ERROR = 'Err00020';
+    const ID_HTTP_REQUEST_ERROR = 'Err00023';
     /** メッセージID(例外) */
     const ID_EXCEPTION = 'Err00999';
 
@@ -203,16 +210,19 @@ class Message {
             ['id' => 'Err00008' , 'content' => '更新処理に失敗しました。'],
             ['id' => 'Err00009' , 'content' => '未登録です。'],
             ['id' => 'Err00010' , 'content' => '既に登録されています。'],
-            ['id' => 'Err00011' , 'content' => '%sは、%s字以上で入力してください。'],
-            ['id' => 'Err00012' , 'content' => '%sは、%s字以下で入力してください。'],
-            ['id' => 'Err00013' , 'content' => '%sは、%s～%s字で入力してください。'],
-            ['id' => 'Err00014' , 'content' => '%sは、%s字で入力してください。'],
-            ['id' => 'Err00015' , 'content' => '%sは、値を%s以上で入力してください。'],
-            ['id' => 'Err00016' , 'content' => '%sは、値を%s以下で入力してください。'],
-            ['id' => 'Err00017' , 'content' => '%sは、値を%s～%sで入力してください。'],
-            ['id' => 'Err00018' , 'content' => '%sは、小数点以下を%s桁以下で入力してください。'],
-            ['id' => 'Err00019' , 'content' => '%sは、値が不正な日付です。'],
-            ['id' => 'Err00020' , 'content' => 'HTTPリクエストエラーが発生しました。(%s)%s'],
+            ['id' => 'Err00011' , 'content' => '未取消です。'],
+            ['id' => 'Err00012' , 'content' => '既に取消されています。'],
+            ['id' => 'Err00013' , 'content' => '復元可能な時期を過ぎています。'],
+            ['id' => 'Err00014' , 'content' => '%sは、%s字以上で入力してください。'],
+            ['id' => 'Err00015' , 'content' => '%sは、%s字以下で入力してください。'],
+            ['id' => 'Err00016' , 'content' => '%sは、%s～%s字で入力してください。'],
+            ['id' => 'Err00017' , 'content' => '%sは、%s字で入力してください。'],
+            ['id' => 'Err00018' , 'content' => '%sは、値を%s以上で入力してください。'],
+            ['id' => 'Err00019' , 'content' => '%sは、値を%s以下で入力してください。'],
+            ['id' => 'Err00020' , 'content' => '%sは、値を%s～%sで入力してください。'],
+            ['id' => 'Err00021' , 'content' => '%sは、小数点以下を%s桁以下で入力してください。'],
+            ['id' => 'Err00022' , 'content' => '%sは、値が不正な日付です。'],
+            ['id' => 'Err00023' , 'content' => 'HTTPリクエストエラーが発生しました。(%s)%s'],
             ['id' => 'Err00999' , 'content' => '予期せぬエラーが発生しました。']
         ];
     }

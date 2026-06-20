@@ -43,7 +43,7 @@ class SessionUser {
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var array セッション情報のリファレンス */
-    protected $session;
+    protected $refference;
     /** @var int タイムアウト時間 */
     public $timeoutMinutes;
     /** @var string ユーザID */
@@ -57,7 +57,6 @@ class SessionUser {
     // コンストラクタ/デストラクタ
     public function __construct() {
         $this->setInit();
-        $this->setInfoFromSession();
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -68,7 +67,7 @@ class SessionUser {
      * @return bool 結果
      */
     public function isLoggedIn(): bool {
-        return $this->session['status'] === static::STATUS_LOGIN;
+        return $this->refference['status'] === static::STATUS_LOGIN;
     }
 
     /**
@@ -78,7 +77,7 @@ class SessionUser {
      */
     public function isTimeout(): bool {
         $now = $this->getNow();
-        $lastAccessTime = $this->getTimeFromString($this->session['lastAccessTime']);
+        $lastAccessTime = $this->getTimeFromString($this->refference['lastAccessTime']);
         $limitTime = (new DateTime($lastAccessTime->format('Y/m/d H:i:s.u')))->add(
             new DateInterval(sprintf('PT%sM', $this->timeoutMinutes))
         );
@@ -111,7 +110,7 @@ class SessionUser {
      * @since 0.01.00
      */
     public function setTimeout() {
-        $this->session['status'] = static::STATUS_TIMEOUT_AFTER;
+        $this->refference['status'] = static::STATUS_TIMEOUT_AFTER;
     }
 
     /**
@@ -123,7 +122,7 @@ class SessionUser {
      */
     public function login($userId, $password): bool {
         if (!$this->checkForLogin($userId, $password)) return false;
-        $this->session['status'] = static::STATUS_LOGIN;
+        $this->refference['status'] = static::STATUS_LOGIN;
         $this->setUserId($userId);
         $now = $this->getNow();
         $this->setLoginTime($now);
@@ -138,7 +137,7 @@ class SessionUser {
      */
     public function logout(): bool {
         $this->userId = null;
-        $this->session['status'] = static::STATUS_LOGOUT_AFTER;
+        $this->refference['status'] = static::STATUS_LOGOUT_AFTER;
         return true;
     }
 
@@ -149,8 +148,8 @@ class SessionUser {
      * @return bool 結果
      */
     public function isLogoutAfter(): bool {
-        if ($this->session['status'] === static::STATUS_LOGOUT_AFTER) {
-            $this->session['status'] = static::STATUS_LOGOUT;
+        if ($this->refference['status'] === static::STATUS_LOGOUT_AFTER) {
+            $this->refference['status'] = static::STATUS_LOGOUT;
             return true;
         }
         return false;
@@ -163,8 +162,8 @@ class SessionUser {
      * @return bool 結果
      */
     public function isTimeoutAfter(): bool {
-        if ($this->session['status'] === static::STATUS_TIMEOUT_AFTER) {
-            $this->session['status'] = static::STATUS_LOGOUT;
+        if ($this->refference['status'] === static::STATUS_TIMEOUT_AFTER) {
+            $this->refference['status'] = static::STATUS_LOGOUT;
             return true;
         }
         return false;
@@ -176,7 +175,7 @@ class SessionUser {
      * @since 0.04.00
      */
     public function setExpired() {
-        $this->session['status'] = static::STATUS_EXPIRED;
+        $this->refference['status'] = static::STATUS_EXPIRED;
     }
 
     /**
@@ -186,7 +185,7 @@ class SessionUser {
      * @return bool 結果
      */
     public function isExpired(): bool {
-        return $this->session['status'] === static::STATUS_EXPIRED;
+        return $this->refference['status'] === static::STATUS_EXPIRED;
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -195,11 +194,8 @@ class SessionUser {
      * 初期設定
      */
     protected function setInit() {
-        $this->setSession();
+        $this->setRefference();
         $this->timeoutMinutes = self::DEFAULT_TIMEOUT_MINUTES;
-        $this->userId = null;
-        $this->loginTime = null;
-        $this->lastAccessTime = null;
     }
 
     /**
@@ -207,23 +203,24 @@ class SessionUser {
      * 
      * @since 0.03.00
      */
-    protected function setSession() {
+    protected function setRefference() {
         if (!isset($_SESSION[static::ID]))
             $_SESSION[static::ID] = [
                 'status' => 'logout'
             ];
-        $this->session =& $_SESSION[static::ID];
+        $this->refference =& $_SESSION[static::ID];
+        $this->setInfoFromSession();
     }
 
     /**
      * セッションより情報設定
      */
     protected function setInfoFromSession() {
-        if ($this->session['status'] !== static::STATUS_LOGIN and
-            $this->session['status'] !== static::STATUS_EXPIRED) return;
-        $this->userId = $this->session['userId'];
-        $this->loginTime = $this->getTimeFromString($this->session['loginTime']);
-        $this->lastAccessTime = $this->getTimeFromString($this->session['lastAccessTime']);
+        if ($this->refference['status'] !== static::STATUS_LOGIN and
+            $this->refference['status'] !== static::STATUS_EXPIRED) return;
+        $this->userId = $this->refference['userId'];
+        $this->loginTime = $this->getTimeFromString($this->refference['loginTime']);
+        $this->lastAccessTime = $this->getTimeFromString($this->refference['lastAccessTime']);
     }
 
     /**
@@ -233,7 +230,7 @@ class SessionUser {
      */
     protected function setUserId(string $userId) {
         $this->userId = $userId;
-        $this->session['userId'] = $userId;
+        $this->refference['userId'] = $userId;
     }
 
     /**
@@ -243,7 +240,7 @@ class SessionUser {
      */
     protected function setLoginTime(DateTime $now) {
         $this->loginTime = $now;
-        $this->session['loginTime'] = $this->loginTime->format('Y/m/d H:i:s.u');
+        $this->refference['loginTime'] = $this->loginTime->format('Y/m/d H:i:s.u');
     }
 
     /**
@@ -253,7 +250,7 @@ class SessionUser {
      */
     protected function setLastAccessTime($now) {
         $this->lastAccessTime = $now;
-        $this->session['lastAccessTime'] = $this->lastAccessTime->format('Y/m/d H:i:s.u');
+        $this->refference['lastAccessTime'] = $this->lastAccessTime->format('Y/m/d H:i:s.u');
     }
 
     /**

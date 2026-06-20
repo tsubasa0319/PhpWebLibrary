@@ -1,3 +1,10 @@
+0.87.01 2025/04/08 11:51:25
+[変更]
+Smartyクラス群を tsubasaLibs\web から tsubasaLibs\smarty へ移動。Smarty用クラスローダを追加。
+loader.php: Smarty用のクラスローダを追加。
+web/Events.php: 名前空間の変更に伴い、Smartyはここではrequireしないように変更。
+web/loader.php: SmartyPluginsを除去。名前空間を変更のため。
+
 0.87.00 2025/04/05 18:01:48
 [変更]
 セッションIDの取り直しに対応。Smartyのログ出力・内部クラス/PHPDocを拡充。DateTimeの時刻取得を訂正。

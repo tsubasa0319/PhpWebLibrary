@@ -12,6 +12,7 @@
 // 0.28.01 2024/06/26 ローダを各サブライブラリへ分割。
 // 0.35.00 2024/08/31 CLI処理用のクラスローダを追加。
 // 0.41.00 2024/10/02 メール処理用のクラスローダを追加。
+// 0.87.01 2025/04/08 Smarty用のクラスローダを追加。
 // -------------------------------------------------------------------------------------------------
 require_once __DIR__ . '/type/loader.php';
 require_once __DIR__ . '/database/loader.php';
@@ -21,3 +22,4 @@ require_once __DIR__ . '/pdf/loader.php';
 require_once __DIR__ . '/api/loader.php';
 require_once __DIR__ . '/cli/loader.php';
 require_once __DIR__ . '/mail/loader.php';
+require_once __DIR__ . '/smarty/loader.php';

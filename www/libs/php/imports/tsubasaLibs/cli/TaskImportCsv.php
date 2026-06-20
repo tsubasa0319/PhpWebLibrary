@@ -6,6 +6,7 @@
 // 0.35.00 2024/08/31 作成。
 // 0.40.00 2024/09/25 デストラクタを追加。DBインスタンスを可能な範囲で解放。
 // 0.41.02 2024/10/02 現在日時を追加。タスクIDを取得するメソッドを追加。
+// 0.76.00 2025/02/26 メッセージリストを取得に対して、メール用の場合にはエラーリストに上限を設定。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\cli;
 use tsubasaLibs\type;
@@ -15,7 +16,7 @@ use tsubasaLibs\database\DbBase;
  * CSV取込タスククラス
  * 
  * @since 0.35.00
- * @version 0.41.02
+ * @version 0.76.00
  */
 class TaskImportCsv {
     // ---------------------------------------------------------------------------------------------
@@ -40,6 +41,8 @@ class TaskImportCsv {
     protected $errorMessages;
     /** @var string[] 報告メッセージリスト */
     protected $reportMessages;
+    /** @var int 最大エラー件数(メール用) */
+    protected $maxErrorCountsForMail;
 
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
@@ -88,6 +91,7 @@ class TaskImportCsv {
         $this->deleteCounts = 0;
         $this->errorMessages = [];
         $this->reportMessages = [];
+        $this->maxErrorCountsForMail = 100;
     }
 
     /**
@@ -113,11 +117,20 @@ class TaskImportCsv {
     /**
      * メッセージリストを取得
      * 
+     * @param bool $isMail メール用かどうか
      * @return string[] メッセージリスト
      */
-    protected function getMessages(): array {
+    protected function getMessages(bool $isMail = false): array {
+        $errorMessages = $this->errorMessages;
+
+        // メールの場合は、エラーメッセージの出力件数を制限
+        if ($isMail and count($errorMessages) > $this->maxErrorCountsForMail) {
+            $errorMessages = array_slice($errorMessages, 0, $this->maxErrorCountsForMail);
+            $errorMessages[] = '...';
+        }
+
         return [
-            ...$this->errorMessages,
+            ...$errorMessages,
             sprintf('csvFile read counts: %s', number_format($this->readCounts)),
             sprintf('csvFile error counts: %s', number_format($this->errorCounts)),
             ...$this->reportMessages

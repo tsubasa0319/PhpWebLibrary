@@ -4,6 +4,7 @@
 //
 // History:
 // 0.42.00 2024/10/08 作成。
+// 0.44.00 2024/10/12 int型へ変換時、先にチェックするかどうか指定できるように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\type;
 
@@ -11,7 +12,7 @@ namespace tsubasaLibs\type;
  * 整数型クラス
  * 
  * @since 0.42.00
- * @version 0.42.00
+ * @version 0.44.00
  */
 class Integer {
     // ---------------------------------------------------------------------------------------------
@@ -63,10 +64,12 @@ class Integer {
      * int型へ変換
      * 
      * @param string $str 文字列
+     * @param bool $isChecked チェックするかどうか
      * @return ?int 変換後の値
      */
-    static public function convertFromString(string $str): ?int {
-        if (!static::checkIntString($str)) return null;
+    static public function convertFromString(string $str, bool $isChecked = true): ?int {
+        if ($isChecked)
+            if (!static::checkIntString($str)) return null;
 
         // 符号を取得
         $hasMinus = !!preg_match('/\-/', $str);

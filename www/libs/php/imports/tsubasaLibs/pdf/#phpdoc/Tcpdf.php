@@ -7,12 +7,19 @@
 // 0.28.02 2024/06/27 TCPDFを未導入のままインスタンスを生成時、エラー通知するように対応。
 // 0.28.05 2024/07/12 ライブラリで使用しているTCPDFのプロパティ/メソッドを全て定義。
 //                    よく使うメソッドにドキュメントを追加。
+// 0.44.00 2024/10/12 不足している定義を追加。
 // -------------------------------------------------------------------------------------------------
-use tsubasaLibs\pdf;
+use tsubasaLibs\pdf\PdfException;
 
 class TCPDF {
     // ---------------------------------------------------------------------------------------------
     // プロパティ
+    /** @var int 現在の頁番号 */
+    protected $page;
+    /** @var int 頁数 */
+    protected $numpages;
+    /** @var string タイトル */
+    protected $title;
     /** @var string 長さの単位 */
     protected $pdfunit;
     /** @var string フォントファミリー */
@@ -23,6 +30,8 @@ class TCPDF {
     protected $CurrentFont;
     /** @var int|float フォントサイズ(pt) */
     protected $FontSizePt;
+    /** @var string 塗りつぶしの色 */
+    protected $FillColor;
     /** @var string テキストの色 */
     protected $TextColor;
     /** @var int[] 前景色配列 */
@@ -66,7 +75,7 @@ class TCPDF {
         $orientation = 'P', $unit = 'mm', $format = 'A4', $unicode = true, $encoding = 'UTF-8',
         $diskcache = false, $pdfa = false
     ) {
-        throw new pdf\PdfException('TCPDF hasn\'t been installed');
+        throw new PdfException('TCPDF hasn\'t been installed');
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -125,6 +134,15 @@ class TCPDF {
     public function setAutoPageBreak($auto, $margin = 0) {}
 
     /**
+     * 自動で改頁するかどうかを取得
+     * 
+     * @return bool 自動で改頁するかどうか
+     */
+    public function getAutoPageBreak() {
+        return false;
+    }
+
+    /**
      * 頁を追加
      * 
      * @param string $orientation 用紙の向き。  
@@ -181,6 +199,14 @@ class TCPDF {
     public function setFont(
         $family, $style = '', $size = null, $fontfile = '', $subset = 'default', $out = true
     ) {}
+
+    /**
+     * フォントサイズを変更
+     * 
+     * @param float $size フォントサイズ、単位はpt
+     * @param bool $out 出力するかどうか
+     */
+    public function setFontSize($size, $out = true) {}
 
     /**
      * テキストの色を変更

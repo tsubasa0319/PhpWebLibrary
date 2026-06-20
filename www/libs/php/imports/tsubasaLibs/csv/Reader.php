@@ -8,6 +8,7 @@
 // 0.41.00 2024/10/02 int型に変換できるかどうかの判定を修正。
 // 0.44.00 2024/10/12 データ型チェックおよび変換をtype/***で行うように変更。
 //                    int型の項目を取得時、空文字を許可しない設定に対応。
+// 0.49.00 2024/10/25 BOM付きのUTF-8に対応。将来fgetcsvを止めるために、readメソッドのパラメータを削除。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\csv;
 require_once __DIR__ . '/../type/Nothing.php';
@@ -18,15 +19,27 @@ use tsubasaLibs\type;
  * CSV読み込みクラス
  * 
  * @since 0.34.00
- * @version 0.44.00
+ * @version 0.49.00
  */
 class Reader {
+    // ---------------------------------------------------------------------------------------------
+    // 定数
+    const BOM_UTF_8 = '\xEF\xBB\xBF';
+
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var string ファイルパス */
     protected $filePath;
     /** @var ?resource|false ファイルハンドル */
     protected $fileHandle;
+    /** @var string 区切り文字 */
+    protected $separator;
+    /** @var string 囲み文字 */
+    protected $enclosure;
+    /** @var bool BOMを除去するかどうか */
+    protected $shouldRemoveBom;
+    /** @var bool 最初の読み込みかどうか */
+    protected $isFirstRead;
     /** @var type\Nothing Nothing値 */
     protected $nothing;
     /** @var ?int 行番号 */
@@ -51,6 +64,7 @@ class Reader {
     /**
      * ファイルを開く
      * 
+     * @param ?string $filePath ファイルパス
      * @return bool 成否
      */
     public function fileOpen(?string $filePath = null): bool {
@@ -59,28 +73,37 @@ class Reader {
 
         $this->fileHandle = fopen($this->filePath, 'r');
         $this->rowNum = 0;
+        $this->isFirstRead = true;
 
         return $this->fileHandle !== false;
     }
 
     /**
      * 読み込み
+     * 
+     * @return bool 成否
      */
-    public function read(
-        ?int $length = null, string $separator = ',', string $enclosure = '"',
-        string $escape = '\\'
-    ): bool {
-        $rowData = fgetcsv($this->fileHandle, $length, $separator, $enclosure, $escape);
+    public function read(): bool {
+        $rowData = fgetcsv($this->fileHandle, null, $this->separator, $this->enclosure, '');
         if ($rowData !== false) {
             $this->rowNum++;
             $this->rowData = $rowData;
+
+            // BOMがあれば、除去
+            if ($this->shouldRemoveBom and $this->isFirstRead)
+                $this->removeBom();
         }
+
+        $this->isFirstRead = false;
 
         return $rowData !== false;
     }
 
     /**
      * ファイルをロック
+     * 
+     * @param int $operation ロックの種類
+     * @return bool 成否
      */
     public function lock(int $operation): bool {
         return flock($this->fileHandle, $operation);
@@ -98,6 +121,8 @@ class Reader {
 
     /**
      * 現在の行番号を取得
+     * 
+     * @return ?int 行番号
      */
     public function getRowNum(): ?int {
         return $this->rowNum;
@@ -105,6 +130,8 @@ class Reader {
 
     /**
      * 空行かどうか
+     * 
+     * @return bool 結果
      */
     public function isEmptyLine(): bool {
         return is_array($this->rowData) and count($this->rowData) == 1 and $this->rowData === '';
@@ -169,6 +196,10 @@ class Reader {
     protected function setInit() {
         $this->filePath = null;
         $this->fileHandle = null;
+        $this->separator = ',';
+        $this->enclosure = '"';
+        $this->shouldRemoveBom = true;
+        $this->isFirstRead = true;
         $this->nothing = $this->makeNothing();
         $this->headerValues = null;
         $this->colNumList = null;
@@ -197,6 +228,32 @@ class Reader {
      * 明細情報を初期化
      */
     protected function clearDetailValues() {}
+
+    /**
+     * BOMを除去
+     */
+    protected function removeBom() {
+        if ($this->rowData === false) return;
+
+        $value = $this->rowData[0];
+
+        // BOMチェック
+        $match = null;
+        if (!preg_match(sprintf('/\A%s(.*)/', static::BOM_UTF_8), $value, $match))
+            return;
+        $value = $match[1];
+
+        // 囲み文字を除去
+        if ($this->enclosure !== '') {
+            $enclosure = preg_quote($this->enclosure, '/');
+            // fgetcsvと同じ仕様で処理
+            $match = null;
+            if (!!preg_match(sprintf('/\A *%s(.*)%s( *)\z/', $enclosure, $enclosure), $value, $match))
+                $value = $match[1] . $match[2];
+        }
+
+        $this->rowData[0] = $value;
+    } 
 
     /**
      * 項目ID別の要素番号リストを生成

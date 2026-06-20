@@ -15,6 +15,7 @@
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import web from "./web.js";
+
 /**
  * フレーム処理
  * 
@@ -22,6 +23,8 @@ import web from "./web.js";
  * @version 0.28.00
  */
 const frame = {
+    // ---------------------------------------------------------------------------------------------
+    // 関数プロパティ
     /**
      * 起動時処理
      * 
@@ -37,12 +40,14 @@ const frame = {
         self.setFocus();
         self.callSubProgram();
     },
+
     /**
      * 起動時処理(機能専用)
      * 
      * @param {Event} event イベント
      */
     my_body_load: (event) => {},
+
     /**
      * 頁非表示時処理
      * 
@@ -53,6 +58,7 @@ const frame = {
         // 全ての子ウィンドウを閉じる
         web.closeChildWindows();
     },
+
     /**
      * キー押下時処理
      * 
@@ -68,6 +74,7 @@ const frame = {
             web.escapeToCloseWindow(event)
         );
     },
+
     /**
      * エラー処理
      */
@@ -88,6 +95,7 @@ const frame = {
             const elm = web.getElementByJoinName(_joinName);
             if (elm === null) return;
             elm.classList.add('error');
+
             // フォーカス移動先
             if (joinName === null)
                 joinName = _joinName;
@@ -100,12 +108,14 @@ const frame = {
                 elm.value = joinName;
         }
     },
+
     /**
      * 確認画面へ切り替え
      */
     setConfirm: () => {
         const elmStatus = document.getElementById('status');
         if (elmStatus === null) return;
+
         // 通常画面の時は、確認画面用を削除
         if (elmStatus.value !== 'confirm') {
             Array.from(document.getElementsByClassName('confirm')).forEach((elm) => {
@@ -113,6 +123,7 @@ const frame = {
             });
             return;
         }
+
         // 確認画面
         Array.from(document.querySelectorAll(
             '#main input, #main select, #main textarea, #main button'
@@ -122,8 +133,10 @@ const frame = {
                 elm.remove();
                 return;
             }
+
             // 確認画面用はそのまま
             if (elm.classList.contains('confirm')) return;
+
             // 使用不可へ
             if (elm instanceof HTMLInputElement) elm.disabled = true;
             if (elm instanceof HTMLSelectElement) elm.disabled = true;
@@ -131,6 +144,7 @@ const frame = {
             if (elm instanceof HTMLButtonElement) elm.disabled = true;
         });
     },
+
     /**
      * メインセクションを表示
      */
@@ -142,6 +156,7 @@ const frame = {
         }
         elmMain.classList.remove('hidden');
     },
+
     /**
      * フォーカス移動
      */
@@ -153,6 +168,7 @@ const frame = {
         }
         web.setFocus(elmFocusName.value);
     },
+
     /**
      * サブプログラム呼び出し
      * 
@@ -172,7 +188,7 @@ const frame = {
         }
 
         if (elmProgramId.value === '') return;
-        
+
         const url = './' + elmProgramId.value + '/?' +
             'UNIT_SESSION_ID=' + encodeURIComponent(elmSessionId.value);
         if (elmType.value === 'export')
@@ -180,6 +196,7 @@ const frame = {
         if (elmType.value === 'print')
             open(url);
     },
+
     /**
      * フォーム送信時
      * 
@@ -190,6 +207,7 @@ const frame = {
         web.addUnselectedElementsBeforeSend();
         web.setStartTime();
     },
+
     /**
      * ログアウト
      * 
@@ -201,15 +219,18 @@ const frame = {
         elmForm.method = 'post';
         elmForm.style.display = 'none';
         elmForm.addEventListener('submit', web.setBlackout);
+
         // ボタンを生成
         const elmButton = document.createElement('button');
         elmButton.type = 'submit';
         elmButton.name = 'btnLogout';
         elmForm.append(elmButton);
+
         // フォームを実体化後、実行
         document.body.append(elmForm);
         elmButton.click();
     },
+
     /**
      * 画面遷移
      * 
@@ -219,6 +240,7 @@ const frame = {
     move: (id, params = {}) => {
         web.move('/' + id + '/', params);
     },
+
     /**
      * サブ画面を閉じる
      * 

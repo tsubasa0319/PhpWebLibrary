@@ -6,6 +6,7 @@
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import web from "./web.js";
+
 /**
  * メッセージ処理
  * 
@@ -13,6 +14,8 @@ import web from "./web.js";
  * @version 0.05.00
  */
 const message = {
+    // ---------------------------------------------------------------------------------------------
+    // 関数プロパティ
     /**
      * メッセージを設定
      * 
@@ -45,6 +48,7 @@ const message = {
             web.setValueByElement(elmContent, message.content);
         }
     },
+
     /**
      * Ajaxエラー時受取関数
      * 
@@ -63,9 +67,11 @@ const message = {
                     return;
                 }
                 break;
+
             case 'json':
                 response = request.response;
                 break;
+
             default:
                 console.error('Ajax Error');
                 return;
@@ -74,8 +80,10 @@ const message = {
             console.error('Ajax Error');
             return;
         }
+
         // メッセージ出力
         self.setMessage(response.message);
+
         // デバッグ
         if (response.debug !== undefined)
             console.log(response.debug);

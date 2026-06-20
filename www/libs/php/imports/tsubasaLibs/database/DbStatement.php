@@ -10,6 +10,7 @@
 // 0.40.00 2024/09/25 プロパティに、一時利用のためのインスタンスかどうかを追加。
 //                    クエリ履歴の長さに上限を設定。
 // 0.40.01 2024/09/26 子クラスのインスタンスは、弱い参照でプロパティに持つように変更。
+// 0.48.00 2024/10/24 バインドに失敗時、エラー処理を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/ValueType.php';
@@ -20,7 +21,7 @@ use WeakReference;
  * DBステートメントクラス(PDOベース)
  * 
  * @since 0.00.00
- * @version 0.40.01
+ * @version 0.48.00
  */
 class DbStatement extends PDOStatement {
     // ---------------------------------------------------------------------------------------------
@@ -59,7 +60,24 @@ class DbStatement extends PDOStatement {
     ): bool {
         $this->convertForBind($value, $type);
         $this->setBindValue($param, $value);
-        return parent::bindValue($param, $value, $type);
+        try {
+            $result = parent::bindValue($param, $value, $type);
+        } catch (PDOException $ex) {
+            // 異常終了
+            if ($this->db->isDebug) var_dump($this->queryString, [
+                'param' => $param,
+                'value' => $value,
+                'type'  => $type
+            ]);
+            error_log(sprintf('Bind failed ! [SQL]%s[PARAM]%s[VALUE]%s[TYPE]%s',
+                $this->queryString,
+                json_encode($param, JSON_UNESCAPED_UNICODE),
+                json_encode($value, JSON_UNESCAPED_UNICODE),
+                $type
+            ));
+            $this->db->throwException('値のバインドに失敗しました。', $ex);
+        }
+        return $result;
     }
 
     /**

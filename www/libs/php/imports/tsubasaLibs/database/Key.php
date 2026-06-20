@@ -4,6 +4,7 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
+// 0.48.00 2024/10/24 キー項目の項目IDリストを取得を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/KeyItem.php';
@@ -12,7 +13,7 @@ require_once __DIR__ . '/KeyItem.php';
  * レコードキークラス
  * 
  * @since 0.00.00
- * @version 0.00.00
+ * @version 0.48.00
  */
 class Key {
     // ---------------------------------------------------------------------------------------------
@@ -44,11 +45,25 @@ class Key {
     }
 
     /**
+     * キー項目の項目IDリストを取得
+     * 
+     * @since 0.48.00
+     * @return string[] 項目IDリスト
+     */
+    public function getItemIds(): array {
+        $ids = [];
+        foreach ($this->keyItems as $keyItem)
+            $ids[] = $keyItem->item->id;
+
+        return $ids;
+    }
+
+    /**
      * キー項目リストを取得
      * 
      * @return KeyItem[] レコードキー項目リスト
      */
-    public function getKeyItems() {
+    public function getKeyItems(): array {
         return $this->keyItems;
     }
 }

@@ -11,6 +11,8 @@
 // 0.40.00 2024/09/25 廃棄処理を追加。
 // 0.40.01 2024/09/26 子クラスのインスタンスは、弱い参照でプロパティに持つように変更。
 //                    ステートメントクラス属性のパラメータが循環参照のため、弱い参照へ変更。
+// 0.40.02 2024/09/27 生成済テーブルインスタンスは通常の参照へ戻す。途中でメモリ解放されてしまうため。
+//                    メモリ解放はdisposeメソッドか、ガベージコレクションで行う。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/DbStatement.php';
@@ -27,7 +29,7 @@ use Throwable;
  * DBクラス(PDOベース)
  * 
  * @since 0.00.00
- * @version 0.40.01
+ * @version 0.40.02
  */
 class DbBase extends PDO {
     // ---------------------------------------------------------------------------------------------
@@ -53,8 +55,8 @@ class DbBase extends PDO {
     public $executeLog;
     /** @var string[] DBエンジンの予約語 */
     protected $reservedWords;
-    /** @var WeakReference<Table>[] 生成したテーブルインスタンスの参照リスト */
-    protected $tableInstanceRefs;
+    /** @var Table[] 生成済テーブルインスタンスのリスト */
+    protected $tableInstances;
     /** @var Executor 実行者 */
     public $executor;
 
@@ -267,13 +269,24 @@ class DbBase extends PDO {
     /**
      * 廃棄処理
      * 
-     * ATTR_STATEMENT_CLASS属性を設定し、このクラスをパラメータに循環参照している場合は、  
-     * 最後にこの処理を実行してください。
+     * 一部に循環参照があるため、メモリ解放のために最後にこの処理を実行してください。  
+     * ガベージコレクションで解放することもできますが、実行しておいた方が安全です。
      * 
      * @since 0.40.00
      */
     public function dispose() {
+        // ATTR_STATEMTNT_CLASS属性に登録したクラスパラメータの循環参照を解除
         $this->setAttribute(static::ATTR_STATEMENT_CLASS, [\PDOStatement::class]);
+
+        // 生成済テーブルインスタンスの参照を外す
+        if ($this->tableInstances !== null) {
+            $tableInstances = $this->tableInstances;
+            $this->tableInstances = null;
+
+            // 参照先を廃棄処理
+            foreach ($tableInstances as $tableInstance)
+                $tableInstance->dispose();
+        }
     }
 
     /**
@@ -353,7 +366,7 @@ class DbBase extends PDO {
         $this->isSafeForPersistent = false;
         $this->executeLog = new ExecuteLog();
         $this->reservedWords = $this->getReservedWords();
-        $this->tableInstanceRefs = [];
+        $this->tableInstances = [];
 
         // 属性
         $this->setAttribute(static::ATTR_ERRMODE, static::ERRMODE_EXCEPTION);
@@ -449,14 +462,12 @@ class DbBase extends PDO {
      */
     protected function getTableInstance(string $tableClass): Table {
         // 再利用
-        foreach ($this->tableInstanceRefs as $tableInstanceRef) {
-            $tableInstance = $tableInstanceRef->get();
+        foreach ($this->tableInstances as $tableInstance)
             if ($tableInstance instanceof $tableClass) return $tableInstance;
-        }
 
         // 生成し、キャッシュを取る
         $tableInstance = new $tableClass($this);
-        $this->tableInstanceRefs[] = WeakReference::create($tableInstance);
+        $this->tableInstances[] = $tableInstance;
         return $tableInstance;
     }
 

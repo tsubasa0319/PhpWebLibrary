@@ -4,22 +4,24 @@
 //
 // History:
 // 0.16.00 2024/03/23 作成。
+// 0.40.01 2024/09/26 テーブルインスタンスを弱い参照へ変更。循環参照のため。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/SelectPlan.php';
 require_once __DIR__ . '/SelectArrayPlan.php';
+use WeakReference;
 
 /**
  * クエリ予定クラス
  * 
  * @since 0.16.00
- * @version 0.16.00
+ * @version 0.40.01
  */
 class QueryPlanning {
     // ---------------------------------------------------------------------------------------------
     // プロパティ
-    /** @var Table テーブル */
-    protected $table;
+    /** @var WeakReference<Table> テーブルインスタンスの参照 */
+    protected $tableRef;
     /** @var SelectPlan[] レコード取得予定リスト */
     protected $selectPlans;
     /** @var SelectArrayPlan[] レコード取得予定リスト(複数レコード版) */
@@ -28,10 +30,10 @@ class QueryPlanning {
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
-     * @param Table $table テーブル
+     * @param Table $table テーブルインスタンス
      */
     public function __construct(Table $table) {
-        $this->table = $table;
+        $this->tableRef = WeakReference::create($table);
         $this->setInit();
     }
 
@@ -43,6 +45,11 @@ class QueryPlanning {
      * @return Record 予定されたレコード
      */
     public function select($values): Record {
+        // テーブルインスタンスが使用可能かどうか
+        $table = $this->tableRef->get();
+        if ($table === null)
+            throw new DbException('Table is already closed');
+
         // 同じ予定があれば、そこで発行したレコードを返す
         /** @var SelectPlan[] */
         $plans = array_filter($this->selectPlans, fn(SelectPlan $plan) => $plan->isDuplicate($values));
@@ -52,7 +59,7 @@ class QueryPlanning {
         // 新規予定
         $plan = new SelectPlan();
         $plan->setValues($values);
-        $record = $this->table->getNewRecord();
+        $record = $table->getNewRecord();
         $plan->setRecord($record);
         $this->selectPlans[] = $plan;
 
@@ -100,6 +107,11 @@ class QueryPlanning {
      * 予定された選択クエリを実行
      */
     protected function selectExecute() {
+        // テーブルインスタンスが使用可能かどうか
+        $table = $this->tableRef->get();
+        if ($table === null)
+            throw new DbException('Table is already closed');
+
         // 今回の対象を取得
         /** @var SelectPlan[] */
         $plans = array_filter($this->selectPlans, fn(SelectPlan $plan) => !$plan->isExecuted);
@@ -114,7 +126,7 @@ class QueryPlanning {
             $valueLists[] = $plan->getValues();
         foreach ($arrayPlans as $plan)
             $valueLists[] = $plan->getValues();
-        $stmt = $this->table->selectIn(...$valueLists);
+        $stmt = $table->selectIn(...$valueLists);
         if ($stmt !== false) while ($rcd = $stmt->fetch()) {
             // 単一レコード版
             /** @var SelectPlan[] */
@@ -140,7 +152,7 @@ class QueryPlanning {
         // 見つからなかった対象を実行済へ
         /** @var SelectPlan[] */
         $_plans2 = array_filter($plans, fn(SelectPlan $plan) => !$plan->isExecuted);
-        $items = $this->table->items;
+        $items = $table->items;
         foreach ($_plans2 as $plan) {
             $plan->isExecuted = true;
             $rcd = $plan->getRecord();

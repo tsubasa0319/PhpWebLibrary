@@ -9,16 +9,18 @@
 // 0.22.00 2024/05/15 クエリ関連の失敗時、エラーログへ"Query failed !"の文字列を出力するように変更。
 // 0.40.00 2024/09/25 プロパティに、一時利用のためのインスタンスかどうかを追加。
 //                    クエリ履歴の長さに上限を設定。
+// 0.40.01 2024/09/26 子クラスのインスタンスは、弱い参照でプロパティに持つように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/ValueType.php';
 use PDOStatement, PDOException;
+use WeakReference;
 
 /**
  * DBステートメントクラス(PDOベース)
  * 
  * @since 0.00.00
- * @version 0.40.00
+ * @version 0.40.01
  */
 class DbStatement extends PDOStatement {
     // ---------------------------------------------------------------------------------------------
@@ -33,10 +35,12 @@ class DbStatement extends PDOStatement {
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
-     * @param DbBase $db DBクラス
+     * @param ?WeakReference<DbBase> $dbRef DBインスタンスの参照
      */
-    protected function __construct(?DbBase $db) {
+    protected function __construct(?WeakReference $dbRef) {
+        $db = $dbRef?->get();
         $this->db = $db;
+
         $this->setInit();
     }
 

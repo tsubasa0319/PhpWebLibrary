@@ -9,7 +9,7 @@
 ------------------------------------------------------------------------------------------------- *}
 <span class="bubble {$class|default:''}">
     <label>
-        <a href="javascript:void(0)" onclick="this.parentNode.click();">？</a>
+        <a href="javascript:void(0)" onclick="this.parentElement.click();">？</a>
         <input type="checkbox">
     </label>
     <div>{$content|default:''}</div>

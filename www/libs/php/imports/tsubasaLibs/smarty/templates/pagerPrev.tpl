@@ -8,6 +8,7 @@
    0.22.01 2024/05/17 前頁キーに対応。
    0.33.00 2024/08/27 ライブラリの入った変数名を変更。
    0.75.00 2025/02/19 ライブラリへ移動。
+   0.80.00 2025/03/06 ボタン名を複数持つことができるように、配列型へ変更。
 ------------------------------------------------------------------------------------------------- *}
 <button {attributes items=[
     'type' => 'button',
@@ -16,4 +17,4 @@
     'onclick' => 'libs.web.send(event)',
     'disabled' => !$table.infos.isPrev|default:false
 ]}>{$text|default:'◀'}</button>
-<input type="hidden" name="prevPageButtonName" value="{$name|default:'lstPrevPage'}">
+<input type="hidden" name="prevPageButtonName[]" value="{$name|default:'lstPrevPage'}">

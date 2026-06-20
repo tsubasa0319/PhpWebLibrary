@@ -8,6 +8,7 @@
 // 0.50.00 2024/11/01 予定リストに欠番があると、先頭の予定の取得に失敗するため修正。
 // 0.51.00 2024/11/13 検索速度を上げるため、検索値がStringableの場合は先にstringへ変換するように変更。
 // 0.85.00 2025/03/29 配列処理を見直し、処理を高速化。
+// 0.85.01 2025/03/29 ValueType::convertForBindの使い方を訂正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/SelectPlan.php';
@@ -18,7 +19,7 @@ use WeakReference;
  * クエリ予定クラス
  * 
  * @since 0.16.00
- * @version 0.85.00
+ * @version 0.85.01
  */
 class QueryPlanning {
     // ---------------------------------------------------------------------------------------------
@@ -158,7 +159,7 @@ class QueryPlanning {
             if ($num >= count($keyItems)) break;
 
             $type = $keyItems[$num]->item->type;
-            $value = ValueType::convertForBind($value, $type);
+            ValueType::convertForBind($value, $type);
 
             $values[$num] = $value;
         }

@@ -1,3 +1,7 @@
+0.85.01 2025/03/29 18:01:07
+[修正]
+database/QueryPlanning.php: ValueType::convertForBindの使い方を訂正。
+
 0.85.00 2025/03/29 15:52:19
 [変更]
 database/QueryPlanning.php: 配列処理を見直し、処理を高速化。

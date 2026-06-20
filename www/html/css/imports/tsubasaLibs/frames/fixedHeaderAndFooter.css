@@ -8,6 +8,7 @@
    0.15.00 2024/03/15 画面全体の領域を使用クラスを追加。
    0.17.00 2024/03/26 メイン領域の左右に2pxのマージンを追加。
    0.33.00 2024/08/24 ライブラリ名を訂正。
+   0.55.01 2024/12/05 メイン領域の横幅が溢れた時に、スクロールバーを表示するように変更。
 ------------------------------------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------------------------------- */
 /* 変数定義 */
@@ -43,14 +44,12 @@ body > form:first-child > header button {
     margin-left: 2px;
     margin-right: 2px;
     max-height: calc(100vh - var(--tsubasaLibs-header-height) - var(--tsubasaLibs-footer-height));
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: auto;
 }
 
 /* 画面全体の領域を使用 */
 #main.fill {
     height: calc(100vh - var(--tsubasaLibs-header-height) - var(--tsubasaLibs-footer-height));
-    overflow-y: hidden;
 }
 
 /* ---------------------------------------------------------------------------------------------- */

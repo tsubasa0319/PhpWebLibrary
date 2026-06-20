@@ -18,6 +18,7 @@
 // 0.22.02 2024/05/17 子画面を開く時、受取先が未指定の場合に"undefined"として送信してしまうため修正。
 // 0.23.00 2024/05/18 インラインフレームにより子画面を開く時、親画面に対してタブ移動を停止するように変更。
 // 0.55.00 2024/12/04 コードより名称を取得するメソッドを追加。パラメータチェックを追加。
+// 0.55.01 2024/12/05 送信処理のイベント値を数値型も有効へ修正。
 // -------------------------------------------------------------------------------------------------
 import forArray from "./forArray.js";
 import checker from "./checker.js";
@@ -27,7 +28,7 @@ import Ajax from "./Ajax.js";
  * Web処理
  * 
  * @since 0.05.00
- * @version 0.55.00
+ * @version 0.55.01
  */
 const web = {
     // ---------------------------------------------------------------------------------------------
@@ -280,13 +281,14 @@ const web = {
      * 送信処理(Submit以外のイベント用)
      * 
      * @param {Event} event イベント
-     * @param {?string} value イベント値
+     * @param {?string|number} value イベント値
      * @return {boolean} 成否
      */
     send: (event, value = null) => {
         // パラメータチェック
         if (!(event instanceof Event)) return checker.paramCheckError('event', event);
-        if (!checker.isString(value, true)) return checker.paramCheckError('value', value);
+        if (!checker.isString(value, true) && !checker.isNumber(value))
+            return checker.paramCheckError('value', value);
 
         if (event.type === 'submit') {
             alert('二重送信になるため、処理を中断します。');

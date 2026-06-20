@@ -5,6 +5,7 @@
 // History:
 // 0.16.00 2024/03/23 作成。
 // 0.40.01 2024/09/26 テーブルインスタンスを弱い参照へ変更。循環参照のため。
+// 0.50.00 2024/11/01 予定リストに欠番があると、先頭の予定の取得に失敗するため修正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/SelectPlan.php';
@@ -15,7 +16,7 @@ use WeakReference;
  * クエリ予定クラス
  * 
  * @since 0.16.00
- * @version 0.40.01
+ * @version 0.50.00
  */
 class QueryPlanning {
     // ---------------------------------------------------------------------------------------------
@@ -54,7 +55,8 @@ class QueryPlanning {
         /** @var SelectPlan[] */
         $plans = array_filter($this->selectPlans, fn(SelectPlan $plan) => $plan->isDuplicate($values));
         if (count($plans) > 0)
-            return $plans[0]->getRecord();
+            foreach ($plans as $plan)
+                return $plan->getRecord();
 
         // 新規予定
         $plan = new SelectPlan();
@@ -76,7 +78,8 @@ class QueryPlanning {
         /** @var SelectArrayPlan[] */
         $plans = array_filter($this->selectArrayPlans, fn(SelectArrayPlan $plan) => $plan->isDuplicate($values));
         if (count($plans) > 0)
-            return $plans[0]->getRecords();
+            foreach ($plans as $plan)
+                return $plan->getRecords();
 
         // 新規予定
         $plan = new SelectArrayPlan();
@@ -119,6 +122,7 @@ class QueryPlanning {
         $arrayPlans = array_filter($this->selectArrayPlans,
             fn(SelectArrayPlan $plan) => !$plan->isExecuted
         );
+        if (count($plans) == 0 and count($arrayPlans) == 0) return;
 
         // レコードを取得
         $valueLists = [];
@@ -159,7 +163,7 @@ class QueryPlanning {
             foreach ($items->getItemsArray() as $item)
                 $rcd->{$item->id} = null;
         }
-        /** @var SelectPlan[] */
+        /** @var SelectArrayPlan[] */
         $_arrayPlans2 = array_filter($arrayPlans, fn(SelectArrayPlan $plan) => !$plan->isExecuted);
         foreach ($_arrayPlans2 as $arrayPlan)
             $arrayPlan->isExecuted = true;

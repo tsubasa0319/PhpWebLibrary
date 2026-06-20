@@ -28,6 +28,7 @@
 //                    順番待ちループで自身の順番待ちファイルを削除する可能性があるため訂正。
 // 0.90.02 2025/05/20 ファイルを開いてからロックするまでの間に割り込まれる可能性を考慮。
 //                    デバッグモードを実装。
+// 0.90.03 2025/05/21 エラーハンドリングを整理。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
@@ -38,7 +39,7 @@ use Stringable;
  * APIイベントクラス
  * 
  * @since 0.09.00
- * @version 0.90.02
+ * @version 0.90.03
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -77,8 +78,8 @@ class Events {
     protected $processFilePointer;
     /** @var ?type\TimeStamp 実行開始日時 */
     protected $executeStartTime;
-    /** @var bool 強制終了したかどうか */
-    protected $isExited;
+    /** @var bool エラー送信したかどうか */
+    protected $isSentError;
     /** @var bool 監視を中断(処理は継続) */
     protected $canceledMonitoring;
 
@@ -110,7 +111,7 @@ class Events {
         $this->now = new type\TimeStamp();
 
         // 設定
-        $this->isExited = false;
+        $this->isSentError = false;
         $this->canceledMonitoring = false;
         $this->setMonitorInfo();
         $this->setRequestInfo();
@@ -183,8 +184,7 @@ class Events {
             $this->db->dispose();
 
         // ログファイルを閉じる
-        fclose($this->logFilePointer);
-        $this->logFilePointer = null;
+        $this->closeFile($this->logFilePointer);
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -201,32 +201,33 @@ class Events {
             switch ($error['type'] ?? null) {
                 case E_ERROR:
                 case E_USER_ERROR:
-                    $message = sprintf('PHP Fatal error:  %s in %s on line %s',
-                        $error['message'] ?? '',
-                        $error['file'] ?? '',
-                        $error['line'] ?? ''
-                    );
-                    $me->log($message, true);
-                    $me->sendError('An unexpected error has occurred');
+                    $me->errorForShutdown($error);
                     break;
-
-                case E_WARNING:
-                case E_USER_WARNING:
-                    $message = sprintf('PHP Warning:  %s in %s on line %s',
-                        $error['message'] ?? '',
-                        $error['file'] ?? '',
-                        $error['line'] ?? ''
-                    );
-                    $me->log($message, true);
-                    break;
-            }
+            };
 
             // 出力のバッファリングを終了
             if (ob_get_level()) ob_end_flush();
-
-            // 強制終了している場合、デストラクタを実行
-            if ($me->isExited) $me->__destruct();
         }, $this);
+    }
+
+    /**
+     * エラー処理(シャットダウン時)
+     * 
+     * @since 0.90.03
+     * @param array{type:int, message:string, file:string, line:int} $error
+     */
+    protected function errorForShutdown($error) {
+        $this->sendError('An unexpected error has occurred');
+
+        // デバッグ
+        if ($this->isDebug) {
+            $message = sprintf('PHP Fatal error:  %s in %s on line %s',
+                $error['message'] ?? '',
+                $error['file'] ?? '',
+                $error['line'] ?? ''
+            );
+            $this->log(sprintf('[Debug]%s', $message), true);
+        }
     }
 
     /**
@@ -356,7 +357,8 @@ class Events {
     protected function roleError() {
         $this->log('Role error: ' . $this->errorMessage, true);
         $this->sendError($this->errorMessage, 403);
-        $this->isExited = true;
+
+        // 強制終了
         exit;
     }
 
@@ -488,6 +490,7 @@ class Events {
         $limitPath = sprintf('%s/id_%s', $dir, $time->format('YmdHisu'));
 
         // ループ
+        clearstatcache();
         foreach ($paths as $path) {
             if ($path > $limitPath) break;
             $this->destroyNoXLockFile($path);
@@ -539,6 +542,7 @@ class Events {
             }
 
             // 万一ロックされていないファイルがあれば、削除
+            clearstatcache();
             foreach ($paths as $_path)
                 if ($_path !== $path)
                     $this->destroyNoXLockFile($_path);
@@ -590,6 +594,7 @@ class Events {
         $perTimes = intdiv(60000000, $onceWaitTime);    // 1分間あたりの回数
         while ($times++ < $maxTimes and count($paths) >= $this->maxNumberOfProcesses) {
             // 万一ロックされていないファイルがあれば、削除
+            clearstatcache();
             foreach ($paths as $path)
                 $this->destroyNoXLockFile($path);
 
@@ -652,9 +657,8 @@ class Events {
      * @return bool 成否
      */
     protected function prepareDirectory(string $path, bool $isLogged = true): bool {
-        // 無ければ、生成、失敗してもエラー情報を残さない
-        if (!file_exists($path))
-            if (!@mkdir($path)) error_clear_last();
+        // 無ければ、生成
+        if (!file_exists($path)) mkdir($path);
 
         // チェック
         if (!is_dir($path)) {
@@ -676,9 +680,8 @@ class Events {
      * @return resource|false ファイルポインタ
      */
     protected function openFile(string $path, string $mode, bool $isLogged = true): mixed {
-        // 開く、失敗してもエラー情報を残さない
-        if (!$filePointer = @fopen($path, $mode)) error_clear_last();
-        if (!$filePointer) {
+        // 開く
+        if (!$filePointer = fopen($path, $mode)) {
             if ($isLogged)
                 $this->log(sprintf('Could not open a file: %s', $path), true);
             return false;
@@ -689,6 +692,10 @@ class Events {
 
     /**
      * ファイルをロック
+     * 
+     * ロックはファイルを閉じるか、リソースへ参照がなくなった時点で  
+     * OSにより自動的に解除されます。WindowsとLinuxで確認。  
+     * WindowsでもLockFileExを用いるため、LOCK_NBが有効。
      * 
      * @since 0.90.02
      * @param resource $filePointer ファイルポインタ
@@ -731,10 +738,8 @@ class Events {
         if (!$filePointer) return false;
 
         // ロック
-        if (!$this->lockFile($filePointer, $lockMode)) {
-            $this->closeFile($filePointer);
-            return false;
-        }
+        $isLocked = $this->lockFile($filePointer, $lockMode);
+        if (!$isLocked) return false;   // ポインタが破棄されるので、自動的に閉じられる
 
         return $filePointer;
     }
@@ -780,16 +785,27 @@ class Events {
         // ファイルかどうか
         if (!is_file($path)) return false;
 
+        // 変更したばかりのファイルは残す、直後にロックする可能性があるため
+        $utime = filemtime($path);
+        if ($utime !== false) {
+            $momentAgo = (new type\TimeStamp())->addSeconds(-2);
+            $fileTime = new type\TimeStamp(date('Y/m/d H:i:s', $utime));
+            if ($fileTime->compare($momentAgo) >= 0) return false;
+        }
+
         // 開く
         if (!$filePointer = $this->openFile($path, 'r', false)) return false;
 
-        // 排他ロックされていないことを確認
-        $isLocked = $this->lockFile($filePointer, LOCK_SH | LOCK_NB);
-        $this->closeFile($filePointer);
-        if (!$isLocked) return false;
+        // 排他ロック
+        $isLocked = $this->lockFile($filePointer, LOCK_EX | LOCK_NB);
+        if (!$isLocked) return false;   // ポインタが破棄されるので、自動的に閉じられる
 
         // 削除
-        if (!$result = @unlink($path)) error_clear_last();
+        $result = unlink($path);
+
+        // ロック解除
+        $this->lockFile($filePointer, LOCK_UN);
+
         return $result;
     }
 
@@ -804,13 +820,16 @@ class Events {
         // URLを取得
         $meta = stream_get_meta_data($this->waitFilePointer);
 
-        // 閉じる
-        $this->closeFile($this->waitFilePointer);
-
         // 削除
         $result = false;
         if (isset($meta['uri']))
-            if (!$result = @unlink($meta['uri'])) error_clear_last();
+            $result = unlink($meta['uri']);
+
+        // ロック解除
+        $this->lockFile($this->waitFilePointer, LOCK_UN);
+
+        // 閉じる
+        $this->closeFile($this->waitFilePointer);
 
         // デバッグ
         if ($this->isDebug and $result)
@@ -828,13 +847,16 @@ class Events {
         // URLを取得
         $meta = stream_get_meta_data($this->processFilePointer);
 
-        // 閉じる
-        $this->closeFile($this->processFilePointer);
-
         // 削除
         $result = false;
         if (isset($meta['uri']))
-            if (!$result = @unlink($meta['uri'])) error_clear_last();
+            $result = unlink($meta['uri']);
+
+        // ロック解除
+        $this->lockFile($this->processFilePointer, LOCK_UN);
+
+        // 閉じる
+        $this->closeFile($this->processFilePointer);
 
         // デバッグ
         if ($this->isDebug and $result)
@@ -1268,7 +1290,6 @@ class Events {
         $this->sendError($message, $httpCode);
 
         // 強制終了
-        $this->isExited = true;
         exit;
     }
 
@@ -1303,6 +1324,8 @@ class Events {
      * @param int $httpCode HTTPステータスコード
      */
     protected function sendError(string $message, int $httpCode = 500) {
+        if ($this->isSentError) return;
+
         // 出力バッファリングを消去
         if (ob_get_level()) ob_clean();
 
@@ -1317,6 +1340,9 @@ class Events {
                 ]
             ]);
         }
+
+        // 送信済とする
+        $this->isSentError = true;
     }
 
     /**

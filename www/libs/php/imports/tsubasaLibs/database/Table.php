@@ -24,6 +24,7 @@
 // 0.40.01 2024/09/26 子クラスのインスタンスは、弱い参照でプロパティに持つように変更。
 // 0.40.02 2024/09/27 生成済テンポラリテーブルインスタンスは通常の参照へ戻す。途中でメモリ解放されてしまうため。
 //                    disposeメソッドを追加。
+// 0.43.00 2024/10/11 selectInのパラメータが単一項目により配列型ではなかった時へ対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -39,7 +40,7 @@ use WeakReference;
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.40.02
+ * @version 0.43.00
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -2077,6 +2078,12 @@ class Table {
      * @return string|false SQLステートメント
      */
     protected function makeSqlWhereIn(...$valuesList): string|false {
+        // 値リストが配列型ではなかった時の対応
+        $valuesCount = count($valuesList);
+        for ($i = 0; $i < $valuesCount; $i++)
+            if (!is_array($valuesList[$i]))
+                $valuesList[$i] = [$valuesList[$i]];
+
         // インデックスキー
         $key = $this->indexKey;
         $idValuesList = [];
@@ -2323,6 +2330,12 @@ class Table {
      * @return array{item: Item, value: mixed} バインドリスト
      */
     protected function makeBindItemsWhereIn(...$valuesList): array {
+        // 値リストが配列型ではなかった時の対応
+        $valuesCount = count($valuesList);
+        for ($i = 0; $i < $valuesCount; $i++)
+            if (!is_array($valuesList[$i]))
+                $valuesList[$i] = [$valuesList[$i]];
+
         $bindIdValues = [];
 
         // インデックスキー

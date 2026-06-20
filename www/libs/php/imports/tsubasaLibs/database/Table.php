@@ -30,6 +30,7 @@
 // 0.53.00 2024/11/21 SQLステートメントを生成(SET句)にて、日時の実行者項目に対してパラメータ指定するように修正。
 // 0.56.00 2024/12/10 SELECTの並び順を逆にできるように対応。
 // 0.61.00 2024/12/17 makeBindItemsWhereEqFromRecordが正常に動作していなかったので修正。
+// 0.65.00 2024/12/23 バインド項目を生成時、値の型チェックを削除。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -46,7 +47,7 @@ use Stringable;
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.61.00
+ * @version 0.65.00
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -2975,12 +2976,9 @@ class Table {
      * @since 0.39.00
      * @param string $id 項目ID
      * @param mixed $value 値
-     * @return ?array{item:Item, value:mixed}|true バインド項目、true:バインド無し、null:処理失敗
+     * @return ?array{item:Item, value:mixed} バインド項目、null:処理失敗
      */
-    protected function makeBindItem(string $id, mixed $value): array|true|null {
-        if (is_array($value)) return null;
-        if ($value === null) return true;
-
+    protected function makeBindItem(string $id, mixed $value): ?array {
         $itemsArray = $this->items->getItemsArray();
         if (!in_array($id, array_keys($itemsArray), true)) return null;
         $item = $itemsArray[$id];
@@ -3007,7 +3005,6 @@ class Table {
             foreach ($values as $value) {
                 $bindItem = $this->makeBindItem($id, $value);
                 if ($bindItem === null) return null;
-                if ($bindItem === true) continue;
                 $bindItems[] = $bindItem;
             }
         }
@@ -3249,6 +3246,8 @@ class Table {
             if (in_array($id, $keyItemIds, true)) return [];
 
             $value = $values[$id];
+
+            // Null値はバインドしない
             if ($value === null) continue;
 
             $bindIdValues[] = [$id, $value];
@@ -3282,6 +3281,7 @@ class Table {
             // キー項目を変更した場合は、無条件
             if (in_array($id, $keyItemIds, true)) return [];
 
+            // Null値はバインドしない
             if ($value === null) continue;
 
             $bindIdValues[] = [$id, $value];

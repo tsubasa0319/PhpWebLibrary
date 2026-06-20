@@ -3,6 +3,7 @@
 //
 // History:
 // 0.05.00 2024/02/20 作成。
+// 0.59.00 2024/12/14 コンソールにエラー出力時、スタックトレースを出力するように対応。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import web from "./web.js";
@@ -11,7 +12,7 @@ import web from "./web.js";
  * メッセージ処理
  * 
  * @since 0.05.00
- * @version 0.05.00
+ * @version 0.59.00
  */
 const message = {
     // ---------------------------------------------------------------------------------------------
@@ -64,6 +65,7 @@ const message = {
                     response = JSON.parse(request.response);
                 } catch (ex) {
                     console.error('Ajax Error: ' + request.response);
+                    console.trace();
                     return;
                 }
                 break;
@@ -74,10 +76,12 @@ const message = {
 
             default:
                 console.error('Ajax Error');
+                console.trace();
                 return;
         }
         if (response.status !== 'error') {
             console.error('Ajax Error');
+            console.trace();
             return;
         }
 

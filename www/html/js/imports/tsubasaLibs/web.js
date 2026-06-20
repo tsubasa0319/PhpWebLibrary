@@ -19,6 +19,7 @@
 // 0.23.00 2024/05/18 インラインフレームにより子画面を開く時、親画面に対してタブ移動を停止するように変更。
 // 0.55.00 2024/12/04 コードより名称を取得するメソッドを追加。パラメータチェックを追加。
 // 0.55.01 2024/12/05 送信処理のイベント値を数値型も有効へ修正。
+// 0.59.00 2024/12/14 入力値が数値型の時、エレメントが別ウィンドウにある時に、パラメータエラーになっていたので修正
 // -------------------------------------------------------------------------------------------------
 import forArray from "./forArray.js";
 import checker from "./checker.js";
@@ -28,7 +29,7 @@ import Ajax from "./Ajax.js";
  * Web処理
  * 
  * @since 0.05.00
- * @version 0.55.01
+ * @version 0.59.00
  */
 const web = {
     // ---------------------------------------------------------------------------------------------
@@ -68,7 +69,7 @@ const web = {
      */
     getJoinNameByElement: (element) => {
         // パラメータチェック
-        if (!(element instanceof HTMLElement)) return checker.paramCheckError('element', element);
+        if (!checker.isHTMLElement(element)) return checker.paramCheckError('element', element);
 
         if (element.name === undefined) return null;
 
@@ -101,7 +102,7 @@ const web = {
     getElementByJoinName: (joinName, win = window) => {
         // パラメータチェック
         if (!checker.isString(joinName)) return checker.paramCheckError('joinName', joinName);
-        if (!self.isWindow(win)) return checker.paramCheckError('win', win);
+        if (!checker.isWindow(win)) return checker.paramCheckError('win', win);
 
         let name = joinName;
         let num = 0;
@@ -155,7 +156,7 @@ const web = {
      */
     getValueByElement: (element) => {
         // パラメータチェック
-        if (!(element instanceof HTMLElement)) return checker.paramCheckError('element', element);
+        if (!checker.isHTMLElement(element)) return checker.paramCheckError('element', element);
 
         const nodeName = element.nodeName.toLowerCase();
         if (nodeName === 'input') return element.value;
@@ -172,12 +173,13 @@ const web = {
      * エレメントへ値を設定
      * 
      * @param {HTMLElement} element エレメント
-     * @param {string} value 値
+     * @param {string|number} value 値
      */
     setValueByElement: (element, value) => {
         // パラメータチェック
-        if (!(element instanceof HTMLElement)) return checker.paramCheckError('element', element);
-        if (!checker.isString(value)) return checker.paramCheckError('value', value);
+        if (!checker.isHTMLElement(element)) return checker.paramCheckError('element', element);
+        if (!checker.isString(value) && !checker.isNumber(value))
+            return checker.paramCheckError('value', value);
 
         const nodeName = element.nodeName.toLowerCase();
         if (nodeName === 'input') element.value = value;
@@ -267,7 +269,7 @@ const web = {
      */
     addHiddenElementAfterTarget: (element, value = '') => {
         // パラメータチェック
-        if (!(element instanceof HTMLElement)) return checker.paramCheckError('element', element);
+        if (!checker.isHTMLElement(element)) return checker.paramCheckError('element', element);
         if (!checker.isString(value)) return checker.paramCheckError('value', value);
 
         const elmHidden = document.createElement('input');
@@ -302,6 +304,7 @@ const web = {
             !(elmTarget instanceof HTMLSelectElement) &&
             !(elmTarget instanceof HTMLTextAreaElement)) {
             console.error('フォーム関連のエレメントではないため、処理を中断しました。');
+            console.trace();
             return false;
         }
 
@@ -313,7 +316,8 @@ const web = {
         // イベント発火
         const elmForm = elmTarget.form;
         if (elmForm === null) {
-            console.error('フォームに属さないエレメントであるため、処理を中断しました。')
+            console.error('フォームに属さないエレメントであるため、処理を中断しました。');
+            console.trace();
             return false;
         }
         const elmButton = document.createElement('button');
@@ -402,7 +406,7 @@ const web = {
         if (!paramCheck) return checker.paramCheckError('itemNames', itemNames);
         if (!checker.isFunction(reciever, true))
             return checker.paramCheckError('reciever', reciever);
-        if (!self.isWindow(win)) return checker.paramCheckError('win', win);
+        if (!checker.isWindow(win)) return checker.paramCheckError('win', win);
 
         const params = {};
 
@@ -485,17 +489,6 @@ const web = {
     ajaxErrorHandler: null,
 
     /**
-     * Windowオブジェクトかどうか
-     * 
-     * @version 0.20.00
-     * @param {any} obj オブジェクト
-     * @return {boolean} 結果
-     */
-    isWindow: (obj) => {
-        return Object.prototype.toString.call(obj) === '[object Window]';
-    },
-
-    /**
      * 見えるかどうか
      * 
      * @version 0.06.00
@@ -505,8 +498,8 @@ const web = {
      */
     isVisible: (element, win = window) => {
         // パラメータチェック
-        if (!(element instanceof HTMLElement)) return checker.paramCheckError('element', element);
-        if (!self.isWindow(win)) return checker.paramCheckError('win', win);
+        if (!checker.isHTMLElement(element)) return checker.paramCheckError('element', element);
+        if (!checker.isWindow(win)) return checker.paramCheckError('win', win);
 
         const style = win.getComputedStyle(element);
 
@@ -531,8 +524,8 @@ const web = {
      */
     isMovable: (element, win = window) => {
         // パラメータチェック
-        if (!(element instanceof HTMLElement)) return checker.paramCheckError('element', element);
-        if (!self.isWindow(win)) return checker.paramCheckError('win', win);
+        if (!checker.isHTMLElement(element)) return checker.paramCheckError('element', element);
+        if (!checker.isWindow(win)) return checker.paramCheckError('win', win);
 
         // 非表示
         if (!self.isVisible(element, win)) return false;
@@ -575,7 +568,7 @@ const web = {
         /** @type {HTMLElement[]} */
         const elms = [];
         const query = [];
-        if (event.target instanceof HTMLElement)
+        if (checker.isHTMLElement(event.target))
             query.push(event.target.nodeName.toLowerCase());
         query.push('input:not(:read-only):not(:disabled):not([tabindex="-1"])');
         query.push('input[type="checkbox"]:not(:disabled):not([tabindex="-1"])');
@@ -587,7 +580,7 @@ const web = {
         query.push('textarea:not(:disabled):not(:read-only):not([tabindex="-1"])');
         query.push('a:not([tabindex="-1"])');
         Array.from(document.querySelectorAll(query.join(', '))).forEach((elm) => {
-            if (!(elm instanceof HTMLElement)) return;
+            if (!checker.isHTMLElement(elm)) return;
             if (elm === event.target) {
                 elms.push(elm);
                 return;
@@ -869,7 +862,7 @@ const web = {
      */
     addChildWindow: (childWindow) => {
         // パラメータチェック
-        if (!self.isWindow(childWindow))
+        if (!checker.isWindow(childWindow))
             return checker.paramCheckError('childWindow', childWindow);
 
         // 既に閉じられているウィンドウを削除
@@ -886,7 +879,7 @@ const web = {
      * @since 0.20.00
      * @param {?Event} event イベント
      * @param {string} url URL
-     * @param {?{[key: string]: (string|{0: string, 1:number})}} params パラメータリスト
+     * @param {?{[key: string]: (?string|{0: ?string, 1:?number})}} params パラメータリスト
      * @param {boolean} isFrame インラインフレームかどうか
      * @param {?string} width サブ画面の幅
      * @param {?string} height サブ画面の高さ
@@ -905,12 +898,12 @@ const web = {
                     return true;
                 }
 
-                if (checker.isString(params[key]))
+                if (checker.isString(params[key], true))
                     return false;
                 else if (checker.isArray(params[key])) {
                     if (params[key].length < 2 ||
-                        !checker.isString(params[key][0]) ||
-                        !checker.isInteger(params[key][1])
+                        !checker.isString(params[key][0], true) ||
+                        !checker.isInteger(params[key][1], true)
                     ) {
                         paramCheck = false;
                         return true;
@@ -932,6 +925,7 @@ const web = {
             const param = params[key];
             const _param = Array.isArray(param) ? param : [param, null];
             if (_param[0] === undefined) continue;
+            if (_param[0] === null) continue;
             _params[key] = self.getJoinName(_param[0], _param[1]);
         }
 
@@ -1016,14 +1010,15 @@ const web = {
      * 
      * @since 0.20.00
      * @param {?string} joinName 結合名
-     * @param {?string} value 値
+     * @param {?string|number} value 値
      * @param {boolean} isMove 移動するかどうか
      */
     setValueFromChildScreen: (joinName, value, isMove = false) => {
         // パラメータチェック
         if (!checker.isString(joinName, true))
             return checker.paramCheckError('joinName', joinName);
-        if (!checker.isString(value, true)) return checker.paramCheckError('value', value);
+        if (!checker.isString(value, true) && !checker.isNumber(value))
+            return checker.paramCheckError('value', value);
         if (!checker.isBoolean(isMove)) return checker.paramCheckError('isMove', isMove);
 
         if (joinName === null) return;
@@ -1084,9 +1079,9 @@ const web = {
      */
     stopTabMove: (element = null, win = null) => {
         // パラメータチェック
-        if (element !== null && !(element instanceof HTMLElement))
+        if (!checker.isHTMLElement(element, true))
             return checker.paramCheckError('element', element);
-        if (win !== null && !self.isWindow(win)) return checker.paramCheckError('win', win);
+        if (!checker.isWindow(win, true)) return checker.paramCheckError('win', win);
 
         win = win ?? window;
         if (element === null) {
@@ -1106,9 +1101,10 @@ const web = {
         }
 
         // 子ノード
-        if (element.hasChildNodes) element.childNodes.forEach(
-            elmChild => self.stopTabMove(elmChild)
-        );
+        if (element.hasChildNodes) element.childNodes.forEach(elmChild => {
+            if (!checker.isHTMLElement(elmChild)) return;
+            self.stopTabMove(elmChild);
+        });
     },
 
     /**
@@ -1122,7 +1118,7 @@ const web = {
      */
     restartTabMove: (win = null) => {
         // パラメータチェック
-        if (win !== null && !self.isWindow(win)) return checker.paramCheckError('win', win);
+        if (!checker.isWindow(win, true)) return checker.paramCheckError('win', win);
 
         win = win ?? window;
         win.document.querySelectorAll('[settabindex]').forEach(elm => {

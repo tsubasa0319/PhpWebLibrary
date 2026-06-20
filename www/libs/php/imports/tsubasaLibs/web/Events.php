@@ -28,6 +28,7 @@
 // 0.44.00 2024/10/12 Smartyクラスを追加。
 // 0.47.00 2024/10/19 タイムスタンプインスタンスを生成するメソッドを追加。
 // 0.67.00 2025/01/09 Ajaxイベント時もセッション情報を取得/設定するように変更。
+// 0.74.00 2025/02/19 エラー通知があってもDOCTYPEが欠落しないように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
@@ -51,7 +52,7 @@ use Exception;
  * イベントクラス
  * 
  * @since 0.00.00
- * @version 0.67.00
+ * @version 0.74.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -107,6 +108,10 @@ class Events {
             strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
         if ($this->isAjax)
             $this->setErrorHandlerForAjax();
+
+        // Web出力の場合、DOCTYPEを出力
+        if (!$this->isAjax)
+            $this->sendDoctype();
 
         // DB接続
         $this->db = $this->getDb();
@@ -413,6 +418,15 @@ class Events {
      */
     protected function newMessage(): Message {
         return new Message();
+    }
+
+    /**
+     * DOCTYPEを出力
+     * 
+     * @since 0.74.00
+     */
+    protected function sendDoctype() {
+        echo "<!DOCTYPE html>\n";
     }
 
     /**

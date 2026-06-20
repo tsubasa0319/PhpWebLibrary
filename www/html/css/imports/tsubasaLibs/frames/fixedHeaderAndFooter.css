@@ -9,6 +9,8 @@
    0.17.00 2024/03/26 メイン領域の左右に2pxのマージンを追加。
    0.33.00 2024/08/24 ライブラリ名を訂正。
    0.55.01 2024/12/05 メイン領域の横幅が溢れた時に、スクロールバーを表示するように変更。
+   0.74.00 2025/02/19 1つ目のformであることの条件を訂正。
+                      エラー通知に割り込まれても、レイアウトが大きく崩れないように対応。
 ------------------------------------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------------------------------- */
 /* 変数定義 */
@@ -25,15 +27,16 @@
 
 /* ---------------------------------------------------------------------------------------------- */
 /* ヘッダ */
-body > form:first-child > header {
+body > :nth-child(1 of form) > header {
     position: fixed;
     top: 0px;
     width: 100%;
     height: var(--tsubasaLibs-header-height);
+    background-color: white;
 }
 
 /* ボタン */
-body > form:first-child > header button {
+body > :nth-child(1 of form) > header button {
     height: 22px;
 }
 
@@ -55,10 +58,25 @@ body > form:first-child > header button {
 
 /* ---------------------------------------------------------------------------------------------- */
 /* フッタ */
-body > form:first-child > footer {
+body > :nth-child(1 of form) > footer {
     position: fixed;
     bottom: 0;
     width: 100%;
     height: calc(var(--tsubasaLibs-footer-height) - 1px);
     border-top: 1px solid black;
+    background-color: white;
+}
+
+/* ---------------------------------------------------------------------------------------------- */
+/* エラー通知時 */
+/* HTTPサーバ、XDebugによる通知 */
+body:not(:has(> form:first-child)) {
+    padding-top: var(--tsubasaLibs-header-height);
+}
+body:not(:has(> form:first-child)) > br:first-child {
+    display: none;
+}
+body:not(:has(> form:first-child)) #main {
+    margin-top: 0;
+    max-height: initial;
 }

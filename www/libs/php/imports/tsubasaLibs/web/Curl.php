@@ -10,6 +10,7 @@
 // 0.31.02 2024/08/09 受取データ/エラー処理を、指定の文字セットへ変換するように対応。
 // 0.31.03 2024/08/09 json_decodeのオプションを第3パラメータに設定していたので修正。
 // 0.52.00 2024/11/14 マルチハンドル、非同期処理に対応。
+// 0.78.00 2025/03/01 タイムアウト時間を設定。予期しない長時間処理を防止するため。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use CurlHandle, CurlMultiHandle;
@@ -18,7 +19,7 @@ use CurlHandle, CurlMultiHandle;
  * cURLクラス
  * 
  * @since 0.09.00
- * @version 0.52.00
+ * @version 0.78.00
  */
 class Curl {
     // ---------------------------------------------------------------------------------------------
@@ -40,6 +41,10 @@ class Curl {
     protected $curlMultiHandle;
     /** @var string URL */
     protected $url;
+    /** @var ?int 接続タイムアウト時間(秒) */
+    protected $connectTimeout;
+    /** @var ?int タイムアウト時間(秒) */
+    protected $timeout;
     /** @var string リクエストコンテンツタイプ */
     protected $requestContentType;
     /** @var string リクエスト文字セット */
@@ -74,6 +79,32 @@ class Curl {
 
     // ---------------------------------------------------------------------------------------------
     // メソッド
+    /**
+     * 接続タイムアウト時間を変更
+     * 
+     * @since 0.78.00
+     * @param ?int 接続タイムアウト時間(秒)
+     * @return static チェーン用
+     */
+    public function setConnectTimeout(?int $connectTimeout): static {
+        $this->connectTimeout = $connectTimeout;
+
+        return $this;
+    }
+
+    /**
+     * タイムアウト時間を変更
+     * 
+     * @since 0.78.00
+     * @param ?int タイムアウト時間(秒)
+     * @return static チェーン用
+     */
+    public function setTimeout(?int $timeout): static {
+        $this->timeout = $timeout;
+
+        return $this;
+    }
+
     /**
      * 送信メソッドを変更
      * 
@@ -240,6 +271,8 @@ class Curl {
      */
     protected function setInit() {
         $this->curlMultiHandle = null;
+        $this->connectTimeout = 5;
+        $this->timeout = 30;
         $this->isAutoClose = true;
         $this->isCheckSSL = false;
         $this->requestContentType = null;
@@ -259,6 +292,12 @@ class Curl {
     protected function prepare() {
         // URL
         curl_setopt($this->curlHandle, CURLOPT_URL, $this->url);
+
+        // タイムアウト
+        if ($this->connectTimeout !== null)
+            curl_setopt($this->curlHandle, CURLOPT_CONNECTTIMEOUT, $this->connectTimeout);
+        if ($this->timeout !== null)
+            curl_setopt($this->curlHandle, CURLOPT_TIMEOUT, $this->timeout);
 
         // 圧縮
         curl_setopt($this->curlHandle, CURLOPT_ACCEPT_ENCODING, 'gzip, deflate');

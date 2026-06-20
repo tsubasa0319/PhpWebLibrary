@@ -17,6 +17,7 @@
 // 0.31.03 2024/08/09 json_decodeのオプションを第3パラメータに設定していたので修正。
 // 0.40.00 2024/09/25 デストラクタを追加。DBインスタンスを可能な範囲で解放。
 // 0.43.00 2024/10/11 JSON形式で受け取った値を配列型へ対応。
+// 0.72.00 2025/01/29 無条件に許可するIPアドレスかどうかチェックをメソッドとして独立。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
@@ -27,7 +28,7 @@ use Stringable;
  * APIイベントクラス
  * 
  * @since 0.09.00
- * @version 0.43.00
+ * @version 0.72.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -189,17 +190,7 @@ class Events {
         // リモートホスト名と、リモートIPアドレスの整合チェック
         $ips = $this->getIpsByHost($host);
         if (!in_array($_SERVER['REMOTE_ADDR'], $ips, true)) {
-            $isOk = false;
-
-            // 開発環境からのアクセスはOK
-            if (preg_match('/\A172\.18\.4\.[0-9]{1,3}\z/', $_SERVER['REMOTE_ADDR']))
-                $isOk = true;
-
-            // 同じサーバからのアクセスはOK
-            if ($_SERVER['REMOTE_ADDR'] === '127.0.0.1')
-                $isOk = true;
-
-            if (!$isOk) {
+            if (!$this->checkAllowedIpUnconditionally()) {
                 $this->errorMessage = sprintf(
                     '%s and %s are inconsistent', $this->remoteHost, $_SERVER['REMOTE_ADDR']
                 );
@@ -226,6 +217,19 @@ class Events {
      */
     protected function getIpsByHost(string $host): array {
         return [];
+    }
+
+    /**
+     * 無条件に許可するIPアドレスかどうかチェック
+     * 
+     * @since 0.72.00
+     * @return bool 結果
+     */
+    protected function checkAllowedIpUnconditionally(): bool {
+        // 同じサーバからのアクセスはOK
+        if ($_SERVER['REMOTE_ADDR'] === '127.0.0.1') return true;
+
+        return false;
     }
 
     /**

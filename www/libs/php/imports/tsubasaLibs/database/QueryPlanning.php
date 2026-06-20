@@ -9,6 +9,7 @@
 // 0.51.00 2024/11/13 検索速度を上げるため、検索値がStringableの場合は先にstringへ変換するように変更。
 // 0.85.00 2025/03/29 配列処理を見直し、処理を高速化。
 // 0.85.01 2025/03/29 ValueType::convertForBindの使い方を訂正。
+// 0.90.00 2025/05/16 レコード取得履歴の持ち方を変更し、取得を高速化。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/SelectPlan.php';
@@ -19,7 +20,7 @@ use WeakReference;
  * クエリ予定クラス
  * 
  * @since 0.16.00
- * @version 0.85.01
+ * @version 0.90.00
  */
 class QueryPlanning {
     // ---------------------------------------------------------------------------------------------
@@ -28,20 +29,12 @@ class QueryPlanning {
     protected $tableRef;
     /** @var SelectPlan[] レコード取得予定リスト */
     protected $selectPlans;
-    /** @var array<string, int> レコード取得履歴キー */
-    protected $selectHistoryKeys;
-    /** @var SelectPlan[] レコード取得履歴 */
+    /** @var array<string, SelectPlan> レコード取得履歴 */
     protected $selectHistories;
-    /** @var int レコード取得履歴の登録数(削除済を含む) */
-    protected $selectHistoriesCount;
     /** @var SelectArrayPlan[] レコード取得予定リスト(複数レコード版) */
     protected $selectArrayPlans;
-    /** @var array<string, int> レコード取得履歴キー(複数レコード版) */
-    protected $selectArrayHistoryKeys;
-    /** @var SelectArrayPlan[] レコード取得履歴(複数レコード版) */
+    /** @var array<string, SelectArrayPlan> レコード取得履歴(複数レコード版) */
     protected $selectArrayHistories;
-    /** @var int レコード取得履歴の登録数(削除済を含む、複数レコード版) */
-    protected $selectArrayHistoriesCount;
 
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
@@ -71,8 +64,9 @@ class QueryPlanning {
         $key = $this->convertForKey($table, $values);
 
         // 履歴に同じ予定があれば、そこで発行したレコードを返す
-        if (isset($this->selectHistoryKeys[$key]))
-            return $this->selectHistories[$this->selectHistoryKeys[$key]]->getRecord();
+        $plan = $this->selectHistories[$key] ?? null;
+        if ($plan !== null)
+            return $plan->getRecord();
 
         // 新規予定
         $plan = new SelectPlan();
@@ -82,8 +76,7 @@ class QueryPlanning {
         $this->selectPlans[] = $plan;
 
         // 履歴へ登録
-        $this->selectHistoryKeys[$key] = $this->selectHistoriesCount++;
-        $this->selectHistories[] = $plan;
+        $this->selectHistories[$key] = $plan;
 
         return $record;
     }
@@ -104,19 +97,19 @@ class QueryPlanning {
         $key = $this->convertForKey($table, $values);
 
         // 履歴に同じ予定があれば、そこで発行したレコードリストを返す
-        if (isset($this->selectArrayHistoryKeys[$key]))
-            return $this->selectArrayHistories[$this->selectHistoryKeys[$key]]->getRecords();
+        $arrayPlan = $this->selectArrayHistories[$key] ?? null;
+        if ($arrayPlan !== null)
+            return $arrayPlan->getRecords();
 
         // 新規予定
-        $plan = new SelectArrayPlan();
-        $plan->setValues($values);
-        $this->selectArrayPlans[] = $plan;
+        $arrayPlan = new SelectArrayPlan();
+        $arrayPlan->setValues($values);
+        $this->selectArrayPlans[] = $arrayPlan;
 
         // 履歴へ登録
-        $this->selectArrayHistoryKeys[$key] = $this->selectArrayHistoriesCount++;
-        $this->selectArrayHistories[] = $plan;
+        $this->selectArrayHistories[$key] = $arrayPlan;
 
-        return $plan->getRecords();
+        return $arrayPlan->getRecords();
     }
 
     /**
@@ -133,13 +126,9 @@ class QueryPlanning {
      */
     protected function setInit() {
         $this->selectPlans = [];
-        $this->selectHistoryKeys = [];
         $this->selectHistories = [];
-        $this->selectHistoriesCount = 0;
         $this->selectArrayPlans = [];
-        $this->selectArrayHistoryKeys = [];
         $this->selectArrayHistories = [];
-        $this->selectArrayHistoriesCount = 0;
     }
 
     /**
@@ -194,8 +183,8 @@ class QueryPlanning {
                 $key = $this->convertForKey($table, $keyValues);
 
                 // 単一レコード版
-                if (isset($this->selectHistoryKeys[$key])) {
-                    $plan = $this->selectHistories[$this->selectHistoryKeys[$key]];
+                $plan = $this->selectHistories[$key] ?? null;
+                if ($plan !== null) {
                     if (!$plan->isExecuted) {
                         $plan->isExecuted = true;
                         $plan->getRecord()->setValuesFromRecord($rcd);
@@ -203,8 +192,8 @@ class QueryPlanning {
                 }
 
                 // 複数レコード版
-                if (isset($this->selectArrayHistoryKeys[$key])) {
-                    $arrayPlan = $this->selectArrayHistories[$this->selectArrayHistoryKeys[$key]];
+                $arrayPlan = $this->selectArrayHistories[$key] ?? null;
+                if ($arrayPlan !== null) {
                     $arrayPlan->isExecuted = true;
                     $arrayPlan->addRecord($rcd);
                 }

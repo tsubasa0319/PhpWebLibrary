@@ -25,6 +25,7 @@
 // 0.70.00 2025/01/16 実行中/待機中のカーソルアイコンを変更。
 //                    画面遷移に暗転処理を追加。
 //                    コードから名称取得をFirefoxに対応。
+// 0.71.01 2025/01/21 Firefoxかどうか判定するメソッドの名前空間を訂正。
 // -------------------------------------------------------------------------------------------------
 import forArray from "./forArray.js";
 import checker from "./checker.js";
@@ -34,7 +35,7 @@ import Ajax from "./Ajax.js";
  * Web処理
  * 
  * @since 0.05.00
- * @version 0.70.00
+ * @version 0.71.01
  */
 const web = {
     // ---------------------------------------------------------------------------------------------
@@ -802,7 +803,7 @@ const web = {
             if (event.key === 'Process' && event.code === 'Delete') return;
 
             // エンターは、全角モードの確定のみ(Firefoxは除く)
-            if (!web.isFirefox())
+            if (!checker.isFirefox())
                 if (event.key !== 'Process' && event.code === 'Enter') return;
 
             // Ctrlとの同時押しは除外

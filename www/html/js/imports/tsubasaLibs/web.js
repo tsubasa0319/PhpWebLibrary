@@ -26,6 +26,7 @@
 //                    画面遷移に暗転処理を追加。
 //                    コードから名称取得をFirefoxに対応。
 // 0.71.01 2025/01/21 Firefoxかどうか判定するメソッドの名前空間を訂正。
+// 0.79.00 2025/03/05 Spaceキーによるアンカークリック処理を追加。
 // -------------------------------------------------------------------------------------------------
 import forArray from "./forArray.js";
 import checker from "./checker.js";
@@ -35,7 +36,7 @@ import Ajax from "./Ajax.js";
  * Web処理
  * 
  * @since 0.05.00
- * @version 0.71.01
+ * @version 0.79.00
  */
 const web = {
     // ---------------------------------------------------------------------------------------------
@@ -678,6 +679,32 @@ const web = {
             'email', 'number', 'search', 'tel', 'text', 'url'
         ].includes(event.target.type))
             return false;
+
+        return true;
+    },
+
+    /**
+     * Spaceキーによるアンカークリック処理
+     * 
+     * @since 0.79.00
+     * @param {Event} event イベント
+     * @return {boolean} イベントを続行するかどうか
+     */
+    spaceToAnchorClick: (event) => {
+        // パラメータチェック
+        if (!(event instanceof Event)) return checker.paramCheckError('event', event);
+
+        if (!(event instanceof KeyboardEvent)) return true;
+        if (!['Space'].includes(event.code)) return true;
+
+        // 変換中は、元のイベントを続行
+        if (event.isComposing) return true;
+
+        // アンカーであること
+        if (!(event.target instanceof HTMLAnchorElement)) return true;
+
+        // クリック
+        event.target.click();
 
         return true;
     },

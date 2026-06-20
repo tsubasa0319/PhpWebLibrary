@@ -8,6 +8,8 @@
 // 0.11.00 2024/03/08 データ型のクラス名を変更。
 // 0.16.00 2024/03/23 インデックスキーのキー値リスト取得を追加。
 // 0.40.00 2024/09/25 コンストラクタの受取パラメータを、テーブルインスタンスへ変更。メモリリーク対策のため。
+// 0.40.01 2024/09/26 原因は別にあったので、キャンセル。
+// 0.40.02 2024/09/27 一時利用のため、ステートメントインスタンスがNullである場合を考慮。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/advance/RecordCreatorItem.php';
@@ -20,7 +22,7 @@ use WeakReference;
  * レコードクラス
  * 
  * @since 0.00.00
- * @version 0.40.01
+ * @version 0.40.02
  */
 class Record {
     // ---------------------------------------------------------------------------------------------
@@ -232,7 +234,7 @@ class Record {
      * @param string 変換後
      */
     protected function convertName(string $id): string {
-        $table = $this->stmt->table;
+        $table = $this->stmt?->table;
         if (!($table instanceof Table)) return $id;
 
         return $table->getIdForVar($id);

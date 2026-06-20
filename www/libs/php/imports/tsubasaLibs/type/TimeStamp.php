@@ -5,6 +5,7 @@
 // History:
 // 0.00.00 2024/01/23 作成。
 // 0.11.00 2024/03/08 データ型のクラス名を変更。
+// 0.86.00 2025/04/02 マイクロ秒を加算を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\type;
 require_once __DIR__ . '/DateTime.php';
@@ -16,7 +17,7 @@ use DateTime as _DateTime, DateTimeZone;
  * タイムスタンプ型クラス
  * 
  * @since 0.00.00
- * @version 0.11.00
+ * @version 0.86.00
  */
 class TimeStamp extends DateTime {
     // ---------------------------------------------------------------------------------------------
@@ -84,5 +85,16 @@ class TimeStamp extends DateTime {
      */
     public function setMicrosecond(int $microsecond) {
         return $this->setTime(null, null, null, $microsecond);
+    }
+
+    /**
+     * マイクロ秒を加算
+     * 
+     * @since 0.86.00
+     * @param int $microseconds マイクロ秒
+     * @return static チェーン用
+     */
+    public function addMicroseconds(int $microseconds) {
+        return $this->setTime(null, null, null, $this->getMicrosecond() + $microseconds);
     }
 }

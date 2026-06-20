@@ -5,21 +5,25 @@
 // History:
 // 0.35.00 2024/08/31 作成。
 // 0.40.00 2024/09/25 デストラクタを追加。DBインスタンスを可能な範囲で解放。
+// 0.41.02 2024/10/02 現在日時を追加。タスクIDを取得するメソッドを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\cli;
+use tsubasaLibs\type;
 use tsubasaLibs\database\DbBase;
 
 /**
  * CSV取込タスククラス
  * 
  * @since 0.35.00
- * @version 0.40.00
+ * @version 0.41.02
  */
 class TaskImportCsv {
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var string CSVファイルのパス */
     protected $path;
+    /** @var type\TimeStamp 現在日時 */
+    protected $now;
     /** @var DbBase DB */
     protected $db;
     /** @var int 読込件数 */
@@ -75,6 +79,7 @@ class TaskImportCsv {
      */
     protected function setInit() {
         $this->path = null;
+        $this->now = new type\TimeStamp();
         $this->db = null;
         $this->readCounts = 0;
         $this->errorCounts = 0;
@@ -117,5 +122,18 @@ class TaskImportCsv {
             sprintf('csvFile error counts: %s', number_format($this->errorCounts)),
             ...$this->reportMessages
         ];
+    }
+
+    /**
+     * タスクIDを取得
+     * 
+     * @since 0.41.02
+     * @return string タスクID
+     */
+    protected function getTaskId(): string {
+        $class = static::class;
+        $arr = explode('\\', $class);
+        array_pop($arr);
+        return implode('\\', $arr);
     }
 }

@@ -30,7 +30,7 @@ class SessionUnit {
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var array セッション情報のリファレンス */
-    protected $session;
+    protected $refference;
     /** @var string 画面単位セッションID */
     public $unitId;
     /** @var array 画面単位セッション情報のリファレンス */
@@ -40,7 +40,6 @@ class SessionUnit {
     // コンストラクタ/デストラクタ
     public function __construct() {
         $this->setInit();
-        $this->setInfoFromSession();
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -135,20 +134,20 @@ class SessionUnit {
      * 初期設定
      */
     protected function setInit() {
-        $this->setSession();
+        $this->setRefference();
         $this->removeOldUnits();
-        $this->setInfoFromSession();
     }
 
     /**
      * セッション情報のリファレンスを設定
      */
-    protected function setSession() {
+    protected function setRefference() {
         if (!isset($_SESSION[static::ID]))
             $_SESSION[static::ID] = [
                 'info' => []
             ];
-        $this->session =& $_SESSION[static::ID];
+        $this->refference =& $_SESSION[static::ID];
+        $this->setInfoFromSession();
     }
 
     /**
@@ -157,19 +156,19 @@ class SessionUnit {
     protected function removeOldUnits() {
         // 空、または1日以上経過したものは削除
         $time = $this->getNow()->add(DateInterval::createFromDateString('-1 day'));
-        foreach ($this->session['info'] as $unitId => $unitInfo) {
-            if (count($this->session[$unitId]) == 0 or
+        foreach ($this->refference['info'] as $unitId => $unitInfo) {
+            if (count($this->refference[$unitId]) == 0 or
                 $unitInfo['lastAccessTime'] <= $time->format('Y/m/d H:i:s.u')
             ) {
-                unset($this->session[$unitId]);
-                unset($this->session['info'][$unitId]);
+                unset($this->refference[$unitId]);
+                unset($this->refference['info'][$unitId]);
             }
         }
 
         // 増えすぎた場合に、使っていないものから順に削除
-        if (count($this->session['info']) > 100) {
+        if (count($this->refference['info']) > 100) {
             $entries = [];
-            foreach ($this->session['info'] as $unitId => $unitInfo)
+            foreach ($this->refference['info'] as $unitId => $unitInfo)
                 $entries[] = ['id' => $unitId, 'time' => $unitInfo['lastAccessTime']];
             usort($entries, fn($a, $b) => $a['time'] <=> $b['time']);
             $times = 0;
@@ -177,8 +176,8 @@ class SessionUnit {
                 if (++$times > 10) break;   // 無限ループ防止
                 $entry = array_shift($entries);
                 $unitId = $entry['id'];
-                unset($this->session[$unitId]);
-                unset($this->session['info'][$unitId]);
+                unset($this->refference[$unitId]);
+                unset($this->refference['info'][$unitId]);
             }
         }
     }
@@ -195,15 +194,15 @@ class SessionUnit {
         };
 
         // ユニットIDを発行
-        if ($unitId === null or !isset($this->session[$unitId]))
+        if ($unitId === null or !isset($this->refference[$unitId]))
             $unitId = $this->makeUnit();
 
         // ユニット情報を取得
         $this->unitId = $unitId;
-        $this->data =& $this->session[$unitId];
+        $this->data =& $this->refference[$unitId];
 
         // 最終アクセスを更新
-        $this->session['info'][$unitId]['lastAccessTime'] =
+        $this->refference['info'][$unitId]['lastAccessTime'] =
             $this->getNow()->format('Y/m/d H:i:s.u');
     }
 
@@ -215,12 +214,12 @@ class SessionUnit {
     protected function makeUnit(): string {
         $unitId = null;
         $times = 0;
-        while ($unitId === null or in_array($unitId, $this->session, true)) {
+        while ($unitId === null or in_array($unitId, $this->refference, true)) {
             if (++$times > 10) throw new Exception('Make Unit Failed !');   // 無限ループ防止
             $unitId = uniqid();
         }
-        $this->session[$unitId] = [];
-        $this->session['info'][$unitId] = [];
+        $this->refference[$unitId] = [];
+        $this->refference['info'][$unitId] = [];
         return $unitId;
     }
 

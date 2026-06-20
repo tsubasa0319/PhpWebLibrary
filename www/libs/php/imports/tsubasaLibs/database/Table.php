@@ -26,6 +26,7 @@
 //                    disposeメソッドを追加。
 // 0.43.00 2024/10/11 selectInのパラメータが単一項目により配列型ではなかった時へ対応。
 // 0.48.00 2024/10/24 WHERE句を短くした時に不具合が発生したので対処。構造を見直して整理。
+// 0.48.01 2024/10/24 Null値へ更新する処理を修正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -42,7 +43,7 @@ use Stringable;
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.48.00
+ * @version 0.48.01
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -440,6 +441,10 @@ class Table {
 
         // 実行
         if (!$stmt->execute()) return false;
+
+        // 変更前情報へ更新
+        $record->previousRecord = clone $record;
+
         return $stmt->rowCount();
     }
 
@@ -476,6 +481,11 @@ class Table {
 
         // 実行
         if (!$stmt->execute()) return false;
+
+        // 変更前情報へ更新
+        foreach ($records as $record)
+            $record->previousRecord = clone $record;
+
         return $stmt->rowCount();
     }
 
@@ -592,7 +602,7 @@ class Table {
 
         // SQL
         $query = $this->makeSqlUpdate(
-            $this->makeSqlSetItems($this->getSetIdsFromRecord($record)),
+            $this->makeSqlSetItems($this->getSetIdValuesFromRecord($record)),
             $this->makeSqlWhereAllEqFromRecord($key, $record),
             $this->makeSqlWhereChangedOnlyFromRecord($record)
         );
@@ -611,6 +621,10 @@ class Table {
 
         // 実行
         if (!$stmt->execute()) return false;
+
+        // 変更前情報へ更新
+        $record->previousRecord = clone $record;
+
         return $stmt->rowCount();
     }
 
@@ -1212,14 +1226,20 @@ class Table {
     }
 
     /**
-     * UPDATE時に設定する項目IDリストを取得(レコードより)
+     * UPDATE時に設定する項目IDと値の組み合わせリストを取得(レコードより)
      * 
      * @since 0.48.00
      * @param Record $record レコード
-     * @return string[] 項目IDのリスト
+     * @return array{0:string, 1:mixed}[] 項目IDと値の組み合わせリスト
      */
-    protected function getSetIdsFromRecord(Record $record): array {
-        return $this->getSetIds($record->getChangedIds());
+    protected function getSetIdValuesFromRecord(Record $record): array {
+        $idValues = [];
+        foreach($this->getSetIds($record->getChangedIds()) as $id) {
+            $value = $record->{$id};
+            $idValues[] = [$id, $value];
+        }
+
+        return $idValues;
     }
 
     /**
@@ -2714,24 +2734,27 @@ class Table {
     protected function makeSqlWhereChangedOnlyFromRecord(Record $record): string|false {
         if (!$this->isChangedOnlyForUpdate()) return false;
 
-        $setIds = $this->getSetIdsFromRecord($record);
+        $setIdValues = $this->getSetIdValuesFromRecord($record);
         $keyItemIds = $this->primaryKey->getItemIds();
         $executorIds = $this->getExecutorIds();
 
         $equations = [];
 
-        foreach ($setIds as $id) {
+        foreach ($setIdValues as $idValue) {
+            $id = $idValue[0];
+            $value = $idValue[1];
+
             if (in_array($id, $executorIds, true)) continue;
 
             // プライマリキーの値を変更の場合、無条件に更新
             if (in_array($id, $keyItemIds)) return false;
 
             $sqlId = $this->getIdForSql($id);
-            $value = $record->{$id};
             $equations[] = $value !== null ?
                 sprintf('%s IS NULL OR %s <> ?', $sqlId, $sqlId) :
                 sprintf('%s IS NOT NULL', $sqlId);
         }
+        if (count($equations) == 0) return false;
 
         return implode(' OR ', $equations);
     }
@@ -2882,14 +2905,34 @@ class Table {
      * SQLステートメントを生成(SET句)
      * 
      * @since 0.48.00
-     * @param string[] $ids 項目IDリスト
+     * @param array{0:string, 1:mixed}[] $idValues 項目IDと値の組み合わせリスト
      * @return string SQLステートメント
      */
-    protected function makeSqlSetItems(array $ids): string|false {
+    protected function makeSqlSetItems(array $idValues): string|false {
         $setItems = [];
 
-        foreach ($ids as $id)
-            $setItems[] = sprintf('%s = ?', $this->getIdForSql($id));
+        // 変更されたもののみの場合
+        if ($this->isChangedOnlyForUpdate()) {
+            $executorIds = $this->getExecutorIds();
+            $isChanged = false;
+            foreach ($idValues as $idValue) {
+                $id = $idValue[0];
+
+                if (!in_array($id, $executorIds, true))
+                    $isChanged = true;
+            }
+            if (!$isChanged) return false;
+        }
+
+        foreach ($idValues as $idValue) {
+            $id = $idValue[0];
+            $value = $idValue[1];
+
+            $setItems[] = sprintf('%s = %s',
+                $this->getIdForSql($id),
+                $value !== null ? '?' : 'NULL'
+            );
+        }
 
         return implode(', ', $setItems);
     }
@@ -3194,17 +3237,19 @@ class Table {
 
         $bindIdValues = [];
 
-        $setIds = $this->getSetIdsFromRecord($record);
+        $setIdValues = $this->getSetIdValuesFromRecord($record);
         $executorIds = $this->getExecutorIdsForUpdate();
         $keyItemIds = $this->primaryKey->getItemIds();
 
-        foreach ($setIds as $id) {
+        foreach ($setIdValues as $idValue) {
+            $id = $idValue[0];
+            $value = $idValue[1];
+
             if (in_array($id, $executorIds, true)) continue;
 
             // キー項目を変更した場合は、無条件
             if (in_array($id, $keyItemIds, true)) return [];
 
-            $value = $record->{$id};
             if ($value === null) continue;
 
             $bindIdValues[] = [$id, $value];
@@ -3262,15 +3307,17 @@ class Table {
     protected function makeBindItemsSetFromRecord(Record $record): array|false {
         $bindIdValues = [];
 
-        $setIds = $this->getSetIdsFromRecord($record);
+        $setIdValues = $this->getSetIdValuesFromRecord($record);
         $executorIds = $this->getExecutorIdsForUpdate();
         $newRecord = $this->getNewRecord()->setValuesForUpdate();
 
         // 通常項目
-        foreach ($setIds as $id) {
+        foreach ($setIdValues as $idValue) {
+            $id = $idValue[0];
+            $value = $idValue[1];
+
             if (in_array($id, $executorIds, true)) continue;
 
-            $value = $record->{$id};
             $bindIdValues[] = [$id, $value];
         }
 

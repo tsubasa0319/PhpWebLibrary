@@ -5,6 +5,7 @@
 // History:
 // 0.16.00 2024/03/23 作成。
 // 0.51.00 2024/11/13 検索速度を上げるため、検索値がStringableの場合は先にstringへ変換するように変更。
+// 0.58.00 2024/12/12 対象レコードかどうかチェックを、部分一致の場合に失敗する不備に対して修正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 use Stringable;
@@ -13,7 +14,7 @@ use Stringable;
  * 選択クエリ予定クラス(複数レコード版)
  * 
  * @since 0.16.00
- * @version 0.51.00
+ * @version 0.58.00
  */
 class SelectArrayPlan {
     // ---------------------------------------------------------------------------------------------
@@ -52,7 +53,10 @@ class SelectArrayPlan {
         $values = $record->getIndexKeyValues();
         if (count($values) < count($this->values)) return false;
 
-        // 検索値リストを値型へ変換
+        // レコードキー値の数を検索値に合わせる
+        $values = array_slice($values, 0, count($this->values));
+
+        // レコードキー値リストを値型へ変換
         foreach ($values as $num => $value)
             if ($value instanceof Stringable)
                 $values[$num] = (string)$value;

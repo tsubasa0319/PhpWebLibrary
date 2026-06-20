@@ -4,13 +4,14 @@
 // History:
 // 0.05.00 2024/02/20 作成。
 // 0.54.00 2024/11/22 送信パラメータの生成に失敗していたので修正。
+// 0.59.00 2024/12/14 コンソールにエラー出力時、スタックトレースを出力するように対応。
 // -------------------------------------------------------------------------------------------------
 
 /**
  * Ajaxクラス
  * 
  * @since 0.05.00
- * @version 0.54.00
+ * @version 0.59.00
  */
 export default class Ajax {
     // ---------------------------------------------------------------------------------------------
@@ -70,6 +71,7 @@ export default class Ajax {
     setUrl(url) {
         if (typeof url !== 'string') {
             console.error('URLが不正です。[' + url + ']');
+            console.trace();
             return null;
         }
         this.#url = url;
@@ -89,6 +91,7 @@ export default class Ajax {
             self.METHOD_GET, self.METHOD_POST
         ].includes(_method)) {
             console.error('メソッドが不正です。[' + method + ']');
+            console.trace();
             return null;
         }
         this.#method = _method;
@@ -134,6 +137,7 @@ export default class Ajax {
             '', 'arraybuffer', 'blob', 'document', 'json', 'text'
         ].includes(_responseType)) {
             console.error('受取データ型が不正です。[' + responseType + ']');
+            console.trace();
             return null;
         }
         this.#responseType = _responseType;
@@ -238,7 +242,8 @@ export default class Ajax {
                 if (this.#errorHandler !== null) {
                     this.#errorHandler(request);
                 } else {
-                    console.error('Ajax Failed !');
+                    console.error('Ajax Failed !', request);
+                    console.trace();
                 }
             }
         }

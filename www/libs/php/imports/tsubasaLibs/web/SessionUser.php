@@ -11,6 +11,7 @@
 // 0.04.00 2024/02/10 パスワードの有効期限切れに対応。
 //                    ステータスを定数化。
 //                    既定のタイムアウト時間を変更。
+// 0.83.00 2025/03/27 ログインしているかどうかの処理から、タイムアウトしているかどうかを分離。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use DateTime, DateInterval;
@@ -19,7 +20,7 @@ use DateTime, DateInterval;
  * ログインユーザクラス
  * 
  * @since 0.00.00
- * @version 0.04.00
+ * @version 0.83.00
  */
 class SessionUser {
     // ---------------------------------------------------------------------------------------------
@@ -66,10 +67,22 @@ class SessionUser {
      * 
      * @return bool 結果
      */
-    public function isLogined(): bool {
-        if ($this->session['status'] !== static::STATUS_LOGIN) return false;
-        if ($this->isTimeout()) return false;
-        return true;
+    public function isLoggedIn(): bool {
+        return $this->session['status'] === static::STATUS_LOGIN;
+    }
+
+    /**
+     * タイムアウトしているかどうか
+     * 
+     * @return bool 成否
+     */
+    public function isTimeout(): bool {
+        $now = $this->getNow();
+        $lastAccessTime = $this->getTimeFromString($this->session['lastAccessTime']);
+        $limitTime = (new DateTime($lastAccessTime->format('Y/m/d H:i:s.u')))->add(
+            new DateInterval(sprintf('PT%sM', $this->timeoutMinutes))
+        );
+        return $now > $limitTime;
     }
 
     /**
@@ -211,20 +224,6 @@ class SessionUser {
         $this->userId = $this->session['userId'];
         $this->loginTime = $this->getTimeFromString($this->session['loginTime']);
         $this->lastAccessTime = $this->getTimeFromString($this->session['lastAccessTime']);
-    }
-
-    /**
-     * タイムアウトしているかどうか
-     * 
-     * @return bool 成否
-     */
-    protected function isTimeout(): bool {
-        $now = $this->getNow();
-        $lastAccessTime = $this->getTimeFromString($this->session['lastAccessTime']);
-        $limitTime = (new DateTime($lastAccessTime->format('Y/m/d H:i:s.u')))->add(
-            new DateInterval(sprintf('PT%sM', $this->timeoutMinutes))
-        );
-        return $now > $limitTime;
     }
 
     /**

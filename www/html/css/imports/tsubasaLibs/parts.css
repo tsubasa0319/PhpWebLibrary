@@ -24,6 +24,8 @@
    0.42.00 2024/10/08 頁切替の全体幅を100pxに指定。
    0.46.00 2024/10/18 テーブルの削除行に対するクラスを追加。
    0.46.01 2024/10/19 0.46.00の影響範囲を修正。
+   0.66.00 2025/01/09 テーブルに配置するセレクトボックスの背景色を半透明化。
+                      テーブルのヘッダ行に入力必須を表すクラスを追加。
 ------------------------------------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------------------------------- */
 /* 変数定義 */
@@ -39,6 +41,7 @@
     --tsubasaLibs-h1-font-size:
         calc(var(--tsubasaLibs-font-size) * 1.5);
 }
+
 /* ---------------------------------------------------------------------------------------------- */
 /* BODY */
 body {
@@ -160,6 +163,7 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
     appearance: textfield;
 }
+
 /* ---------------------------------------------------------------------------------------------- */
 /* テキストエリア */
 textarea {
@@ -408,6 +412,11 @@ table.list.general > tbody:has(> tr:first-child > th):not(:has(> tr:nth-child(2)
     border-bottom: 1px black solid;
 }
 
+table.list.general > tbody > tr > th.required::after {
+    content: "*";
+    color: red;
+}
+
 /* 行の高さ */
 /* 25px未満に設定すると、セルの中身にぎりぎりの高さのものを配置した時に、高さを延長調整されてしまうため */
 table.list.general > tbody > tr > th,
@@ -457,6 +466,11 @@ table.list.general input[type="text"] {
 }
 
 table.list.general input[type="text"]:not(:disabled):not(.error) {
+    background-color: rgba(255, 255, 255, 0.4);
+}
+
+/* セレクトボックス */
+table.list.general select:not(:disabled):not(.error) {
     background-color: rgba(255, 255, 255, 0.4);
 }
 

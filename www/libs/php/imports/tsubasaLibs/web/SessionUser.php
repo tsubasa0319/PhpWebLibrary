@@ -13,15 +13,16 @@
 //                    既定のタイムアウト時間を変更。
 // 0.83.00 2025/03/27 ログインしているかどうかの処理から、タイムアウトしているかどうかを分離。
 // 0.87.02 2025/04/08 ログイン時、現在のセッションをログアウトにし、新規セッションへ切り替えるように変更。
+// 0.87.04 2025/04/24 デバッグ出力を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
-use DateTime, DateInterval;
+use tsubasaLibs\type;
 
 /**
  * ログインユーザクラス
  * 
  * @since 0.00.00
- * @version 0.87.02
+ * @version 0.87.04
  */
 class SessionUser {
     // ---------------------------------------------------------------------------------------------
@@ -51,9 +52,9 @@ class SessionUser {
     public $timeoutMinutes;
     /** @var string ユーザID */
     public $userId;
-    /** @var DateTime ログイン時間 */
+    /** @var type\TimeStamp ログイン日時 */
     public $loginTime;
-    /** @var DateTime 最終アクセス時間 */
+    /** @var type\TimeStamp 最終アクセス日時 */
     public $lastAccessTime;
 
     // ---------------------------------------------------------------------------------------------
@@ -100,12 +101,13 @@ class SessionUser {
      * @return bool 成否
      */
     public function isTimeout(): bool {
-        $now = $this->getNow();
+        $now = new type\TimeStamp();
+
         $lastAccessTime = $this->getTimeFromString($this->refference['lastAccessTime']);
-        $limitTime = (new DateTime($lastAccessTime->format('Y/m/d H:i:s.u')))->add(
-            new DateInterval(sprintf('PT%sM', $this->timeoutMinutes))
-        );
-        return $now > $limitTime;
+        if ($lastAccessTime === null) return true;
+        $limitTime = (clone $lastAccessTime)->addMinutes($this->timeoutMinutes);
+
+        return $now->compare($limitTime) > 0;
     }
 
     /**
@@ -124,7 +126,7 @@ class SessionUser {
      * @since 0.01.00
      */
     public function updateLastAccessTime() {
-        $now = $this->getNow();
+        $now = new type\TimeStamp();
         $this->setLastAccessTime($now);
     }
 
@@ -158,9 +160,10 @@ class SessionUser {
 
         $this->refference['status'] = static::STATUS_LOGIN;
         $this->setUserId($userId);
-        $now = $this->getNow();
+        $now = new type\TimeStamp();
         $this->setLoginTime($now);
         $this->setLastAccessTime($now);
+
         return true;
     }
 
@@ -222,6 +225,26 @@ class SessionUser {
         return $this->refference['status'] === static::STATUS_EXPIRED;
     }
 
+    /**
+     * デバッグ情報を画面出力
+     * 
+     * @since 0.87.04
+     */
+    public function displayInfoForDebug() {
+        if (!$this->session->checkDisplay()) return;
+
+        printf('<div style="width:calc(100vw - 20px); white-space:nowrap; overflow:hidden;">');
+        printf('Status: %s<br>', htmlspecialchars($this->refference['status'] ?? 'Null'));
+        if ($this->userId !== null) {
+            printf('User-ID: %s<br>', htmlspecialchars($this->userId ?? 'Null'));
+            printf('Login-Time: %s<br>',
+                $this->loginTime !== null ? (string)$this->loginTime : 'Null');
+            printf('Last-Access-Time: %s<br>',
+                $this->lastAccessTime !== null ? (string)$this->lastAccessTime : 'Null');
+        }
+        printf('</div>');
+    }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -238,7 +261,7 @@ class SessionUser {
     protected function setInfoFromSession() {
         if ($this->refference['status'] !== static::STATUS_LOGIN and
             $this->refference['status'] !== static::STATUS_EXPIRED) return;
-        $this->userId = $this->refference['userId'];
+        $this->userId = $this->refference['userId'] ?? null;
         $this->loginTime = $this->getTimeFromString($this->refference['loginTime']);
         $this->lastAccessTime = $this->getTimeFromString($this->refference['lastAccessTime']);
     }
@@ -256,21 +279,21 @@ class SessionUser {
     /**
      * ログイン時間を変更
      * 
-     * @param DateTime $now 現在日時
+     * @param type\TimeStamp $now 現在日時
      */
-    protected function setLoginTime(DateTime $now) {
+    protected function setLoginTime(type\TimeStamp $now) {
         $this->loginTime = $now;
-        $this->refference['loginTime'] = $this->loginTime->format('Y/m/d H:i:s.u');
+        $this->refference['loginTime'] = (string)$this->loginTime;
     }
 
     /**
      * 最終アクセス時間を変更
      * 
-     * @param DateTime $now 現在日時
+     * @param type\TimeStamp $now 現在日時
      */
-    protected function setLastAccessTime($now) {
+    protected function setLastAccessTime(type\TimeStamp $now) {
         $this->lastAccessTime = $now;
-        $this->refference['lastAccessTime'] = $this->lastAccessTime->format('Y/m/d H:i:s.u');
+        $this->refference['lastAccessTime'] = (string)$this->lastAccessTime;
     }
 
     /**
@@ -285,26 +308,13 @@ class SessionUser {
     }
 
     /**
-     * 現在日時を取得
-     * 
-     * @return ?DateTime
-     */
-    protected function getNow(): ?DateTime {
-        $mtimeArr = explode(' ', microtime());
-        $timeString = sprintf('%s%s',
-            date('Y/m/d H:i:s', (int)$mtimeArr[1]),
-            substr($mtimeArr[0], 1));
-        return $this->getTimeFromString($timeString);
-    }
-
-    /**
      * 日時変換(文字列型→日時型)
      * 
-     * @param string $timeString
-     * @return ?DateTime
+     * @param ?string $timeString
+     * @return ?type\TimeStamp
      */
-    protected function getTimeFromString(string $timeString): ?DateTime {
+    protected function getTimeFromString(?string $timeString): ?type\TimeStamp {
         if ($timeString === null) return null;
-        return new DateTime($timeString);
+        return new type\TimeStamp($timeString);
     }
 }

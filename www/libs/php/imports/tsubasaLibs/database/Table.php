@@ -35,6 +35,7 @@
 // 0.73.00 2025/02/04 SET句を生成時、値がNull値でもパラメータを追加するように訂正。
 // 0.84.00 2025/03/28 軽微な修正。
 // 0.87.04 2025/04/24 SELECT時に行単位の共有ロック/排他ロックを付与できるように対応。
+// 0.90.00 2025/05/16 実行者の項目IDリストをキャッシュ対応し、再取得を高速化。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -88,6 +89,16 @@ class Table {
     public $baseTable;
     /** @var QueryPlanning クエリ予定クラス */
     protected $queryPlanning;
+    /** @var ?string[] 実行者の項目IDリストのキャッシュ */
+    protected $cachedExecutorIds;
+    /** @var ?string[] 実行者の項目IDリストのキャッシュ(Insert用) */
+    protected $cachedExecutorIdsForInsert;
+    /** @var ?string[] 実行者の項目IDリストのキャッシュ(Insert用、入力) */
+    protected $cachedExecutorIdsForInsertWithInput;
+    /** @var ?string[] 実行者の項目IDリストのキャッシュ(Update用) */
+    protected $cachedExecutorIdsForUpdate;
+    /** @var ?string[] 実行者の項目IDリストのキャッシュ(Update用、入力) */
+    protected $cachedExecutorIdsForUpdateWithInput;
 
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
@@ -1154,6 +1165,11 @@ class Table {
         $this->tempTables = [];
         $this->isTemp = false;
         $this->queryPlanning = new QueryPlanning($this);
+        $this->cachedExecutorIds = null;
+        $this->cachedExecutorIdsForInsert = null;
+        $this->cachedExecutorIdsForInsertWithInput = null;
+        $this->cachedExecutorIdsForUpdate = null;
+        $this->cachedExecutorIdsForUpdateWithInput = null;
     }
 
     /**
@@ -1192,11 +1208,16 @@ class Table {
      * @return string[] 項目IDリスト
      */
     protected function getExecutorIds(): array {
-        return [
+        if ($this->cachedExecutorIds !== null) return $this->cachedExecutorIds;
+
+        $ids = [
             ...$this->items->getAddedItemIdsCreator(),
             ...$this->items->getAddedItemIdsInputter(),
             ...$this->items->getAddedItemIdsUpdater()
         ];
+
+        $this->cachedExecutorIds = $ids;
+        return $ids;
     }
 
     /**
@@ -1208,11 +1229,20 @@ class Table {
     protected function getExecutorIdsForInsert(): array {
         $isInput = $this->db->executor?->isInput ?? false;
 
-        return [
+        if (!$isInput and $this->cachedExecutorIdsForInsert !== null)
+            return $this->cachedExecutorIdsForInsert;
+        if ($isInput and $this->cachedExecutorIdsForInsertWithInput !== null)
+            return $this->cachedExecutorIdsForInsertWithInput;
+
+        $ids = [
             ...$this->items->getAddedItemIdsCreator(),
             ...($isInput ? $this->items->getAddedItemIdsInputter() : []),
             ...$this->items->getAddedItemIdsUpdater()
         ];
+
+        if (!$isInput) $this->cachedExecutorIdsForInsert = $ids;
+        if ($isInput) $this->cachedExecutorIdsForInsertWithInput = $ids;
+        return $ids;
     }
 
     /**
@@ -1224,10 +1254,19 @@ class Table {
     protected function getExecutorIdsForUpdate(): array {
         $isInput = $this->db->executor?->isInput ?? false;
 
-        return [
+        if (!$isInput and $this->cachedExecutorIdsForUpdate !== null)
+            return $this->cachedExecutorIdsForUpdate;
+        if ($isInput and $this->cachedExecutorIdsForUpdateWithInput !== null)
+            return $this->cachedExecutorIdsForUpdateWithInput;
+
+        $ids = [
             ...($isInput ? $this->items->getAddedItemIdsInputter() : []),
             ...$this->items->getAddedItemIdsUpdater()
         ];
+
+        if (!$isInput) $this->cachedExecutorIdsForUpdate = $ids;
+        if ($isInput) $this->cachedExecutorIdsForUpdateWithInput = $ids;
+        return $ids;
     }
 
     /**
@@ -2844,7 +2883,7 @@ class Table {
             if (in_array($id, $executorIds, true)) continue;
 
             // プライマリキーの値を変更の場合、無条件に更新
-            if (in_array($id, $keyItemIds)) return false;
+            if (in_array($id, $keyItemIds, true)) return false;
 
             $sqlId = $this->getIdForSql($id);
             $equations[] = $value !== null ?
@@ -3099,7 +3138,7 @@ class Table {
      */
     protected function makeBindItem(string $id, mixed $value): ?array {
         $itemsArray = $this->items->getItemsArray();
-        if (!in_array($id, array_keys($itemsArray), true)) return null;
+        if (!isset($itemsArray[$id])) return null;
         $item = $itemsArray[$id];
 
         return [

@@ -4,6 +4,7 @@
 //
 // History:
 // 0.88.00 2025/05/10 作成。
+// 0.90.00 2025/05/16 非同期処理の開始時、既に開始済があれば先に終わらせる。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use CurlHandle, CurlMultiHandle;
@@ -12,7 +13,7 @@ use CurlHandle, CurlMultiHandle;
  * cURLマルチクラス
  * 
  * @since 0.88.00
- * @version 0.88.00
+ * @version 0.90.00
  */
 class CurlMulti {
     // ---------------------------------------------------------------------------------------------
@@ -167,8 +168,13 @@ class CurlMulti {
      */
     public function async(): bool {
         // 開始済があれば、先に終わらせる
-        if ($this->curlMultiAsync !== null)
+        if ($this->curlMultiAsync !== null) {
+            // 今回の対象が無い場合は、何もせずに完了
+            if (count($this->curls) == 0) return true;
+
+            // 完了まで待機
             $this->await();
+        }
 
         // 実行
         if ($this->exec($running)) {
@@ -305,7 +311,7 @@ class CurlMulti {
      * @return int 接続タイムアウト時間(秒)
      */
     protected function calcConnectTimeout(): int {
-        $connectTimeouts = [];
+        $connectTimeouts = [0];
         foreach ($this->curls as $curl) {
             $connectTimeout = $curl->getConnectTimeout();
             if ($connectTimeout === 0) return 0;

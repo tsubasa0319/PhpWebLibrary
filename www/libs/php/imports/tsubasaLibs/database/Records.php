@@ -33,7 +33,7 @@ class Records extends ArrayLike {
             trigger_error('offset is not an integer type', E_USER_ERROR);
         if ($value !== null and !($value instanceof Record))
             trigger_error('value must be an instance of Record', E_USER_ERROR);
-        
+
         parent::offsetSet($offset, $value);
     }
 }

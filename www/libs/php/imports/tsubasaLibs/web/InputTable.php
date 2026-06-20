@@ -11,6 +11,7 @@
 // 0.22.00 2024/05/17 プロパティに、一括入力かどうか/重複できるかどうかを追加。
 //                    登録済チェック/存在する行のリストを取得を実装。行を変更イベントを実装。
 // 0.29.00 2024/07/24 初期化時、現在の頁番号を初期化するように変更。
+// 0.67.00 2025/01/09 行を追加/削除時、頁を移動するように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/InputTableRow.php';
@@ -21,7 +22,7 @@ use tsubasaLibs\type\ArrayLike;
  * 入力テーブルクラス
  * 
  * @since 0.18.00
- * @version 0.29.00
+ * @version 0.67.00
  */
 class InputTable extends ArrayLike {
     // ---------------------------------------------------------------------------------------------
@@ -512,9 +513,15 @@ class InputTable extends ArrayLike {
             $this->events->db->executor->isInput = true;
             if ($row->isAdded) {
                 $isSuccessful = $row->updateForAdd();
+
+                // 成功時、頁を移動
+                if ($isSuccessful)
+                    $this->setPageCount($row->getPageCount());
+
                 // 失敗時、入力テーブルへ追加を取消
                 if (!$isSuccessful)
                     $row->delete();
+
                 $row->isAdded = false;
             } else {
                 $row->updateForEdit();
@@ -563,6 +570,9 @@ class InputTable extends ArrayLike {
 
         if (!$row->updateForDelete()) return false;
         $row->delete();
+
+        // 現在頁が失われた時、最終頁へ移動
+        $this->setPageCount($this->getPageCount());
 
         return true;
     }

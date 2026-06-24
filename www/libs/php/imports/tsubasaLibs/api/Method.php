@@ -9,15 +9,17 @@
 // 0.45.00 2024/10/17 キャッシュに対応。
 // 0.47.01 2024/10/19 2回目の実行時、1回目のパラメータを再度実行してしまうため修正。
 // 0.51.00 2024/11/13 検索速度を上げるため、キャッシュの持ち方を変更。
+// 0.52.00 2024/11/14 非同期処理に対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\web;
+use CurlMultiHandle;
 
 /**
  * APIメソッドクラス
  * 
  * @since 0.12.00
- * @version 0.51.00
+ * @version 0.52.00
  */
 class Method {
     // ---------------------------------------------------------------------------------------------
@@ -43,6 +45,12 @@ class Method {
     protected $cacheDatas;
     /** @var int キャッシュ数(削除済を含む) */
     protected $indexCount;
+    /** @var web\Curl[] cURLインスタンスリスト */
+    protected $curls;
+    /** @var ?web\Curl cURLインスタンス(resumu用) */
+    protected $resumeCurl;
+    /** @var ?CurlMultiHandle cURLのマルチハンドル */
+    protected $curlMultiHandle;
 
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
@@ -65,45 +73,87 @@ class Method {
         $curl = $this->makeCurlInstance($this->getUrl());
         $curl->setData($this->getParams());
         $this->clearParams();
-        $response = $curl->exec();
 
-        // 結果を受け取り
-        $error = null;
-        $data = null;
-        if (is_array($curl->receiveData)) {
-            if (array_key_exists('error', $curl->receiveData))
-                $error = $curl->receiveData['error'];
-            if (array_key_exists('data', $curl->receiveData))
-                $data = $curl->receiveData['data'];
+        $result = $this->receive($curl, $curl->exec());
+
+        return $result;
+    }
+
+    /**
+     * 非同期処理を開始
+     * 
+     * @since 0.52.00
+     * @return bool 結果
+     */
+    public function async(): bool {
+        // cURLインスタンスを生成
+        $curl = $this->makeCurlInstance($this->getUrl());
+        $curl->setData($this->getParams());
+        $this->clearParams();
+
+        // マルチハンドルを1つにまとめて、非同期処理を開始
+        $result = $curl->async($this->getMultiHandle());
+        $this->curls[] = $curl;
+        $this->resumeCurl = $curl;
+
+        return $result;
+    }
+
+    /**
+     * cURLのマルチハンドルを取得
+     * 
+     * @since 0.52.00
+     * @return ?CurlMultiHandle cURLのマルチハンドル
+     */
+    public function getMultiHandle(): ?CurlMultiHandle {
+        if (isset($this->curls[0]))
+            return $this->curls[0]->getMultiHandle();
+
+        return $this->curlMultiHandle;
+    }
+
+    /**
+     * cURLのマルチハンドルを設定
+     * 
+     * @since 0.52.00
+     * @param ?CurlMultiHandle $curlMultiHandle cURLのマルチハンドル
+     */
+    public function setMultiHandle(?CurlMultiHandle $curlMultiHandle) {
+        $this->curlMultiHandle = $curlMultiHandle;
+    }
+
+    /**
+     * 非同期処理を再開
+     */
+    public function resume() {
+        // 次のアクティビティがあるまで、非同期処理を進める
+        $result = $this->resumeCurl?->resume();
+        if (!$result)
+            $this->resumeCurl = null;
+    }
+
+    /**
+     * 非同期処理を完了まで待機し、結果を受け取り
+     * 
+     * @since 0.52.00
+     * @return array|false 結果
+     */
+    public function await(): array|false {
+        // 終了準備
+        $curls = $this->curls;
+        $this->curls = [];
+        $this->resumeCurl = null;
+        $this->curlMultiHandle = null;
+
+        // 残りの処理を進めて、結果を受け取り
+        $results = [];
+        foreach ($curls as $curl) {
+            $result = $this->receive($curl, $curl->await());
+            if ($result === false) return false;
+            $results[] = $result;
         }
 
-        // 通信エラー
-        if ($response === false) {
-            if ($this->events !== null)
-                $this->events->addMessage(web\Message::ID_HTTP_REQUEST_ERROR, $curl->getHttpStatus());
-            if ($error !== null)
-                trigger_error($error['message'], E_USER_WARNING);
-            return false;
-        }
-
-        // 通信先で異常終了
-        if (is_string($curl->receiveData)) {
-            if ($this->events !== null)
-                $this->events->addMessage(web\Message::ID_EXCEPTION);
-            trigger_error($curl->receiveData, E_USER_WARNING);
-            return false;
-        }
-
-        // 通信先で失敗し、メッセージを送信
-        if ($error !== null) {
-            if (isset($error['message']))
-                trigger_error($error['message'], E_USER_ERROR);
-            else
-                trigger_error(json_encode($error, JSON_UNESCAPED_UNICODE), E_USER_NOTICE);
-            return false;
-        }
-
-        return $data ?? false;
+        return $results;
     }
 
     /**
@@ -134,6 +184,9 @@ class Method {
         $this->cacheKeys = [];
         $this->cacheDatas = [];
         $this->indexCount = 0;
+        $this->curls = [];
+        $this->resumeCurl = null;
+        $this->curlMultiHandle = null;
         $this->clearParams();
     }
 
@@ -219,6 +272,29 @@ class Method {
     }
 
     /**
+     * キャッシュを編集
+     * 
+     * @since 0.52.00
+     * @param mixed $key アクセスキー
+     * @param mixed $data 取得データ
+     */
+    protected function editChache($key, $data) {
+        if (!$this->isCaching) return;
+
+        $cacheKey = $this->getCacheKey($key);
+
+        // 存在チェック
+        if (!isset($this->cacheKeys[$cacheKey])) {
+            $this->addChache($key, $data);
+            return;
+        }
+
+        // 編集
+        $index = $this->cacheKeys[$cacheKey];
+        $this->cacheDatas[$index] = $data;
+    }
+
+    /**
      * キャッシュより取得
      * 
      * @since 0.45.00
@@ -235,5 +311,53 @@ class Method {
         if ($index === false) return null;
 
         return $this->cacheDatas[$index];
+    }
+
+    /**
+     * cURLより結果を受け取り
+     * 
+     * @since 0.52.00
+     * @param web\Curl $curl cURLインスタンス
+     * @param string|false $response cURLの結果文字列
+     * @return mixed 結果
+     */
+    protected function receive(web\Curl $curl, string|false $response): mixed {
+        // 結果を受け取り
+        $error = null;
+        $data = null;
+        if (is_array($curl->receiveData)) {
+            if (array_key_exists('error', $curl->receiveData))
+                $error = $curl->receiveData['error'];
+            if (array_key_exists('data', $curl->receiveData))
+                $data = $curl->receiveData['data'];
+        }
+
+        // 通信エラー
+        if ($response === false) {
+            if ($this->events !== null)
+                $this->events->addMessage(web\Message::ID_HTTP_REQUEST_ERROR, $curl->getHttpStatus());
+            if ($error !== null)
+                trigger_error($error['message'], E_USER_WARNING);
+            return false;
+        }
+
+        // 通信先で異常終了
+        if (is_string($curl->receiveData)) {
+            if ($this->events !== null)
+                $this->events->addMessage(web\Message::ID_EXCEPTION);
+            trigger_error($curl->receiveData, E_USER_WARNING);
+            return false;
+        }
+
+        // 通信先で失敗し、メッセージを送信
+        if ($error !== null) {
+            if (isset($error['message']))
+                trigger_error($error['message'], E_USER_ERROR);
+            else
+                trigger_error(json_encode($error, JSON_UNESCAPED_UNICODE), E_USER_NOTICE);
+            return false;
+        }
+
+        return $data ?? false;
     }
 }

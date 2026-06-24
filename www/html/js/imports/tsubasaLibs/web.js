@@ -20,6 +20,7 @@
 // 0.55.00 2024/12/04 コードより名称を取得するメソッドを追加。パラメータチェックを追加。
 // 0.55.01 2024/12/05 送信処理のイベント値を数値型も有効へ修正。
 // 0.59.00 2024/12/14 入力値が数値型の時、エレメントが別ウィンドウにある時に、パラメータエラーになっていたので修正
+// 0.62.00 2024/12/18 コードから名称を取得(オートコンプリート)メソッドを追加。
 // -------------------------------------------------------------------------------------------------
 import forArray from "./forArray.js";
 import checker from "./checker.js";
@@ -29,7 +30,7 @@ import Ajax from "./Ajax.js";
  * Web処理
  * 
  * @since 0.05.00
- * @version 0.59.00
+ * @version 0.62.00
  */
 const web = {
     // ---------------------------------------------------------------------------------------------
@@ -718,6 +719,9 @@ const web = {
     /**
      * コードから名称を取得
      * 
+     * keyup/cut/pasteイベントに対応。  
+     * オートコンプリートには、inputイベントにてcodeToNameByAutoCompleteを使用してください。
+     * 
      * @since 0.55.00
      * @param {Event} event イベント
      * @param {string} eventName イベント名
@@ -826,6 +830,48 @@ const web = {
         // フォーカスを離れる時
         if (event.type === 'blur')
             self.ajax(eventName, itemNames ?? [joinName]);
+    },
+
+    /**
+     * コードから名称を取得(オートコンプリート)
+     * 
+     * inputイベントにて実行してください。
+     * 
+     * @since 0.62.00
+     * @param {Event} event イベント
+     * @param {string} eventName イベント名
+     * @param {?string[]} addItemNames 追加する送信対象の項目名リスト(name属性値)
+     */
+    codeToNameByAutoComplete: (event, eventName, addItemNames = null) => {
+        // パラメータチェック
+        if (!(event instanceof Event)) return checker.paramCheckError('event', event);
+        if (!checker.isString(eventName)) return checker.paramCheckError('eventName', eventName);
+        if (!checker.isArray(addItemNames, true))
+            return checker.paramCheckError('addItemNames', addItemNames);
+        let paramCheck = true;
+        if (addItemNames !== null) addItemNames.some(name => {
+            if (checker.isString(name)) return false;
+
+            paramCheck = false;
+            return true;
+        });
+        if (!paramCheck) return checker.paramCheckError('addItemNames', addItemNames);
+
+        // inputイベントより実行
+        if (event.type !== 'input') return;
+
+        // 入力イベントクラスではない
+        if (event instanceof InputEvent) return;
+
+        // 自身の連結名
+        const joinName = self.getJoinNameByElement(event.target);
+
+        // 送信対象とする項目リスト
+        const itemNames = [joinName];
+        if (addItemNames !== null)
+            addItemNames.forEach(name => itemNames.push(name));
+
+        self.ajax(eventName, itemNames ?? [joinName]);
     },
 
     /**

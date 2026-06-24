@@ -22,6 +22,8 @@
 // 0.39.00 2024/09/20 インデックスキーによるWHERE句を、Null値に対応。
 //                    selectIn、selectBetweenのWHERE句を短くなるように工夫。
 // 0.40.01 2024/09/26 子クラスのインスタンスは、弱い参照でプロパティに持つように変更。
+// 0.40.02 2024/09/27 生成済テンポラリテーブルインスタンスは通常の参照へ戻す。途中でメモリ解放されてしまうため。
+//                    disposeメソッドを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -37,7 +39,7 @@ use WeakReference;
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.40.01
+ * @version 0.40.02
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -56,8 +58,8 @@ class Table {
     protected $indexKey;
     /** @var Indexes インデックスリスト */
     public $indexes;
-    /** @var array<string, WeakReference<static>> テンポラリテーブルの参照リスト */
-    protected $tempTableRefs;
+    /** @var array<string, static> 生成済テンポラリテーブルのリスト */
+    protected $tempTables;
     /** @var bool テンポラリテーブルかどうか */
     protected $isTemp;
     /** @var ?static 基のテーブル */
@@ -87,7 +89,7 @@ class Table {
         if ($this->db?->isDebug) {
             // CLIのみ
             if (isset($_SERVER['argv']))
-                printf("[Debug]%s is closed\n", $this->id);
+                printf("[Debug]%s is closed\n", static::class);
         }
     }
 
@@ -801,15 +803,15 @@ class Table {
         $tempTableId = $tempTableId ?? sprintf('$%s', $this->id);
 
         // 再利用
-        if (array_key_exists($tempTableId, $this->tempTableRefs)) {
-            $tempTable = $this->tempTableRefs[$tempTableId]->get();
+        if (array_key_exists($tempTableId, $this->tempTables)) {
+            $tempTable = $this->tempTables[$tempTableId];
             if ($tempTable !== null)
                 return $tempTable;
         }
 
         // インスタンスを生成、自身のクローンより
         $tempTable = clone $this;
-        $this->tempTableRefs[$tempTableId] = WeakReference::create($tempTable);
+        $this->tempTables[$tempTableId] = $tempTable;
         $tempTable->id = $tempTableId;
         $tempTable->isTemp = true;
         $tempTable->baseTable = $this;
@@ -946,6 +948,29 @@ class Table {
         return sprintf('%s delete counts: %s', $this->id, number_format($counts));
     }
 
+    /**
+     * 廃棄処理
+     * 
+     * 直接には実行せずに、DBインスタンスより実行してください。
+     * 
+     * @since 0.40.02
+     */
+    public function dispose() {
+        // インデックスを廃棄処理
+        if ($this->indexes !== null)
+            $this->indexes->dispose();
+
+        // テンポラリテーブルの参照を外す
+        if ($this->tempTables !== null) {
+            $tempTables = $this->tempTables;
+            $this->tempTables = null;
+
+            // 参照先を廃棄処理
+            foreach ($tempTables as $tempTable)
+                $tempTable->dispose();
+        }
+    }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -956,7 +981,7 @@ class Table {
      * $this->items = new |class_name|();
      */
     protected function setInit() {
-        $this->tempTableRefs = [];
+        $this->tempTables = [];
         $this->isTemp = false;
         $this->queryPlanning = new QueryPlanning($this);
     }

@@ -7,6 +7,8 @@
 // 0.10.00 2024/03/08 DB情報無しのインスタンスを取得できるように対応。
 // 0.20.00 2024/04/23 クエリ関連の失敗時、エラーログへSQLステートメントを出力するように対応。
 // 0.22.00 2024/05/15 クエリ関連の失敗時、エラーログへ"Query failed !"の文字列を出力するように変更。
+// 0.40.00 2024/09/25 プロパティに、一時利用のためのインスタンスかどうかを追加。
+//                    クエリ履歴の長さに上限を設定。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/ValueType.php';
@@ -16,13 +18,15 @@ use PDOStatement, PDOException;
  * DBステートメントクラス(PDOベース)
  * 
  * @since 0.00.00
- * @version 0.22.00
+ * @version 0.40.00
  */
 class DbStatement extends PDOStatement {
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var ?DbBase DBクラス */
     protected $db;
+    /** @var bool 一時利用のためのインスタンスかどうか */
+    public $isTemp;
     /** @var array<string, ?int|string> バインド値リスト(デバッグ用) */
     protected $bindedValues;
 
@@ -103,6 +107,7 @@ class DbStatement extends PDOStatement {
     static public function getTempInstance(?DbBase $db): static {
         $stmt = new static(null);
         $stmt->db = $db;
+        $stmt->isTemp = true;
         return $stmt;
     }
 
@@ -112,6 +117,7 @@ class DbStatement extends PDOStatement {
      * 初期設定
      */
     protected function setInit() {
+        $this->isTemp = false;
         $this->bindedValues = [];
     }
 
@@ -137,7 +143,8 @@ class DbStatement extends PDOStatement {
      */
     protected function addQueryHistory(ExecuteLogRow $log, bool $isSuccessful) {
         $query = sprintf('%s|%s',
-            $this->queryString, json_encode($this->bindedValues, JSON_UNESCAPED_UNICODE)
+            mb_strimwidth($this->queryString, 0, 1024, '...'),
+            mb_strimwidth(json_encode($this->bindedValues, JSON_UNESCAPED_UNICODE), 0, 1023, '...')
         );
         $this->db->addQueryHistory($log, $query, $isSuccessful);
     }

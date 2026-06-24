@@ -27,6 +27,7 @@
 // 0.43.00 2024/10/11 selectInのパラメータが単一項目により配列型ではなかった時へ対応。
 // 0.48.00 2024/10/24 WHERE句を短くした時に不具合が発生したので対処。構造を見直して整理。
 // 0.48.01 2024/10/24 Null値へ更新する処理を修正。
+// 0.53.00 2024/11/21 SQLステートメントを生成(SET句)にて、日時の実行者項目に対してパラメータ指定するように修正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -43,7 +44,7 @@ use Stringable;
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.48.01
+ * @version 0.53.00
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -2911,9 +2912,11 @@ class Table {
     protected function makeSqlSetItems(array $idValues): string|false {
         $setItems = [];
 
+        // 実行者の項目IDリスト
+        $executorIds = $this->getExecutorIds();
+
         // 変更されたもののみの場合
         if ($this->isChangedOnlyForUpdate()) {
-            $executorIds = $this->getExecutorIds();
             $isChanged = false;
             foreach ($idValues as $idValue) {
                 $id = $idValue[0];
@@ -2928,10 +2931,20 @@ class Table {
             $id = $idValue[0];
             $value = $idValue[1];
 
-            $setItems[] = sprintf('%s = %s',
-                $this->getIdForSql($id),
-                $value !== null ? '?' : 'NULL'
-            );
+            // 通常項目
+            if (!in_array($id, $executorIds, true)) {
+                $setItems[] = sprintf('%s = %s',
+                    $this->getIdForSql($id),
+                    $value !== null ? '?' : 'NULL'
+                );
+            }
+
+            // 実行者項目
+            if (in_array($id, $executorIds, true)) {
+                $setItems[] = sprintf('%s = ?',
+                    $this->getIdForSql($id)
+                );
+            }
         }
 
         return implode(', ', $setItems);
@@ -3530,6 +3543,7 @@ class Table {
      * 
      * @param string|false $sqlSet SET句
      * @param string|false $sqlWhere WHERE句
+     * @param string|false $sqlWhereChangedOnly WHERE句(変更されたもののみ)
      * @return string|false SQLステートメント、更新対象とする項目がなければfalse
      */
     protected function makeSqlUpdate(

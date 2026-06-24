@@ -12,6 +12,7 @@
 // 0.23.00 2024/05/18 サブ画面を閉じる時、停止したタブ移動を再開するように変更。
 // 0.26.01 2024/06/22 起動時処理にサブプログラム呼び出しを追加。
 // 0.28.00 2024/06/26 サブプログラム呼び出しを帳票出力に対応。
+// 0.59.00 2024/12/14 コンソールにエラー出力時、スタックトレースを出力するように対応。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import web from "./web.js";
@@ -20,7 +21,7 @@ import web from "./web.js";
  * フレーム処理
  * 
  * @since 0.05.00
- * @version 0.28.00
+ * @version 0.59.00
  */
 const frame = {
     // ---------------------------------------------------------------------------------------------
@@ -83,6 +84,7 @@ const frame = {
         const elmErrorNames = document.getElementById('errorNames');
         if (!(elmErrorNames instanceof HTMLInputElement)) {
             console.error('エラー項目リストが見つかりません。');
+            console.trace();
             return;
         }
         const errorNames = JSON.parse(elmErrorNames.value);
@@ -151,7 +153,8 @@ const frame = {
     display: () => {
         const elmMain = document.getElementById('main');
         if (elmMain === null) {
-            console.error('メインセクションが見つからないため、表示処理に失敗しました。')
+            console.error('メインセクションが見つからないため、表示処理に失敗しました。');
+            console.trace();
             return;
         }
         elmMain.classList.remove('hidden');
@@ -164,6 +167,7 @@ const frame = {
         const elmFocusName = document.getElementById('focusName');
         if (!(elmFocusName instanceof HTMLInputElement)) {
             console.error('フォーカス移動先名を取得できませんでした。');
+            console.trace();
             return;
         }
         web.setFocus(elmFocusName.value);
@@ -183,7 +187,8 @@ const frame = {
             !(elmType instanceof HTMLInputElement) ||
             !(elmSessionId instanceof HTMLInputElement)
         ) {
-            console.error('サブプログラムの呼び出しに失敗しました。')
+            console.error('サブプログラムの呼び出しに失敗しました。', elmProgramId, elmType, elmSessionId);
+            console.trace();
             return;
         }
 

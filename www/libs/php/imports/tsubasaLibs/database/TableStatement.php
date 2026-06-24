@@ -8,6 +8,7 @@
 // 0.22.00 2024/05/17 新規レコードを取得時、レコード(変更前)をnullへ変更。
 // 0.40.00 2024/09/25 フェッチモードの変更を、テーブルの設定時に行うように変更。メモリリーク対策のため。
 // 0.40.01 2024/09/26 フェッチモード属性のパラメータが循環参照のため、弱い参照へ変更。
+// 0.50.01 2024/11/02 queryStringがまだ初期化されていない場合を考慮。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/Record.php';
@@ -17,7 +18,7 @@ use WeakReference;
  * テーブルステートメントクラス
  * 
  * @since 0.00.00
- * @version 0.40.01
+ * @version 0.50.01
  */
 class TableStatement extends DbStatement {
     // ---------------------------------------------------------------------------------------------
@@ -34,7 +35,7 @@ class TableStatement extends DbStatement {
     // マジックメソッド
     public function __debugInfo() {
         return [
-            'queryString' => $this->db !== null ? $this->queryString : null,
+            'queryString' => $this->queryString ?? null,
             'bindedValues' => $this->bindedValues
         ];
     }

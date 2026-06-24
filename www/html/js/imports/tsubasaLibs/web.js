@@ -21,6 +21,7 @@
 import forArray from "./forArray.js";
 import checker from "./checker.js";
 import Ajax from "./Ajax.js";
+
 /**
  * Web処理
  * 
@@ -28,11 +29,16 @@ import Ajax from "./Ajax.js";
  * @version 0.23.00
  */
 const web = {
+    // ---------------------------------------------------------------------------------------------
+    // 変数プロパティ
     /**
      * @since 0.20.00
      * @type {Window[]} 子ウィンドウリスト
      */
     childWindows: [],
+
+    // ---------------------------------------------------------------------------------------------
+    // 関数プロパティ
     /**
      * 結合名を取得
      * 
@@ -45,6 +51,7 @@ const web = {
 
         return [name, index].join(',');
     },
+
     /**
      * エレメントを取得(名前指定、結合名へ対応)
      * 
@@ -71,6 +78,7 @@ const web = {
         if (elms.length <= num) return null;
         return elms[num];
     },
+
     /**
      * エレメントより値を取得
      * 
@@ -88,6 +96,7 @@ const web = {
         if (nodeName === 'pre') return element.innerText;
         return null;
     },
+
     /**
      * エレメントへ値を設定
      * 
@@ -104,6 +113,7 @@ const web = {
         if (nodeName === 'label') element.innerText = value;
         if (nodeName === 'pre') element.innerText = value;
     },
+
     /**
      * フォーカス移動(結合名へ対応)
      * 
@@ -118,6 +128,7 @@ const web = {
         const nodeName = elm.nodeName.toLowerCase();
         if (nodeName === 'input') elm.select();
     },
+
     /**
      * 暗転処理
      */
@@ -131,6 +142,7 @@ const web = {
         elm.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
         document.body.append(elm);
     },
+
     /**
      * 送信前に未選択項目に対応した非表示項目を追加
      * 
@@ -157,7 +169,7 @@ const web = {
         ), (a, b) => (a.name === b.name)).forEach(elm => {
             /** @type {string} */
             const name = elm.name;
-            
+
             // 同名にチェック済があれば、処理しない
             if (document.querySelectorAll(
                 '[name="' + name + '"]:not(:disabled):checked'
@@ -167,6 +179,7 @@ const web = {
             self.addHiddenElementAfterTarget(elm);
         });
     },
+
     /**
      * 対象エレメントの後ろに同名のHiddenエレメントを追加
      * 
@@ -181,6 +194,7 @@ const web = {
         elmHidden.value = value;
         elm.parentNode.insertBefore(elmHidden, elm.nextElementSibling);
     },
+
     /**
      * 送信処理(Submit以外のイベント用)
      * 
@@ -224,6 +238,7 @@ const web = {
         elmForm.append(elmButton);
         elmButton.click();
     },
+
     /**
      * パラメータ付きURLを生成
      * 
@@ -243,6 +258,7 @@ const web = {
         if (encParams.length == 0) return encUrl;
         return encUrl + '?' + encParams.join('&');
     },
+
     /**
      * 画面遷移
      * 
@@ -254,6 +270,7 @@ const web = {
         elmA.href = web.makeUrlWithParam(url, params);
         elmA.click();
     },
+
     /**
      * 汎用Ajax送信
      * 
@@ -285,7 +302,7 @@ const web = {
 
         // 開始日時を設定
         self.setStartTime();
-        
+
         // Ajax送信
         const ajax = new Ajax();
         ajax.setUrl(win.location.href);
@@ -300,6 +317,7 @@ const web = {
             ajax.setErrorHandler(self.ajaxErrorHandler);
         ajax.send();
     },
+
     /**
      * 汎用Ajax受取関数(成功時)
      * 
@@ -325,10 +343,14 @@ const web = {
         // 実行時間を設定
         self.setExecuteTime();
     },
+
     /**
      * Ajax受取関数(失敗時)
+     * 
+     * @type {((request: XMLHttpRequest) => void)|null}
      */
     ajaxErrorHandler: null,
+
     /**
      * Windowオブジェクトかどうか
      * 
@@ -339,6 +361,7 @@ const web = {
     isWindow: (obj) => {
         return Object.prototype.toString.call(obj) === '[object Window]';
     },
+
     /**
      * 見えるかどうか
      * 
@@ -360,6 +383,7 @@ const web = {
 
         return true;
     },
+
     /**
      * 移動可能かどうか
      * 
@@ -387,6 +411,7 @@ const web = {
 
         return false;
     },
+
     /**
      * Enterキーによるタブ移動処理
      * 
@@ -483,6 +508,7 @@ const web = {
 
         return false;
     },
+
     /**
      * Enterキーによる誤動作防止処理
      * 
@@ -504,6 +530,7 @@ const web = {
 
         return true;
     },
+
     /**
      * PageUp/PageDownキーによる次頁/前頁へ移動処理
      * 
@@ -541,6 +568,7 @@ const web = {
 
         return true;
     },
+
     /**
      * エスケープキーによりウィンドウを閉じる
      * 
@@ -560,9 +588,10 @@ const web = {
             self.closeChildScreen();
             return false;
         }
-        
+
         return true;
     },
+
     /**
      * 子ウィンドウを登録
      * 
@@ -576,6 +605,7 @@ const web = {
         if (self.childWindows.filter(_window => _window === childWindow).length == 0)
             self.childWindows.push(childWindow);
     },
+
     /**
      * 子画面を開く
      * 
@@ -641,6 +671,7 @@ const web = {
         if (elmTarget !== null)
             elmTarget.setAttribute('subscreenopener', '');
     },
+
     /**
      * 全ての子ウィンドウを閉じる
      * 
@@ -651,6 +682,7 @@ const web = {
             childWindow.close();
         });
     },
+
     /**
      * 親画面を取得
      * 
@@ -660,6 +692,7 @@ const web = {
     getParentScreen: () => {
         return window !== parent ? parent : opener;
     },
+
     /**
      * 親画面があるかどうか
      * 
@@ -669,6 +702,7 @@ const web = {
     hasParentScreen: () => {
         return self.getParentScreen() !== null;
     },
+
     /**
      * 子画面より、親画面へ値を設定
      * 
@@ -693,6 +727,7 @@ const web = {
         if (isMove && self.isMovable(elm, parentScreen))
             elm.focus();
     },
+
     /**
      * 子画面を閉じる
      * 
@@ -722,6 +757,7 @@ const web = {
             }
         }
     },
+
     /**
      * タブ移動を停止
      * 
@@ -755,6 +791,7 @@ const web = {
             elmChild => self.stopTabMove(elmChild)
         );
     },
+
     /**
      * タブ移動を再開
      * 
@@ -774,6 +811,7 @@ const web = {
                 elm.removeAttribute('tabindex');
         });
     },
+
     /**
      * 開始日時を設定
      * 
@@ -792,6 +830,7 @@ const web = {
         if (elm === null) return;
         elm.value = timeStr;
     },
+
     /**
      * 実行時間を設定
      * 

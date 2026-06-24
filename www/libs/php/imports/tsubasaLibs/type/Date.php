@@ -10,6 +10,7 @@
 // 0.42.00 2024/10/08 静的メソッドの戻り値が自身のインスタンスである場合のPHPDocを訂正。
 //                    int型に対応。
 //                    静的メソッドに、日付を表す値かどうかチェックを追加。
+// 0.64.00 2024/12/20 日付を表す文字列であるかどうかチェックが空文字を許可しなくなっていたので修正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\type;
 use Stringable;
@@ -19,7 +20,7 @@ use DateTime, DateTimeZone;
  * 日付型クラス
  * 
  * @since 0.00.00
- * @version 0.42.00
+ * @version 0.64.00
  */
 class Date implements Stringable {
     // ---------------------------------------------------------------------------------------------
@@ -257,7 +258,7 @@ class Date implements Stringable {
     /**
      * 日付を表す文字列であるかどうかチェック
      * 
-     * yyyy/MM/dd、またはyyyy-MM-ddのみを許可する対象として、チェックします。
+     * 空文字、yyyy/MM/dd、またはyyyy-MM-ddのみを許可する対象として、チェックします。
      * 
      * @since 0.42.00
      * @param mixed $str 文字列
@@ -265,6 +266,9 @@ class Date implements Stringable {
      */
     static public function checkDateString($str): bool {
         if (!is_string($str)) return false;
+
+        // 空文字もOK
+        if ($str === '') return true;
 
         // yyyy/MM/dd or yyyy-MM-dd
         $match = null;
@@ -294,6 +298,12 @@ class Date implements Stringable {
         if (is_int($val)) $val = (string)$val;
         if ($val instanceof Stringable) $val = (string)$val;
         if (!is_string($val)) return false;
+
+        // 空文字はNG
+        if ($val === '') return false;
+
+        // 'now'はOK
+        if ($val === 'now') return true;
 
         // yyyyMMdd型
         if (!!preg_match('/\A[0-9]{8}\z/', $val))

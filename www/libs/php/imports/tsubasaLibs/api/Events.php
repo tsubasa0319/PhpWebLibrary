@@ -16,6 +16,7 @@
 // 0.31.02 2024/08/09 正常終了時、戻り値がdata属性に設定できていなかったので修正。
 // 0.31.03 2024/08/09 json_decodeのオプションを第3パラメータに設定していたので修正。
 // 0.40.00 2024/09/25 デストラクタを追加。DBインスタンスを可能な範囲で解放。
+// 0.43.00 2024/10/11 JSON形式で受け取った値を配列型へ対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
@@ -26,7 +27,7 @@ use Stringable;
  * APIイベントクラス
  * 
  * @since 0.09.00
- * @version 0.40.00
+ * @version 0.43.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -326,7 +327,7 @@ class Events {
             $data = mb_convert_encoding($data, 'UTF-8', $charset);
 
         foreach (json_decode($data, true, 512, JSON_BIGINT_AS_STRING) ?? [] as $key => $val)
-            $this->_post[$key] = (string)$val;
+            $this->_post[$key] = $this->parseString($val);
     }
 
     /**
@@ -484,6 +485,35 @@ class Events {
             return 'EUC-JP';
 
         return null;
+    }
+
+    /**
+     * 文字列型へ変換(様々な型へ対応)
+     * 
+     * @since 0.43.00
+     * @param mixed $data データ
+     * @return mixed 変換後
+     */
+    protected function parseString(mixed $data): mixed {
+        switch (true) {
+            case is_array($data) and array_values($data) === $data:
+                // 配列型の場合
+                $parseData = [];
+                foreach ($data as $val)
+                    $parseData[] = $this->parseString($val);
+                return $parseData;
+
+            case is_array($data) and array_values($data) !== $data:
+                // 連想配列型の場合
+                $parseData = [];
+                foreach ($data as $key => $val)
+                    $parseData[$key] = $this->parseString($val);
+                return $parseData;
+
+            default:
+                // 値型の場合
+                return is_string($data) ? $data : (string)$data;
+        }
     }
 
     /**

@@ -24,6 +24,7 @@
 // 0.20.00 2024/04/23 イベントエラーを実装。
 // 0.22.00 2024/05/17 例外をエラーログへ出力を実装。
 // 0.40.00 2024/09/25 デストラクタを追加。DBインスタンスを可能な範囲で解放。
+// 0.42.00 2024/10/08 メソッドに、サブプログラムを呼ぶ(データ出力用/帳票出力用)を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
@@ -43,7 +44,7 @@ use Exception;
  * イベントクラス
  * 
  * @since 0.00.00
- * @version 0.40.00
+ * @version 0.42.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -77,6 +78,10 @@ class Events {
     public $isConfirm;
     /** @var array<string, string> 返り値リスト(Ajax用) */
     public $valuesForAjax;
+    /** @var ?string 呼び出すサブプログラムID */
+    protected $callSubProgramId;
+    /** @var ?string 呼び出し方法 */
+    protected $callType;
 
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
@@ -208,6 +213,8 @@ class Events {
         $this->errorNames = [];
         $this->isConfirm = false;
         $this->valuesForAjax = [];
+        $this->callType = null;
+        $this->callSubProgramId = null;
     }
 
     /**
@@ -385,5 +392,27 @@ class Events {
             $response['debug'] = $error;
         header('Content-Type: application/json', true, 500);
         echo json_encode($response, JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * サブプログラムを呼ぶ(データ出力用)
+     * 
+     * @since 0.42.00
+     * @param string $programId プログラムID
+     */
+    protected function callSubProgramForExport(string $programId) {
+        $this->callType = 'export';
+        $this->callSubProgramId = $programId;
+    }
+
+    /**
+     * サブプログラムを呼ぶ(帳票出力用)
+     * 
+     * @since 0.42.00
+     * @param string $programId プログラムID
+     */
+    protected function callSubProgramForPrint(string $programId) {
+        $this->callType = 'print';
+        $this->callSubProgramId = $programId;
     }
 }

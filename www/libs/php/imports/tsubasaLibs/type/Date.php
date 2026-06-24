@@ -7,6 +7,9 @@
 // 0.04.00 2024/02/10 比較処理にて、自身のクラスのルールで比較するように変更。
 // 0.11.00 2024/03/08 データ型のクラス名を変更。
 // 0.22.00 2024/05/17 静的メソッドに、インスタンスを生成を追加。
+// 0.42.00 2024/10/08 静的メソッドの戻り値が自身のインスタンスである場合のPHPDocを訂正。
+//                    int型に対応。
+//                    静的メソッドに、日付を表す値かどうかチェックを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\type;
 use Stringable;
@@ -16,7 +19,7 @@ use DateTime, DateTimeZone;
  * 日付型クラス
  * 
  * @since 0.00.00
- * @version 0.22.00
+ * @version 0.42.00
  */
 class Date implements Stringable {
     // ---------------------------------------------------------------------------------------------
@@ -27,19 +30,23 @@ class Date implements Stringable {
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
-     * @param string|DateTime|Stringable $date 日付
+     * @param string|int|DateTime|Stringable $date 日付
      * @param DateTimeZone $timezone タイムゾーン
      */
     public function __construct(
-        string|DateTime|Stringable $date = 'now', ?DateTimeZone $timezone = null
+        string|int|DateTime|Stringable $date = 'now', ?DateTimeZone $timezone = null
     ) {
+        if (is_int($date)) $date = (string)$date;
         if ($date instanceof DateTime) $date = $date->format('Y/m/d');
         if ($date instanceof Stringable) $date = (string)$date;
+
         // yyyymm型
         if (preg_match('/\A[0-9]{6}\z/', $date)) $date .= '01';
+
         // yyyymmdd型
         if (preg_match('/\A[0-9]{8}\z/', $date)) $date = sprintf('%s/%s/%s',
             substr($date, 0, 4), substr($date, 4, 2), substr($date, 6));
+
         $this->datetime = new DateTime($date, $timezone);
     }
 
@@ -95,16 +102,26 @@ class Date implements Stringable {
      * 日付を変更
      * 
      * 変更しない部分は、nullを設定してください。
-     * @param ?int $year 年
+     * 
+     * @param ?static|int $year 年
      * @param ?int $month 月
      * @param ?int $day 日
      * @return static チェーン用
      */
-    public function setDate(?int $year = null, ?int $month = null, ?int $day = null) {
+    public function setDate(self|int|null $dateOrYear = null, ?int $month = null, ?int $day = null) {
+        if ($dateOrYear instanceof static) {
+            $year = $dateOrYear->getYear();
+            $month = $dateOrYear->getMonth();
+            $day = $dateOrYear->getDay();
+        } else {
+            $year = $dateOrYear;
+        }
+
         $this->datetime->setDate(
             $year ?? $this->getYear(),
             $month ?? $this->getMonth(),
             $day ?? $this->getDay());
+
         return $this;
     }
 
@@ -204,6 +221,17 @@ class Date implements Stringable {
     }
 
     /**
+     * フォーマット
+     * 
+     * @since 0.42.00
+     * @param string $format 出力形式
+     * @return string 形式変換後の文字列
+     */
+    public function format(string $format): string {
+        return $this->datetime->format($format);
+    }
+
+    /**
      * DateTimeインスタンスへ変換
      */
     public function toDateTime() {
@@ -215,14 +243,66 @@ class Date implements Stringable {
     /**
      * インスタンスを生成
      * 
-     * @param string|DateTime|Stringable $date 日付
+     * @param string|int|DateTime|Stringable $date 日付
      * @param DateTimeZone $timezone タイムゾーン
-     * @return ?static 自身のインスタンス
+     * @return ?Date 自身のインスタンス
      */
     static public function createInstance(
-        string|DateTime|Stringable $date = 'now', ?DateTimeZone $timezone = null
+        string|int|DateTime|Stringable $date = 'now', ?DateTimeZone $timezone = null
     ): ?static {
         if ($date === '') return null;
         return new static($date, $timezone);
+    }
+
+    /**
+     * 日付を表す文字列であるかどうかチェック
+     * 
+     * yyyy/MM/dd、またはyyyy-MM-ddのみを許可する対象として、チェックします。
+     * 
+     * @since 0.42.00
+     * @param mixed $str 文字列
+     * @return bool 成否
+     */
+    static public function checkDateString($str): bool {
+        if (!is_string($str)) return false;
+
+        // yyyy/MM/dd or yyyy-MM-dd
+        $match = null;
+        if (!preg_match('/\A([0-9]{1,4})\/([0-9]{1,2})\/([0-9]{1,2})\z/', $str, $match) and
+            !preg_match('/\A([0-9]{1,4})\-([0-9]{1,2})\-([0-9]{1,2})\z/', $str, $match))
+            return false;
+
+        // 日付として存在
+        return checkdate((int)$match[2], (int)$match[3], (int)$match[1]);
+    }
+
+    /**
+     * 日付を表す値であるかどうかチェック
+     * 
+     * このクラスのインスタンス生成に使用できるパラメータ値であるかどうかをチェックします。  
+     * int型やDateTime型、Stringable型も使用できます。
+     * 
+     * @since 0.42.00
+     * @param mixed $val 値
+     * @return bool 成否
+     */
+    static public function checkDate($val): bool {
+        // DateTime型はOK
+        if ($val instanceof DateTime) return true;
+
+        // 文字列型以外の場合の変換
+        if (is_int($val)) $val = (string)$val;
+        if ($val instanceof Stringable) $val = (string)$val;
+        if (!is_string($val)) return false;
+
+        // yyyyMMdd型
+        if (!!preg_match('/\A[0-9]{8}\z/', $val))
+            $val = sprintf('%s/%s/%s', substr($val, 0, 4), substr($val, 4, 2), substr($val, 6));
+
+        // yyyyMM型
+        if (!!preg_match('/\A[0-9]{6}\z/', $val))
+            $val = sprintf('%s/%s/01', substr($val, 0, 4), substr($val, 4));
+
+        return static::checkDateString($val);
     }
 }

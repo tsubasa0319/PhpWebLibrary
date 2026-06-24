@@ -9,6 +9,7 @@
 // 0.18.00 2024/03/30 一部メソッドの処理内容を継承元へ移動。
 // 0.18.02 2024/04/04 入力チェックのメソッド名を変更。Web版とセッション版の統合のため。
 // 0.19.00 2024/04/16 プロパティ(0を表示するかどうか/カンマ区切りするかどうか/最小値/最大値)を追加。
+// 0.60.00 2024/12/16 Web値へ変換し取得時、値がNull値の場合に警告が出るので修正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 
@@ -16,7 +17,7 @@ namespace tsubasaLibs\web;
  * 入力項目クラス(整数型)
  * 
  * @since 0.00.00
- * @version 0.19.00
+ * @version 0.60.00
  */
 class InputItemInteger extends InputItemBase {
     // ---------------------------------------------------------------------------------------------
@@ -57,7 +58,7 @@ class InputItemInteger extends InputItemBase {
 
     // Web値へ変換し取得(値より)
     protected function getWebValueFromValue(): string {
-        if ($this->value === 0)
+        if (($this->value ?? 0) === 0)
             return $this->displayZero ? '0' : '';
         return $this->separateCommas ? number_format($this->value) : (string)$this->value;
     }

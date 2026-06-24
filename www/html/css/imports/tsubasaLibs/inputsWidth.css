@@ -5,6 +5,7 @@
    History:
    0.22.00 2024/05/17 作成。
    0.42.00 2024/10/08 日付の条件に、name属性による判定を追加。
+   0.46.00 2024/10/18 年月/日時/ユーザ名を追加。
 ------------------------------------------------------------------------------------------------- */
 /* 日付 */
 input[name$="Date"],
@@ -13,7 +14,23 @@ input.date {
     width: 85px;
 }
 
+/* 年月 */
+input.dateYm6 {
+    width: 60px;
+}
+
+/* 日時 */
+input.datetimeHm {
+    width: 130px;
+}
+
 /* タイムスタンプ */
 input.timestamp {
     width: 210px;
+}
+
+/* ユーザ名 */
+input[name$="UserName"],
+input[name$="UserName[]"] {
+    width: 80px;
 }

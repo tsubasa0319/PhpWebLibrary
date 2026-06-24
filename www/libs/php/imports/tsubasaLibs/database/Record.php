@@ -14,18 +14,19 @@ require_once __DIR__ . '/advance/RecordCreatorItem.php';
 require_once __DIR__ . '/advance/RecordInputterItem.php';
 require_once __DIR__ . '/advance/RecordUpdaterItem.php';
 use tsubasaLibs\type;
+use WeakReference;
 
 /**
  * レコードクラス
  * 
  * @since 0.00.00
- * @version 0.40.00
+ * @version 0.40.01
  */
 class Record {
     // ---------------------------------------------------------------------------------------------
     // プロパティ
-    /** @var Table テーブル */
-    protected $table;
+    /** @var TableStatement ステートメントインスタンス */
+    protected $stmt;
     /** @var array<string, mixed> 受け取りに失敗した項目 */
     protected $failedItems;
     /** @var static レコード(変更前) */
@@ -34,11 +35,13 @@ class Record {
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     /**
-     * @param Table $table テーブル
+     * @param WeakReference<TableStatement> $stmtRef ステートメントインスタンスの参照
      */
-    public function __construct(Table $table) {
+    public function __construct(WeakReference $stmtRef) {
         // fetchの際、プロパティへ値を設定後、この処理を通る
-        $this->table = $table;
+
+        $stmt = $stmtRef->get();
+        $this->stmt = $stmt;
 
         // 受け取りに失敗した項目を再設定(ステートメントで定義した項目IDの変換を利用)
         foreach ($this->failedItems ?? [] as $name => $value) $this->{$name} = $value;
@@ -71,17 +74,19 @@ class Record {
     public function __clone() {
         foreach (get_object_vars($this) as $name => $value) {
             if (!is_object($value)) continue;
-            if (in_array($name, ['table'], true)) continue;
+            if (in_array($name, ['stmt'], true)) continue;
             if ($value instanceof type\Nothing) continue;
             $this->{$name} = clone $value;
         }
     }
 
     public function __debugInfo() {
+        $table = $this->stmt->table;
+
         $vars = [];
         $excludeItems = ['failedItems', 'previousRecord'];
-        $addedItems = $this->table instanceof Table ?
-            $this->table->items->addedItems : [];
+        $addedItems = $table instanceof Table ?
+            $table->items->addedItems : [];
         foreach (get_object_vars($this) as $name => $value) {
             if (in_array($name, $excludeItems, true)) continue;
             if (in_array($name, $addedItems, true)) continue;
@@ -117,7 +122,8 @@ class Record {
      * @return static チェーン用
      */
     public function setValuesFromRecord(self $that): static {
-        foreach (get_object_vars($this->table->items) as $name => $value) {
+        $table = $this->stmt->table;
+        foreach (get_object_vars($table->items) as $name => $value) {
             if (!($value instanceof Item)) continue;
             $this->{$name} = $that->{$name};
         }
@@ -132,8 +138,10 @@ class Record {
      * @return static チェーン用
      */
     public function setValuesForInsert() {
-        $executor = $this->table->db->executor;
+        $db = $this->stmt->table->db;
+        $executor = $db->executor;
         if ($executor === null) return;
+
         $this->setCreatorValues($executor);
         $this->setInputterValues($executor);
         $this->setUpdaterValues($executor);
@@ -146,8 +154,10 @@ class Record {
      * @return static チェーン用
      */
     public function setValuesForUpdate() {
-        $executor = $this->table->db->executor;
+        $db = $this->stmt->table->db;
+        $executor = $db->executor;
         if ($executor === null) return;
+
         $this->setInputterValues($executor);
         $this->setUpdaterValues($executor);
         return $this;
@@ -170,8 +180,10 @@ class Record {
      * @return static チェーン用
      */
     public function setNothing() {
+        $table = $this->stmt->table;
+
         $nothing = $this->getNothing();
-        foreach (get_object_vars($this->table->items) as $name => $value) {
+        foreach (get_object_vars($table->items) as $name => $value) {
             if (!($value instanceof Item)) continue;
             $this->{$name} = $nothing;
         }
@@ -185,7 +197,9 @@ class Record {
      * @return bool 成否
      */
     public function isInputted(string $id) {
-        $items = $this->table->items;
+        $table = $this->stmt->table;
+
+        $items = $table->items;
         if (!property_exists($items, $id)) return false;
         if (!($items->{$id} instanceof Item)) return false;
         if (!property_exists($this, $id)) return false;
@@ -200,7 +214,9 @@ class Record {
      * @return array キー値リスト
      */
     public function getIndexKeyValues(): array {
-        $key = $this->table->getIndexKey();
+        $table = $this->stmt->table;
+
+        $key = $table->getIndexKey();
         $values = [];
         foreach ($key->getKeyItems() as $keyItem)
             $values[] = $this->{$keyItem->item->id};
@@ -216,15 +232,19 @@ class Record {
      * @param string 変換後
      */
     protected function convertName(string $id): string {
-        if (!($this->table instanceof Table)) return $id;
-        return $this->table->getIdForVar($id);
+        $table = $this->stmt->table;
+        if (!($table instanceof Table)) return $id;
+
+        return $table->getIdForVar($id);
     }
 
     /**
      * 全ての項目値を変換(DB→クラス)
      */
     protected function convertValues() {
-        $items = $this->table->items;
+        $table = $this->stmt->table;
+
+        $items = $table->items;
         foreach (get_object_vars($items) as $name => $item) {
             if (!($item instanceof Item)) continue;
             $this->convertValue($name, $item->type);

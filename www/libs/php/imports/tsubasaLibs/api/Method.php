@@ -7,6 +7,7 @@
 // 0.25.00 2024/05/21 一部処理を共通化。エラーをイベントのメッセージ領域へ返すように対応。
 // 0.30.00 2024/08/03 Curlに失敗した時の通知精度を強化。
 // 0.45.00 2024/10/17 キャッシュに対応。
+// 0.47.01 2024/10/19 2回目の実行時、1回目のパラメータを再度実行してしまうため修正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\web;
@@ -15,7 +16,7 @@ use tsubasaLibs\web;
  * APIメソッドクラス
  * 
  * @since 0.12.00
- * @version 0.45.00
+ * @version 0.47.01
  */
 class Method {
     // ---------------------------------------------------------------------------------------------
@@ -60,6 +61,7 @@ class Method {
     public function exec(): mixed {
         $curl = $this->makeCurlInstance($this->getUrl());
         $curl->setData($this->getParams());
+        $this->clearParams();
         $response = $curl->exec();
 
         // 結果を受け取り
@@ -128,7 +130,13 @@ class Method {
         $this->isCaching = true;
         $this->cacheKeys = [];
         $this->cacheDatas = [];
+        $this->clearParams();
     }
+
+    /**
+     * パラメータリストを初期化
+     */
+    protected function clearParams() {}
 
     /**
      * Curlインスタンスを生成

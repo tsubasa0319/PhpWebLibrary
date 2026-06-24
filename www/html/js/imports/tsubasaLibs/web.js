@@ -17,6 +17,7 @@
 // 0.22.01 2024/05/17 PageUp/PageDownキーによる次頁/前頁へ移動処理を追加。
 // 0.22.02 2024/05/17 子画面を開く時、受取先が未指定の場合に"undefined"として送信してしまうため修正。
 // 0.23.00 2024/05/18 インラインフレームにより子画面を開く時、親画面に対してタブ移動を停止するように変更。
+// 0.55.00 2024/12/04 コードより名称を取得するメソッドを追加。パラメータチェックを追加。
 // -------------------------------------------------------------------------------------------------
 import forArray from "./forArray.js";
 import checker from "./checker.js";
@@ -26,7 +27,7 @@ import Ajax from "./Ajax.js";
  * Web処理
  * 
  * @since 0.05.00
- * @version 0.23.00
+ * @version 0.55.00
  */
 const web = {
     // ---------------------------------------------------------------------------------------------
@@ -44,12 +45,49 @@ const web = {
      * 
      * @since 0.20.00
      * @param {string} name 名前
-     * @param {?int} index 要素番号
+     * @param {?number} index 要素番号
+     * @return {string} 結合名
      */
     getJoinName: (name, index) => {
+        // パラメータチェック
+        if (!checker.isString(name)) return checker.paramCheckError('name', name);
+        if (!checker.isInteger(index, true)) return checker.paramCheckError('index', index);
+
         if (index === null) return name;
 
         return [name, index].join(',');
+    },
+
+    /**
+     * 連結名を取得(エレメント指定)
+     * 
+     * @since 0.55.00
+     * @param {HTMLElement} element エレメント
+     * @return {?string} 連結名(name[,num])
+     */
+    getJoinNameByElement: (element) => {
+        // パラメータチェック
+        if (!(element instanceof HTMLElement)) return checker.paramCheckError('element', element);
+
+        if (element.name === undefined) return null;
+
+        // name属性値が一致するエレメントを取得
+        const name = element.name;
+        const elms = document.getElementsByName(name);
+        if (elms.length < 2) return name;
+
+        // 順序数を取得
+        let num = null;
+        let i = -1;
+        Array.from(elms).some(elm => {
+            i++;
+            if (elm !== element) return false;
+
+            num = i;
+            return true;
+        });
+
+        return name + ',' + num;
     },
 
     /**
@@ -57,12 +95,15 @@ const web = {
      * 
      * @param {string} joinName 結合名(name[,num])
      * @param {Window} win Windowオブジェクト
-     * @returns {HTMLElement|null} エレメント
+     * @return {?HTMLElement} エレメント
      */
     getElementByJoinName: (joinName, win = window) => {
+        // パラメータチェック
+        if (!checker.isString(joinName)) return checker.paramCheckError('joinName', joinName);
+        if (!self.isWindow(win)) return checker.paramCheckError('win', win);
+
         let name = joinName;
         let num = 0;
-        if (typeof name !== 'string') return null;
 
         // 何番目か指定がある場合
         if (name.indexOf(',') > -1) {
@@ -80,12 +121,41 @@ const web = {
     },
 
     /**
+     * エレメントの順序数を取得
+     * 
+     * @since 0.55.00
+     * @param {string} joinName 結合名(name[,num])
+     * @return {number} 順序数
+     */
+    getNumByJoinName: (joinName) => {
+        // パラメータチェック
+        if (!checker.isString(joinName)) return checker.paramCheckError('joinName', joinName);
+
+        let name = joinName;
+        let index = 0;
+
+        // 何番目か指定がある場合
+        if (name.indexOf(',') > -1) {
+            const arr = name.split(',');
+            if (!isNaN(arr[1])) {
+                name = arr[0];
+                index = Number(arr[1]);
+            }
+        }
+
+        return index;
+    },
+
+    /**
      * エレメントより値を取得
      * 
      * @param {HTMLElement} element エレメント
-     * @returns {string|null} エレメントの値
+     * @return {?string} エレメントの値
      */
     getValueByElement: (element) => {
+        // パラメータチェック
+        if (!(element instanceof HTMLElement)) return checker.paramCheckError('element', element);
+
         const nodeName = element.nodeName.toLowerCase();
         if (nodeName === 'input') return element.value;
         if (nodeName === 'button') return element.innerText;
@@ -104,6 +174,10 @@ const web = {
      * @param {string} value 値
      */
     setValueByElement: (element, value) => {
+        // パラメータチェック
+        if (!(element instanceof HTMLElement)) return checker.paramCheckError('element', element);
+        if (!checker.isString(value)) return checker.paramCheckError('value', value);
+
         const nodeName = element.nodeName.toLowerCase();
         if (nodeName === 'input') element.value = value;
         if (nodeName === 'button') element.innerText = value;
@@ -120,6 +194,9 @@ const web = {
      * @param {string} joinName 結合名(name[,num])
      */
     setFocus: (joinName) => {
+        // パラメータチェック
+        if (!checker.isString(joinName)) return checker.paramCheckError('joinName', joinName);
+
         const elm = self.getElementByJoinName(joinName);
         if (elm === null) return;
 
@@ -184,15 +261,19 @@ const web = {
      * 対象エレメントの後ろに同名のHiddenエレメントを追加
      * 
      * @since 0.22.00
-     * @param {HTMLElement} elm 対象エレメント
+     * @param {HTMLElement} element 対象エレメント
      * @param {string} value 値
      */
-    addHiddenElementAfterTarget: (elm, value = '') => {
+    addHiddenElementAfterTarget: (element, value = '') => {
+        // パラメータチェック
+        if (!(element instanceof HTMLElement)) return checker.paramCheckError('element', element);
+        if (!checker.isString(value)) return checker.paramCheckError('value', value);
+
         const elmHidden = document.createElement('input');
         elmHidden.type = 'hidden';
-        elmHidden.name = elm.name;
+        elmHidden.name = element.name;
         elmHidden.value = value;
-        elm.parentNode.insertBefore(elmHidden, elm.nextElementSibling);
+        element.parentNode.insertBefore(elmHidden, element.nextElementSibling);
     },
 
     /**
@@ -203,6 +284,10 @@ const web = {
      * @return {boolean} 成否
      */
     send: (event, value = null) => {
+        // パラメータチェック
+        if (!(event instanceof Event)) return checker.paramCheckError('event', event);
+        if (!checker.isString(value, true)) return checker.paramCheckError('value', value);
+
         if (event.type === 'submit') {
             alert('二重送信になるため、処理を中断します。');
             return false;
@@ -244,17 +329,27 @@ const web = {
      * 
      * @param {string} url URL
      * @param {{[key: string]: string}} params URLパラメータ
+     * @return {string} パラメータ付きURL
      */
     makeUrlWithParam(url, params = {}) {
-        if (typeof url !== 'string') return null;
+        // パラメータチェック
+        if (!checker.isString(url)) return checker.paramCheckError('url', url);
+        if (!checker.isObject(params)) return checker.paramCheckError('params', params);
+        let paramCheck = true;
+        Object.keys(params).some(key => {
+            if (checker.isString(key) && checker.isString(params[key])) return false;
+
+            paramCheck = false;
+            return true;
+        });
+        if (!paramCheck) return checker.paramCheckError('params', params);
+
         const encUrl = encodeURI(url);
         const encParams = [];
-        if (checker.isObject(params)) {
-            Object.keys(params).forEach((key) => {
-                const val = params[key];
-                encParams.push(encodeURIComponent(key) + '=' + encodeURIComponent(val));
-            })
-        }
+        Object.keys(params).forEach(key => {
+            const val = params[key];
+            encParams.push(encodeURIComponent(key) + '=' + encodeURIComponent(val));
+        })
         if (encParams.length == 0) return encUrl;
         return encUrl + '?' + encParams.join('&');
     },
@@ -266,6 +361,18 @@ const web = {
      * @param {{[key: string]: string}} params URLパラメータ
      */
     move: (url, params = {}) => {
+        // パラメータチェック
+        if (!checker.isString(url)) return checker.paramCheckError('url', url);
+        if (!checker.isObject(params)) return checker.paramCheckError('params', params);
+        let paramCheck = true;
+        Object.keys(params).some(key => {
+            if (checker.isString(key) && checker.isString(params[key])) return false;
+
+            paramCheck = false;
+            return true;
+        });
+        if (!paramCheck) return checker.paramCheckError('params', params);
+
         const elmA = document.createElement('a');
         elmA.href = web.makeUrlWithParam(url, params);
         elmA.click();
@@ -280,10 +387,30 @@ const web = {
      * @param {Window} win ウィンドウオブジェクト
      */
     ajax: (eventName, itemNames = [], reciever = null, win = window) => {
+        // パラメータチェック
+        if (!checker.isString(eventName)) return checker.paramCheckError('eventName', eventName);
+        if (!checker.isArray(itemNames)) return checker.paramCheckError('itemNames', itemNames);
+        let paramCheck = true;
+        itemNames.some(name => {
+            if (checker.isString(name)) return false;
+
+            paramCheck = false;
+            return true;
+        });
+        if (!paramCheck) return checker.paramCheckError('itemNames', itemNames);
+        if (!checker.isFunction(reciever, true))
+            return checker.paramCheckError('reciever', reciever);
+        if (!self.isWindow(win)) return checker.paramCheckError('win', win);
+
         const params = {};
 
+        // 複数項目の場合、順序数を取得
+        let index = '';
+        if (itemNames.length > 0)
+            index = self.getNumByJoinName(itemNames[0]) ?? '';
+
         // イベント名を登録
-        params[eventName] = '1';
+        params[eventName] = index;
 
         // 入力値を登録
         itemNames.forEach((joinName) => {
@@ -326,6 +453,10 @@ const web = {
      * @param {XMLHttpRequest} request Ajax通信オブジェクト
      */
     ajaxReciever: (request) => {
+        // パラメータチェック
+        if (!(request instanceof XMLHttpRequest))
+            return checker.paramCheckError('request', request);
+
         if (request.response === null) return;
         if (request.response.status !== 'success') return;
         if (!checker.isObject(request.response.values)) return;
@@ -356,7 +487,7 @@ const web = {
      * 
      * @version 0.20.00
      * @param {any} obj オブジェクト
-     * @returns {boolean} 結果
+     * @return {boolean} 結果
      */
     isWindow: (obj) => {
         return Object.prototype.toString.call(obj) === '[object Window]';
@@ -368,9 +499,13 @@ const web = {
      * @version 0.06.00
      * @param {HTMLElement} element エレメント
      * @param {Window} win ウィンドウオブジェクト
-     * @returns {boolean} 結果
+     * @return {boolean} 結果
      */
     isVisible: (element, win = window) => {
+        // パラメータチェック
+        if (!(element instanceof HTMLElement)) return checker.paramCheckError('element', element);
+        if (!self.isWindow(win)) return checker.paramCheckError('win', win);
+
         const style = win.getComputedStyle(element);
 
         // 非表示
@@ -390,9 +525,13 @@ const web = {
      * @since 0.06.00
      * @param {HTMLElement} element エレメント
      * @param {Window} win ウィンドウオブジェクト
-     * @returns {boolean} 結果
+     * @return {boolean} 結果
      */
     isMovable: (element, win = window) => {
+        // パラメータチェック
+        if (!(element instanceof HTMLElement)) return checker.paramCheckError('element', element);
+        if (!self.isWindow(win)) return checker.paramCheckError('win', win);
+
         // 非表示
         if (!self.isVisible(element, win)) return false;
 
@@ -416,10 +555,14 @@ const web = {
      * Enterキーによるタブ移動処理
      * 
      * @since 0.06.00
-     * @param {KeyboardEvent} event イベント
-     * @returns {boolean} イベントを続行するかどうか
+     * @param {Event} event イベント
+     * @return {boolean} イベントを続行するかどうか
      */
     enterToTabMove: (event) => {
+        // パラメータチェック
+        if (!(event instanceof Event)) return checker.paramCheckError('event', event);
+
+        if (!(event instanceof KeyboardEvent)) return true;
         if (event.code !== 'Enter') return true;
 
         // 変換中は、元のイベントを続行
@@ -513,10 +656,14 @@ const web = {
      * Enterキーによる誤動作防止処理
      * 
      * @since 0.19.00
-     * @param {KeyboardEvent} event イベント
-     * @returns {boolean} イベントを続行するかどうか
+     * @param {Event} event イベント
+     * @return {boolean} イベントを続行するかどうか
      */
     preventMistakeByEnter: (event) => {
+        // パラメータチェック
+        if (!(event instanceof Event)) return checker.paramCheckError('event', event);
+
+        if (!(event instanceof KeyboardEvent)) return true;
         if (event.code !== 'Enter') return true;
 
         // 変換中は、元のイベントを続行
@@ -535,10 +682,14 @@ const web = {
      * PageUp/PageDownキーによる次頁/前頁へ移動処理
      * 
      * @since 0.22.01
-     * @param {KeyboardEvent} event 
-     * @returns {boolean} イベントを続行するかどうか
+     * @param {Event} event イベント
+     * @return {boolean} イベントを続行するかどうか
      */
     pageUpDownToChange: (event) => {
+        // パラメータチェック
+        if (!(event instanceof Event)) return checker.paramCheckError('event', event);
+
+        if (!(event instanceof KeyboardEvent)) return true;
         if (!['PageUp', 'PageDown'].includes(event.code)) return true;
 
         // 変換中は、元のイベントを続行
@@ -570,15 +721,132 @@ const web = {
     },
 
     /**
+     * コードから名称を取得
+     * 
+     * @since 0.55.00
+     * @param {Event} event イベント
+     * @param {string} eventName イベント名
+     * @param {?string[]} addItemNames 追加する送信対象の項目名リスト(name属性値)
+     */
+    codeToName: (event, eventName, addItemNames = null) => {
+        // パラメータチェック
+        if (!(event instanceof Event)) return checker.paramCheckError('event', event);
+        if (!checker.isString(eventName)) return checker.paramCheckError('eventName', eventName);
+        if (!checker.isArray(addItemNames, true))
+            return checker.paramCheckError('addItemNames', addItemNames);
+        let paramCheck = true;
+        if (addItemNames !== null) addItemNames.some(name => {
+            if (checker.isString(name)) return false;
+
+            paramCheck = false;
+            return true;
+        });
+        if (!paramCheck) return checker.paramCheckError('addItemNames', addItemNames);
+
+        // 自身の連結名
+        const joinName = self.getJoinNameByElement(event.target);
+
+        // 送信対象とする項目リスト
+        const itemNames = [joinName];
+        if (addItemNames !== null)
+            addItemNames.forEach(name => itemNames.push(name));
+
+        // キーを離した時
+        if (event.type === 'keyup' && event instanceof KeyboardEvent) {
+            // 対象キー
+            if (![
+                // 日本語キーボードにのみ対応
+
+                // 通常キー
+                // 1段目
+                'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8',
+                'Digit9', 'Digit0', 'Minus', 'Equal', 'IntlYen',
+
+                // 2段目
+                'KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU', 'KeyI', 'KeyO', 'KeyP',
+                'BracketLeft', 'BracketRight',
+
+                // 3段目
+                'KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL',
+                'Semicolon', 'Quote', 'Backslash',
+
+                // 4段目
+                'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM', 'Comma', 'Period',
+                'Slash', 'IntlRo',
+
+                // 5段目
+                'Space',
+
+                // テンキー
+                'Numpad1', 'Numpad2', 'Numpad3', 'Numpad4', 'Numpad5', 'Numpad6', 'Numpad7',
+                'Numpad8', 'Numpad9', 'Numpad0', 'NumpadDecimal',
+                'NumpadAdd', 'NumpadSubtract', 'NumpadMultiply', 'NumpadDivide',
+                'NumpadEqual',
+
+                // 機能キー
+                'Delete', 'Backspace', 'Enter', 'NumpadEnter'
+            ].includes(event.code)) return;
+
+            // 全角モードの入力中は除外
+            if (event.isComposing) return;
+
+            // 全角モードの入力文字を全て削除した時の二重発火を防止
+            if (event.key === 'Process' && event.code === 'Backspace') return;
+            if (event.key === 'Process' && event.code === 'Delete') return;
+
+            // エンターは、全角モードの確定のみ
+            if (event.key !== 'Process' && event.code === 'Enter') return;
+
+            // Ctrlとの同時押しは除外
+            // Ctrl+V、Ctrl+Xも、二重発火になるため除外
+            if (event.ctrlKey) return;
+
+            // Altとの同時押しは除外
+            if (event.altKey) return;
+
+            // 最後の入力を受け付けてから実行するため、タイマー処理
+            setTimeout(
+                () => self.ajax(eventName, itemNames ?? [joinName]),
+            0);
+        }
+
+        // 貼り付け
+        // 右クリックメニューも有効
+        if (event.type === 'paste') {
+            // 最後の入力を受け付けてから実行するため、タイマー処理
+            setTimeout(
+                () => self.ajax(eventName, itemNames ?? [joinName]),
+            0);
+        }
+
+        // 切り取り
+        // 右クリックメニューも有効
+        if (event.type === 'cut') {
+            // 最後の入力を受け付けてから実行するため、タイマー処理
+            setTimeout(
+                () => self.ajax(eventName, itemNames ?? [joinName]),
+            0);
+        }
+
+        // フォーカスを離れる時
+        if (event.type === 'blur')
+            self.ajax(eventName, itemNames ?? [joinName]);
+    },
+
+    /**
      * エスケープキーによりウィンドウを閉じる
      * 
      * プログラムにより開いたウィンドウのみが対象です。
      * 
      * @since 0.23.00
-     * @param {KeyboardEvent} event イベント
-     * @returns {boolean} イベントを続行するかどうか
+     * @param {Event} event イベント
+     * @return {boolean} イベントを続行するかどうか
      */
     escapeToCloseWindow: (event) => {
+        // パラメータチェック
+        if (!(event instanceof Event)) return checker.paramCheckError('event', event);
+
+        if (!(event instanceof KeyboardEvent)) return true;
         if (event.code !== 'Escape') return true;
 
         // 変換中は、元のイベントを続行
@@ -598,6 +866,10 @@ const web = {
      * @param {Window} childWindow 子ウィンドウ
      */
     addChildWindow: (childWindow) => {
+        // パラメータチェック
+        if (!self.isWindow(childWindow))
+            return checker.paramCheckError('childWindow', childWindow);
+
         // 既に閉じられているウィンドウを削除
         self.childWindows = self.childWindows.filter(_window => !_window.closed);
 
@@ -612,12 +884,46 @@ const web = {
      * @since 0.20.00
      * @param {?Event} event イベント
      * @param {string} url URL
-     * @param {?{[key: string]: (string|{0: string, 1:int})}} params パラメータリスト
+     * @param {?{[key: string]: (string|{0: string, 1:number})}} params パラメータリスト
      * @param {boolean} isFrame インラインフレームかどうか
      * @param {?string} width サブ画面の幅
      * @param {?string} height サブ画面の高さ
      */
     openChildScreen: (event = null, url = '', params = null, isFrame = true, width = null, height = null) => {
+        // パラメータチェック
+        if (event !== null && !(event instanceof Event))
+            return checker.paramCheckError('event', event);
+        if (!checker.isString(url)) return checker.paramCheckError('url', url);
+        if (!checker.isObject(params, true)) return checker.paramCheckError('params', params);
+        let paramCheck = true;
+        if (params !== null) {
+            Object.keys(params).some(key => {
+                if (!checker.isString(key)) {
+                    paramCheck = false;
+                    return true;
+                }
+
+                if (checker.isString(params[key]))
+                    return false;
+                else if (checker.isArray(params[key])) {
+                    if (params[key].length < 2 ||
+                        !checker.isString(params[key][0]) ||
+                        !checker.isInteger(params[key][1])
+                    ) {
+                        paramCheck = false;
+                        return true;
+                    }
+
+                    return false;
+                }
+                else {
+                    paramCheck = false;
+                    return true;
+                }
+            });
+        }
+        if (!paramCheck) return checker.paramCheckError('params', params);
+
         // パラメータ
         const _params = {};
         if (params !== null) for (let key in params) {
@@ -687,7 +993,7 @@ const web = {
      * 親画面を取得
      * 
      * @since 0.20.00
-     * @returns {?Window} 親画面
+     * @return {?Window} 親画面
      */
     getParentScreen: () => {
         return window !== parent ? parent : opener;
@@ -697,7 +1003,7 @@ const web = {
      * 親画面があるかどうか
      * 
      * @since 0.23.00
-     * @returns {bool} 成否
+     * @return {bool} 成否
      */
     hasParentScreen: () => {
         return self.getParentScreen() !== null;
@@ -712,6 +1018,12 @@ const web = {
      * @param {boolean} isMove 移動するかどうか
      */
     setValueFromChildScreen: (joinName, value, isMove = false) => {
+        // パラメータチェック
+        if (!checker.isString(joinName, true))
+            return checker.paramCheckError('joinName', joinName);
+        if (!checker.isString(value, true)) return checker.paramCheckError('value', value);
+        if (!checker.isBoolean(isMove)) return checker.paramCheckError('isMove', isMove);
+
         if (joinName === null) return;
         if (value === null) return;
 
@@ -765,29 +1077,34 @@ const web = {
      * ただし、iframeの中身までは干渉しません。
      * 
      * @since 0.23.00
-     * @param {?HTMLElement} elm 
-     * @param {?Window} win
+     * @param {?HTMLElement} element エレメント
+     * @param {?Window} win ウィンドウ
      */
-    stopTabMove: (elm = null, win = null) => {
+    stopTabMove: (element = null, win = null) => {
+        // パラメータチェック
+        if (element !== null && !(element instanceof HTMLElement))
+            return checker.paramCheckError('element', element);
+        if (win !== null && !self.isWindow(win)) return checker.paramCheckError('win', win);
+
         win = win ?? window;
-        if (elm === null) {
+        if (element === null) {
             self.stopTabMove(win.document.body, win);
             return;
         }
 
         if ([
             'input', 'button', 'select', 'textarea', 'a'
-        ].includes(elm.nodeName.toLowerCase())) {
-            if (elm.disabled || elm.tabIndex == -1) return;
+        ].includes(element.nodeName.toLowerCase())) {
+            if (element.disabled || element.tabIndex == -1) return;
 
-            const tabIndex = elm.tabIndex;
-            elm.tabIndex = -1;
-            elm.setAttribute('settabindex', tabIndex);
+            const tabIndex = element.tabIndex;
+            element.tabIndex = -1;
+            element.setAttribute('settabindex', tabIndex);
             return;
         }
 
         // 子ノード
-        if (elm.hasChildNodes) elm.childNodes.forEach(
+        if (element.hasChildNodes) element.childNodes.forEach(
             elmChild => self.stopTabMove(elmChild)
         );
     },
@@ -799,9 +1116,12 @@ const web = {
      * ただし、iframeの中身までは干渉しません。
      * 
      * @since 0.23.00
-     * @param {?Window} win
+     * @param {?Window} win ウィンドウ
      */
     restartTabMove: (win = null) => {
+        // パラメータチェック
+        if (win !== null && !self.isWindow(win)) return checker.paramCheckError('win', win);
+
         win = win ?? window;
         win.document.querySelectorAll('[settabindex]').forEach(elm => {
             const tabIndex = elm.getAttribute('settabindex');

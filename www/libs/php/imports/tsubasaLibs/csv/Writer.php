@@ -6,6 +6,7 @@
 //
 // History:
 // 0.26.00 2024/05/22 作成。
+// 0.42.00 2024/10/08 改行文字の初期値を、指定した文字セットにより分岐。メソッドに、改行文字の変更を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\csv;
 use Stringable;
@@ -14,7 +15,7 @@ use Stringable;
  * CSV書き込みクラス
  * 
  * @since 0.26.00
- * @version 0.26.00
+ * @version 0.42.00
  */
 class Writer {
     // ---------------------------------------------------------------------------------------------
@@ -67,6 +68,8 @@ class Writer {
         $this->setInit();
         if ($fileName !== null) $this->fileName = $fileName;
         if ($charset !== null) $this->charset = $charset;
+        if ($this->charset === static::CHARSET_SJIS_WIN)
+            $this->returnChar = static::CHAR_CRLF;
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -90,6 +93,18 @@ class Writer {
      */
     public function setAutoEnclosed(bool $autoEnclosed): static {
         $this->autoEnclosed = $autoEnclosed;
+        return $this;
+    }
+
+    /**
+     * 改行文字を変更
+     * 
+     * @since 0.42.00
+     * @param string $returnChar 改行文字
+     * @return static チェーン用
+     */
+    public function setReturnChar(string $returnChar): static {
+        $this->returnChar = $returnChar;
         return $this;
     }
 
@@ -140,7 +155,7 @@ class Writer {
     protected function setInit() {
         $this->fileName = 'No Title.csv';
         $this->charset = static::CHARSET_UTF_8;
-        $this->returnChar = static::CHAR_CRLF;
+        $this->returnChar = static::CHAR_LF;
         $this->separateChar = ",";
         $this->hasEnclosure = true;
         $this->autoEnclosed = true;

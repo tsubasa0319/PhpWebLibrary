@@ -4,6 +4,7 @@
 //
 // History:
 // 0.16.00 2024/03/23 作成。
+// 0.51.00 2024/11/13 検索速度を上げるため、検索値がStringableの場合は先にstringへ変換するように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 use Stringable;
@@ -12,7 +13,7 @@ use Stringable;
  * 選択クエリ予定クラス(複数レコード版)
  * 
  * @since 0.16.00
- * @version 0.16.00
+ * @version 0.51.00
  */
 class SelectArrayPlan {
     // ---------------------------------------------------------------------------------------------
@@ -35,20 +36,11 @@ class SelectArrayPlan {
     /**
      * 重複した予定かどうか
      * 
+     * @param array 検索値リスト
      * @return bool 結果
      */
     public function isDuplicate($values): bool {
-        if (!is_array($values)) return false;
-        if (count($values) !== count($this->values)) return false;
-        for ($i = 0; $i < count($values); $i++) {
-            $val1 = $values[$i];
-            $val2 = $this->values[$i];
-            if ($val1 instanceof Stringable) $val1 = (string)$val1;
-            if ($val2 instanceof Stringable) $val2 = (string)$val2;
-            if ($val1 !== $val2)
-                return false;
-        }
-        return true;
+        return $this->values === $values;
     }
 
     /**
@@ -60,15 +52,12 @@ class SelectArrayPlan {
         $values = $record->getIndexKeyValues();
         if (count($values) < count($this->values)) return false;
 
-        for ($i = 0; $i < count($this->values); $i++) {
-            $val1 = $values[$i];
-            $val2 = $this->values[$i];
-            if ($val1 instanceof Stringable) $val1 = (string)$val1;
-            if ($val2 instanceof Stringable) $val2 = (string)$val2;
-            if ($val1 !== $val2)
-                return false;
-        }
-        return true;
+        // 検索値リストを値型へ変換
+        foreach ($values as $num => $value)
+            if ($value instanceof Stringable)
+                $values[$num] = (string)$value;
+
+        return $this->values === $values;
     }
 
     /**
@@ -86,6 +75,11 @@ class SelectArrayPlan {
      * @param array 検索値リスト
      */
     public function setValues(array $values) {
+        // 検索値リストを値型へ変換
+        foreach ($values as $num => $value)
+            if ($value instanceof Stringable)
+                $values[$num] = (string)$value;
+
         $this->values = $values;
     }
 

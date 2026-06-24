@@ -1,3 +1,11 @@
+0.51.00 2024/11/13 12:28:20
+[変更]
+検索速度を上げるため、キャッシュの持ち方と検索値の事前string変換を見直し。
+api/Method.php: キャッシュの持ち方を変更。
+database/QueryPlanning.php: 検索値がStringableの場合は先にstringへ変換するように変更。
+database/SelectArrayPlan.php: 検索値がStringableの場合は先にstringへ変換するように変更。
+database/SelectPlan.php: 検索値がStringableの場合は先にstringへ変換するように変更。
+
 0.50.01 2024/11/02 14:20:46
 [修正]
 database/TableStatement.php: queryStringがまだ初期化されていない場合を考慮。

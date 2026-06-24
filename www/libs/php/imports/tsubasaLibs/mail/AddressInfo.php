@@ -5,6 +5,7 @@
 // History:
 // 0.41.00 2024/10/02 作成。
 // 0.41.01 2024/10/02 アドレスペアを生成メソッドを追加。
+// 0.41.02 2024/10/02 アドレスと表示名が混在した情報が来ても処理できるように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\mail;
 
@@ -12,7 +13,7 @@ namespace tsubasaLibs\mail;
  * メールアドレス情報クラス
  * 
  * @since 0.41.00
- * @version 0.41.01
+ * @version 0.41.02
  */
 class AddressInfo {
     // ---------------------------------------------------------------------------------------------
@@ -26,6 +27,15 @@ class AddressInfo {
     // コンストラクタ/デストラクタ
     public function __construct(?string $address = null, ?string $name = null) {
         $this->setInit();
+
+        // アドレスと表記名を分割
+        if ($address !== null and $name === null) {
+            $pair = static::makeAddressPair($address);
+            if (count($pair) == 2) {
+                $address = $pair[0];
+                $name = $pair[1];
+            }
+        }
 
         if ($address !== null)
             $this->address = $address;

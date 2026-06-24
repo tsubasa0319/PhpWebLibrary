@@ -5,6 +5,7 @@
 // History:
 // 0.28.02 2024/06/27 作成。
 // 0.37.00 2024/09/11 エラーログに、エラーコード/メッセージを追加。
+// 0.48.00 2024/10/24 スタックトレースの取得を、クラス/タイプ/関数が無い場合に対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\common;
 use Exception as BaseException, Throwable;
@@ -13,7 +14,7 @@ use Exception as BaseException, Throwable;
  * 共通の例外クラス
  * 
  * @since 0.28.02
- * @version 0.37.00
+ * @version 0.48.00
  */
 class Exception extends BaseException {
     // ---------------------------------------------------------------------------------------------
@@ -45,7 +46,7 @@ class Exception extends BaseException {
         foreach ($ex->getTrace() as $num => $trace)
             error_log(sprintf('PHP %3d. %s%s%s %s:%s %s',
                 $num + 1,
-                $trace['class'], $trace['type'], $trace['function'],
+                $trace['class'] ?? '', $trace['type'] ?? '', $trace['function'] ?? '',
                 $trace['file'], $trace['line'], json_encode($trace['args'], JSON_UNESCAPED_UNICODE)
             ));
     }

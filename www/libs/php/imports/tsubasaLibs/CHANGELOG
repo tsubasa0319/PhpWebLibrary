@@ -1,3 +1,9 @@
+0.61.00 2024/12/17 18:35:38
+[修正]
+テーブルとバインド変換の不具合を修正。
+database/Table.php: makeBindItemsWhereEqFromRecordが正常に動作していなかったので修正。
+database/ValueType.php: バインド用変換(PARAM_INT)で変換に失敗しても警告のみで継続してしまうのを防止。
+
 0.60.00 2024/12/16 16:53:13
 [修正]
 web/InputItemInteger.php: Web値へ変換し取得時、値がNull値の場合に警告が出るので修正。

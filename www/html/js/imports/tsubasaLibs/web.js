@@ -21,6 +21,7 @@
 // 0.55.01 2024/12/05 送信処理のイベント値を数値型も有効へ修正。
 // 0.59.00 2024/12/14 入力値が数値型の時、エレメントが別ウィンドウにある時に、パラメータエラーになっていたので修正
 // 0.62.00 2024/12/18 コードから名称を取得(オートコンプリート)メソッドを追加。
+// 0.63.00 2024/12/19 エレメントへ値を設定をNull値へ対応。
 // -------------------------------------------------------------------------------------------------
 import forArray from "./forArray.js";
 import checker from "./checker.js";
@@ -30,7 +31,7 @@ import Ajax from "./Ajax.js";
  * Web処理
  * 
  * @since 0.05.00
- * @version 0.62.00
+ * @version 0.63.00
  */
 const web = {
     // ---------------------------------------------------------------------------------------------
@@ -174,12 +175,12 @@ const web = {
      * エレメントへ値を設定
      * 
      * @param {HTMLElement} element エレメント
-     * @param {string|number} value 値
+     * @param {?string|number} value 値
      */
     setValueByElement: (element, value) => {
         // パラメータチェック
         if (!checker.isHTMLElement(element)) return checker.paramCheckError('element', element);
-        if (!checker.isString(value) && !checker.isNumber(value))
+        if (!checker.isString(value, true) && !checker.isNumber(value))
             return checker.paramCheckError('value', value);
 
         const nodeName = element.nodeName.toLowerCase();

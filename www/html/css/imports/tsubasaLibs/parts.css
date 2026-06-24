@@ -23,6 +23,7 @@
    0.33.00 2024/08/24 ライブラリ名を訂正。
    0.42.00 2024/10/08 頁切替の全体幅を100pxに指定。
    0.46.00 2024/10/18 テーブルの削除行に対するクラスを追加。
+   0.46.01 2024/10/19 0.46.00の影響範囲を修正。
 ------------------------------------------------------------------------------------------------- */
 /* ---------------------------------------------------------------------------------------------- */
 /* 変数定義 */
@@ -417,11 +418,11 @@ table.list.general > tbody > tr > td {
 
 /* 偶数の明細行 */
 table.list.general > tbody:not(:has(> tr:first-child > th))
-    > tr:nth-child(2n):not(.selected) > td,
+    > tr:nth-child(2n):not(.selected):not(.deleted) > td,
 table.list.general > tbody:has(> tr:first-child > th):not(:has(> tr:nth-child(2) > th))
-    > tr:nth-child(2n+1):not(.selected) > td,
+    > tr:nth-child(2n+1):not(.selected):not(.deleted) > td,
 table.list.general > tbody:has(> tr:first-child > th):has(> tr:nth-child(2) > th)
-    > tr:nth-child(2n+2):not(.selected) > td {
+    > tr:nth-child(2n+2):not(.selected):not(.deleted) > td {
     background-color: lightgray;
 }
 

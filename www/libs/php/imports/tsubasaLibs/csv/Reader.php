@@ -5,6 +5,7 @@
 // History:
 // 0.34.00 2024/08/30 作成。
 // 0.35.00 2024/08/31 ファイルを開く/ロックすることに失敗した時のメッセージを追加。
+// 0.41.00 2024/10/02 int型に変換できるかどうかの判定を修正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\csv;
 require_once __DIR__ . '/../type/Nothing.php';
@@ -15,7 +16,7 @@ use tsubasaLibs\type;
  * CSV読み込みクラス
  * 
  * @since 0.34.00
- * @version 0.35.00
+ * @version 0.41.00
  */
 class Reader {
     // ---------------------------------------------------------------------------------------------
@@ -249,7 +250,8 @@ class Reader {
      * @return bool 結果
      */
     protected function isIntValue(string $val): bool {
-        return !!preg_match('/\A(\+-)?[0-9]{0,20}\z/', $val);
+        return !!preg_match('/\A[+-]?[0-9,]{0,}\z/', $val) and
+               !!preg_match('/\A[+-]?[0-9]{0,20}\z/', str_replace(',', '', $val));
     }
 
     /**
@@ -289,7 +291,7 @@ class Reader {
             return false;
         }
 
-        return (int)$val;
+        return (int)str_replace(',', '', $val);
     }
 
     /**

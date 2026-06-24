@@ -25,6 +25,7 @@
 // 0.22.00 2024/05/17 例外をエラーログへ出力を実装。
 // 0.40.00 2024/09/25 デストラクタを追加。DBインスタンスを可能な範囲で解放。
 // 0.42.00 2024/10/08 メソッドに、サブプログラムを呼ぶ(データ出力用/帳票出力用)を追加。
+// 0.44.00 2024/10/12 Smartyクラスを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
@@ -36,15 +37,17 @@ require_once __DIR__ . '/InputTable.php';
 require_once __DIR__ . '/Menu.php';
 require_once __DIR__ . '/Message.php';
 require_once __DIR__ . '/WebException.php';
+require_once __DIR__ . '/Smarty.php';
 use tsubasaLibs\type;
 use tsubasaLibs\database\DbBase;
+use Smarty;
 use Exception;
 
 /**
  * イベントクラス
  * 
  * @since 0.00.00
- * @version 0.42.00
+ * @version 0.44.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -62,6 +65,8 @@ class Events {
     protected $isAjax;
     /** @var DbBase|false DB */
     public $db;
+    /** @var Smarty Smarty */
+    protected $smarty;
     /** @var bool デバッグモードかどうか */
     protected $isDebug;
     /** @var bool ログインチェックするかどうか */
@@ -202,9 +207,20 @@ class Events {
     }
 
     /**
+     * Smartyインスタンスを生成
+     * 
+     * @since 0.44.00
+     * @return ?Smarty Smartyインスタンス
+     */
+    protected function makeNewSmarty() {
+        return null;
+    }
+
+    /**
      * 初期設定
      */
     protected function setInit() {
+        $this->smarty = $this->makeNewSmarty();
         $this->isDebug = false;
         $this->isLoginCheck = true;
         $this->allowRoles = [];

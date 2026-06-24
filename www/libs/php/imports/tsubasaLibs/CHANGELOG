@@ -1,3 +1,14 @@
+0.44.00 2024/10/12 12:54:47
+[変更]
+Smartyクラスをライブラリへ追加。CSV読み込みの型チェック/変換を type クラスへ集約。
+web/Smarty.php: 新規追加(Smartyクラス)。
+web/#phpdoc/Smarty.php: Smarty未導入用のPHPDocへ変更。
+web/Events.php: Smartyクラスを追加。
+csv/Reader.php: データ型チェック/変換を type クラスで行うように変更。int型の項目取得時、空文字を許可しない設定に対応。
+type/Integer.php: int型へ変換時、先にチェックするかどうかを指定できるように対応。
+pdf/Tcpdf.php, pdf/#phpdoc/Tcpdf.php: 不足している定義を追加。確認済の対応バージョンを明記。
+cli/loader.php, csv/loader.php, mail/loader.php: 使用ライブラリのコメントを追加。
+
 0.43.00 2024/10/11 17:47:36
 [変更]
 APIのJSON受信値とテーブルのselectInを、配列型でない入力に対応。

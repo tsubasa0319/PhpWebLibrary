@@ -6,6 +6,8 @@
 // 0.34.00 2024/08/30 作成。
 // 0.35.00 2024/08/31 ファイルを開く/ロックすることに失敗した時のメッセージを追加。
 // 0.41.00 2024/10/02 int型に変換できるかどうかの判定を修正。
+// 0.44.00 2024/10/12 データ型チェックおよび変換をtype/***で行うように変更。
+//                    int型の項目を取得時、空文字を許可しない設定に対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\csv;
 require_once __DIR__ . '/../type/Nothing.php';
@@ -16,7 +18,7 @@ use tsubasaLibs\type;
  * CSV読み込みクラス
  * 
  * @since 0.34.00
- * @version 0.41.00
+ * @version 0.44.00
  */
 class Reader {
     // ---------------------------------------------------------------------------------------------
@@ -185,15 +187,6 @@ class Reader {
     }
 
     /**
-     * 日付値を新規発行
-     * 
-     * @return type\Date
-     */
-    protected function makeNewDate($val) {
-        return new type\Date($val);
-    }
-
-    /**
      * メッセージリストを初期化
      */
     protected function clearMessages() {
@@ -250,8 +243,18 @@ class Reader {
      * @return bool 結果
      */
     protected function isIntValue(string $val): bool {
-        return !!preg_match('/\A[+-]?[0-9,]{0,}\z/', $val) and
-               !!preg_match('/\A[+-]?[0-9]{0,20}\z/', str_replace(',', '', $val));
+        return type\Integer::checkIntString($val);
+    }
+
+    /**
+     * int型へ変換
+     * 
+     * @since 0.44.00
+     * @param string $val 値
+     * @return int 変換後の値
+     */
+    protected function parseIntValue(string $val): int {
+        return type\Integer::convertFromString($val, false) ?? 0;
     }
 
     /**
@@ -261,37 +264,48 @@ class Reader {
      * @return bool 結果
      */
     protected function isDateValue(string $val): bool {
-        // 空文字
-        if ($val === '') return true;
+        return type\Date::checkDateString($val);
+    }
 
-        // yyyy/mm/dd型
-        $matches = null;
-        if (!preg_match('/\A([0-9]{1,4})[\/-]([0-9]{1,2})[\/-]([0-9]{1,2})\z/', $val, $matches))
-            return false;
-
-        // 日付として存在するかどうか
-        return checkdate((int)$matches[2], (int)$matches[3], (int)$matches[1]);
+    /**
+     * 日付型へ変換
+     * 
+     * @since 0.44.00
+     * @param string $val 値
+     * @return ?type\Date 変換後の値
+     */
+    protected function parseDateValue(string $val) {
+        return type\Date::createInstance($val);
     }
 
     /**
      * CSVの行データより、指定項目のint値を取得
      * 
      * @param int|string $id 項目ID(int:1から始まる項目の序列番号 string:ヘッダの項目ID)
+     * @param bool $allowEmpty 空文字を許可するかどうか
      * @return int|type\Nothing|false int値 存在しなければNothing値 エラーであればfalse
      */
-    protected function getIntValueFromCsv(int|string $id) {
+    protected function getIntValueFromCsv(int|string $id, bool $allowEmpty = true) {
         $num = $this->getColNum($id);
         if ($num === null) return false;
 
+        // 存在しなければ、Nothing値
         if (!isset($this->rowData[$num])) return $this->nothing;
         $val = $this->rowData[$num];
 
+        // データ型をチェック
         if (!$this->isIntValue($val)) {
             $this->addMessageByDetail($id, sprintf('Not an integer value: %s', $val));
             return false;
         }
 
-        return (int)str_replace(',', '', $val);
+        // 空文字チェック、許可しない場合のみ
+        if (!$allowEmpty and $val === '') {
+            $this->addMessageByDetail($id, 'No value');
+            return false;
+        }
+
+        return type\Integer::convertFromString($val);
     }
 
     /**
@@ -304,6 +318,7 @@ class Reader {
         $num = $this->getColNum($id);
         if ($num === null) return false;
 
+        // 存在しなければ、Nothing値
         if (!isset($this->rowData[$num])) return $this->nothing;
         $val = $this->rowData[$num];
 
@@ -320,15 +335,17 @@ class Reader {
         $num = $this->getColNum($id);
         if ($num === null) return false;
 
+        // 存在しなければ、Nothing値
         if (!isset($this->rowData[$num])) return $this->nothing;
         $val = $this->rowData[$num];
 
+        // データ型をチェック
         if (!$this->isDateValue($val)) {
             $this->addMessageByDetail($id, sprintf('Not a date value: %s', $val));
             return false;
         }
 
-        return $val !== '' ? $this->makeNewDate($val) : null;
+        return $this->parseDateValue($val);
     }
 
     /**

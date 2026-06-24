@@ -12,6 +12,7 @@
    0.23.00 2024/05/18 formのdisabledを削除。
    0.26.01 2024/06/22 bodyのイベントで長くなったため、折り返して整理。
    0.33.00 2024/08/27 ライブラリ名を訂正。直接に個人ライブラリ名を使用しないように変更。
+   0.57.00 2024/12/11 フォームのエンコードタイプを指定できるように対応。
 ------------------------------------------------------------------------------------------------- *}
 <!DOCTYPE html>
 <html lang="ja">
@@ -28,7 +29,9 @@
         onpagehide="libs.frame.body_pagehide(event);"
         onkeydown="return libs.frame.body_keydown(event);"
     >
-        <form method="post" onsubmit="libs.frame.form_submit(event);">
+        <form method="post" {attributes items=[
+                'enctype' => $formEnctype|default:false
+            ]} onsubmit="libs.frame.form_submit(event);">
             <header>
                 <section id="bodyHeaderInfo">
                     <div>

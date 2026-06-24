@@ -6,6 +6,7 @@
 // 0.12.00 2024/03/12 作成。
 // 0.25.00 2024/05/21 一部処理を共通化。エラーをイベントのメッセージ領域へ返すように対応。
 // 0.30.00 2024/08/03 Curlに失敗した時の通知精度を強化。
+// 0.45.00 2024/10/17 キャッシュに対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\web;
@@ -14,7 +15,7 @@ use tsubasaLibs\web;
  * APIメソッドクラス
  * 
  * @since 0.12.00
- * @version 0.30.00
+ * @version 0.45.00
  */
 class Method {
     // ---------------------------------------------------------------------------------------------
@@ -32,6 +33,12 @@ class Method {
     protected $events;
     /** @var string http(s)+host */
     protected $webRoot;
+    /** @var bool キャッシュを取るかどうか */
+    protected $isCaching;
+    /** @var string[] キャッシュキー */
+    protected $cacheKeys;
+    /** @var array キャッシュデータ */
+    protected $cacheDatas;
 
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
@@ -94,12 +101,34 @@ class Method {
         return $data ?? false;
     }
 
+    /**
+     * キャッシュより削除
+     * 
+     * @since 0.45.00
+     * @param mixed $key アクセスキー
+     */
+    public function removeCache($key) {
+        $cacheKey = $this->getCacheKey($key);
+
+        // 検索
+        $index = array_search($cacheKey, $this->cacheKeys, true);
+        if ($index === false) return;
+
+        // 削除
+        unset($this->cacheKeys[$index]);
+        unset($this->cacheDatas[$index]);
+    }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
      * 初期設定
      */
-    protected function setInit() {}
+    protected function setInit() {
+        $this->isCaching = true;
+        $this->cacheKeys = [];
+        $this->cacheDatas = [];
+    }
 
     /**
      * Curlインスタンスを生成
@@ -143,5 +172,56 @@ class Method {
      */
     protected function getParams(): array {
         return [];
+    }
+
+    /**
+     * キャッシュキーを取得
+     * 
+     * @since 0.45.00
+     * @param mixed $key アクセスキー
+     * @return string キャッシュキー
+     */
+    protected function getCacheKey($key) {
+        return json_encode($key);
+    }
+
+    /**
+     * キャッシュへ追加
+     * 
+     * @since 0.45.00
+     * @param mixed $key アクセスキー
+     * @param mixed $data 取得データ
+     */
+    protected function addChache($key, $data) {
+        if (!$this->isCaching) return;
+
+        $cacheKey = $this->getCacheKey($key);
+
+        // 存在チェック
+        if (in_array($cacheKey, $this->cacheKeys, true))
+            return;
+
+        // 登録
+        $this->cacheKeys[] = $cacheKey;
+        $this->cacheDatas[] = $data;
+    }
+
+    /**
+     * キャッシュより取得
+     * 
+     * @since 0.45.00
+     * @param mixed $key アクセスキー
+     * @return mixed 取得データ、未登録の場合はNull値
+     */
+    protected function getCache($key) {
+        if (!$this->isCaching) return null;
+
+        $cacheKey = $this->getCacheKey($key);
+
+        // 検索
+        $index = array_search($cacheKey, $this->cacheKeys, true);
+        if ($index === false) return null;
+
+        return $this->cacheDatas[$index];
     }
 }

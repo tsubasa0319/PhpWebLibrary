@@ -7,6 +7,7 @@
 // 0.40.00 2024/09/25 デストラクタを追加。DBインスタンスを可能な範囲で解放。
 // 0.41.02 2024/10/02 現在日時を追加。タスクIDを取得するメソッドを追加。
 // 0.76.00 2025/02/26 メッセージリストを取得に対して、メール用の場合にはエラーリストに上限を設定。
+// 0.86.00 2025/04/02 DBの実行者情報へユーザIDの初期値を設定。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\cli;
 use tsubasaLibs\type;
@@ -16,7 +17,7 @@ use tsubasaLibs\database\DbBase;
  * CSV取込タスククラス
  * 
  * @since 0.35.00
- * @version 0.76.00
+ * @version 0.86.00
  */
 class TaskImportCsv {
     // ---------------------------------------------------------------------------------------------
@@ -83,7 +84,9 @@ class TaskImportCsv {
     protected function setInit() {
         $this->path = null;
         $this->now = new type\TimeStamp();
-        $this->db = null;
+        $this->db = $this->getDb();
+        $this->db->setExecutor();
+        $this->db->executor->userId = 'cli';
         $this->readCounts = 0;
         $this->errorCounts = 0;
         $this->insertCounts = 0;
@@ -92,6 +95,16 @@ class TaskImportCsv {
         $this->errorMessages = [];
         $this->reportMessages = [];
         $this->maxErrorCountsForMail = 100;
+    }
+
+    /**
+     * DBを取得
+     * 
+     * @since 0.86.00
+     * @return ?DbBase DB
+     */
+    protected function getDb(): ?DbBase {
+        return null;
     }
 
     /**

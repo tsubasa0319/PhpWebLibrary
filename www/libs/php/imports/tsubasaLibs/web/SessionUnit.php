@@ -10,6 +10,7 @@
 // 0.19.00 2024/04/16 セッションより値を削除するメソッドを追加。
 // 0.26.01 2024/06/22 画面単位セッションIDをGETメソッドからも取得できるように対応。
 // 0.87.02 2025/04/08 リファレンスの更新を自動化。
+// 0.87.03 2025/04/09 古い画面単位セッションを削除時、自身も削除してしまっていたので訂正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use DateTime, DateInterval, Exception;
@@ -18,7 +19,7 @@ use DateTime, DateInterval, Exception;
  * 画面単位セッションクラス
  * 
  * @since 0.03.00
- * @version 0.87.02
+ * @version 0.87.03
  */
 class SessionUnit {
     // ---------------------------------------------------------------------------------------------
@@ -161,12 +162,39 @@ class SessionUnit {
     }
 
     /**
+     * セッションより情報設定
+     */
+    protected function setInfoFromSession() {
+        // ユニットIDを受け取り
+        $unitId = match (true) {
+            isset($_POST[static::UNIT_SESSION_ID]) => $_POST[static::UNIT_SESSION_ID],
+            isset($_GET[static::UNIT_SESSION_ID])  => $_GET[static::UNIT_SESSION_ID],
+            default => null
+        };
+
+        // ユニットIDを発行
+        if ($unitId === null or !isset($this->refference[$unitId]))
+            $unitId = $this->makeUnit();
+
+        // ユニット情報を取得
+        $this->unitId = $unitId;
+        $this->data =& $this->refference[$unitId];
+
+        // 最終アクセスを更新
+        $this->refference['info'][$unitId]['lastAccessTime'] =
+            $this->getNow()->format('Y/m/d H:i:s.u');
+    }
+
+    /**
      * 古い画面単位セッションを削除
      */
     protected function removeOldUnits() {
         // 空、または1日以上経過したものは削除
         $time = $this->getNow()->add(DateInterval::createFromDateString('-1 day'));
         foreach ($this->refference['info'] as $unitId => $unitInfo) {
+            // 自身は残す
+            if ($unitId === $this->unitId) continue;
+
             if (count($this->refference[$unitId]) == 0 or
                 $unitInfo['lastAccessTime'] <= $time->format('Y/m/d H:i:s.u')
             ) {
@@ -190,30 +218,6 @@ class SessionUnit {
                 unset($this->refference['info'][$unitId]);
             }
         }
-    }
-
-    /**
-     * セッションより情報設定
-     */
-    protected function setInfoFromSession() {
-        // ユニットIDを受け取り
-        $unitId = match (true) {
-            isset($_POST[static::UNIT_SESSION_ID]) => $_POST[static::UNIT_SESSION_ID],
-            isset($_GET[static::UNIT_SESSION_ID])  => $_GET[static::UNIT_SESSION_ID],
-            default => null
-        };
-
-        // ユニットIDを発行
-        if ($unitId === null or !isset($this->refference[$unitId]))
-            $unitId = $this->makeUnit();
-
-        // ユニット情報を取得
-        $this->unitId = $unitId;
-        $this->data =& $this->refference[$unitId];
-
-        // 最終アクセスを更新
-        $this->refference['info'][$unitId]['lastAccessTime'] =
-            $this->getNow()->format('Y/m/d H:i:s.u');
     }
 
     /**

@@ -29,6 +29,7 @@
 // 0.90.02 2025/05/20 ファイルを開いてからロックするまでの間に割り込まれる可能性を考慮。
 //                    デバッグモードを実装。
 // 0.90.03 2025/05/21 エラーハンドリングを整理。
+// 0.90.04 2025/05/24 コンストラクタでexitするとデストラクタが呼ばれないため、シャットダウン時処理で実行。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
@@ -39,7 +40,7 @@ use Stringable;
  * APIイベントクラス
  * 
  * @since 0.09.00
- * @version 0.90.03
+ * @version 0.90.04
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -80,8 +81,10 @@ class Events {
     protected $executeStartTime;
     /** @var bool エラー送信したかどうか */
     protected $isSentError;
-    /** @var bool 監視を中断(処理は継続) */
+    /** @var bool プロセス監視を中断(処理は継続) */
     protected $canceledMonitoring;
+    /** @var bool コンストラクタ内でexitしたかどうか */
+    public $_isExitedInConstructor;
 
     // ---------------------------------------------------------------------------------------------
     // プロパティ(アクセス過多に対する制限)
@@ -95,12 +98,16 @@ class Events {
     protected $maxRetryTimes;
     /** @var int 実行開始までの最大待ち時間(マイクロ秒) */
     protected $maxWaitTime;
+    /** @var int プロセス監視ファイルのガベージコレクション割合(万分率) */
+    protected $gcRateForMonitoring;
     /** @var bool デバッグモード */
     protected $isDebug;
 
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct() {
+        $this->_isExitedInConstructor = true;
+
         // エラーハンドラを設定
         $this->setErrorHandler();
 
@@ -167,6 +174,8 @@ class Events {
         $this->destroyProcessFile();
 
         $this->endLog();
+
+        $this->_isExitedInConstructor = false;
     }
 
     /**
@@ -207,6 +216,10 @@ class Events {
 
             // 出力のバッファリングを終了
             if (ob_get_level()) ob_end_flush();
+
+            // コンストラクタ内でexitした場合は、デストラクタを実行
+            if ($me->_isExitedInConstructor)
+                $me->__destruct();
         }, $this);
     }
 
@@ -241,6 +254,7 @@ class Events {
         $this->maxNumberOfAccesses = 50;    // 監視期間内に許容するアクセス数は50個まで
         $this->maxRetryTimes = 100;         // 実行開始を延期するリトライ回数は100回まで
         $this->maxWaitTime = 30000000;      // 実行開始までの待ち時間は最大30秒間
+        $this->gcRateForMonitoring = 200;   // ガベージコレクション率は2%
         $this->isDebug = false;             // デバッグモード
     }
 
@@ -419,6 +433,9 @@ class Events {
 
         // 古いプロセスIDを破棄
         $this->destroyOldProcessId($idsDir);
+
+        // ガベージコレクション
+        $this->gcForMonitoring($childDir, $processId);
 
         // 順番待ちファイルを解放
         $this->destroyWaitFile();
@@ -807,6 +824,39 @@ class Events {
         $this->lockFile($filePointer, LOCK_UN);
 
         return $result;
+    }
+
+    /**
+     * ガベージコレクション(プロセス監視)
+     * 
+     * @since 0.90.04
+     * @param string $dir ディレクトリパス
+     * @param string $id プロセスID
+     */
+    protected function gcForMonitoring(string $dir, string $id) {
+        // 実行するかどうか
+        if (random_int(0, 9999) >= $this->gcRateForMonitoring) return;
+
+        // デバッグ
+        if ($this->isDebug)
+            $this->log('[Debug]Start gc for monitoring');
+
+        // ファイル情報のキャッシュをクリア
+        clearstatcache();
+
+        // 順番待ちファイル
+        $paths = glob(sprintf('%s/wait_*', $dir));
+        $path = sprintf('%s/wait_%s', $dir, $id);
+        foreach ($paths as $_path)
+            if ($_path !== $path)
+                $this->destroyNoXLockFile($_path);
+
+        // プロセスファイル
+        $paths = glob(sprintf('%s/process_*', $dir));
+        $path = sprintf('%s/process_%s', $dir, $id);
+        foreach ($paths as $_path)
+            if ($_path !== $path)
+                $this->destroyNoXLockFile($_path);
     }
 
     /**

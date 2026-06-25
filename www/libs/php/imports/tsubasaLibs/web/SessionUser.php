@@ -12,6 +12,7 @@
 //                    ステータスを定数化。
 //                    既定のタイムアウト時間を変更。
 // 0.83.00 2025/03/27 ログインしているかどうかの処理から、タイムアウトしているかどうかを分離。
+// 0.87.02 2025/04/08 ログイン時、現在のセッションをログアウトにし、新規セッションへ切り替えるように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use DateTime, DateInterval;
@@ -20,7 +21,7 @@ use DateTime, DateInterval;
  * ログインユーザクラス
  * 
  * @since 0.00.00
- * @version 0.83.00
+ * @version 0.87.02
  */
 class SessionUser {
     // ---------------------------------------------------------------------------------------------
@@ -42,6 +43,8 @@ class SessionUser {
 
     // ---------------------------------------------------------------------------------------------
     // プロパティ
+    /** @var Session セッションインスタンス */
+    protected $session;
     /** @var array セッション情報のリファレンス */
     protected $refference;
     /** @var int タイムアウト時間 */
@@ -55,12 +58,33 @@ class SessionUser {
 
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
-    public function __construct() {
+    public function __construct(Session $session) {
+        $this->session = $session;
         $this->setInit();
     }
 
     // ---------------------------------------------------------------------------------------------
     // メソッド
+    /**
+     * セッション情報のリファレンスを設定
+     * 
+     * @since 0.03.00
+     */
+    public function setRefference() {
+        if (!isset($_SESSION[static::ID])) $_SESSION[static::ID] = [];
+        foreach ([
+            'status', 'userId', 'loginTime', 'lastAccessTime'
+        ] as $key)
+            if (!isset($_SESSION[static::ID][$key]))
+                $_SESSION[static::ID][$key] = match ($key) {
+                    'status'    =>  'logout',
+                    default     =>  null
+                };
+
+        $this->refference =& $_SESSION[static::ID];
+        $this->setInfoFromSession();
+    }
+
     /**
      * ログインしているかどうか
      * 
@@ -122,6 +146,16 @@ class SessionUser {
      */
     public function login($userId, $password): bool {
         if (!$this->checkForLogin($userId, $password)) return false;
+
+        // 現在のセッションをログアウト
+        if ($this->isLoggedIn()) $this->logout();
+
+        // セッションを再生成、初期化
+        $this->session->writeClose();
+        $this->session->start(true);
+        $this->session->regenerateId();
+        $this->session->unset();
+
         $this->refference['status'] = static::STATUS_LOGIN;
         $this->setUserId($userId);
         $now = $this->getNow();
@@ -196,20 +230,6 @@ class SessionUser {
     protected function setInit() {
         $this->setRefference();
         $this->timeoutMinutes = self::DEFAULT_TIMEOUT_MINUTES;
-    }
-
-    /**
-     * セッション情報のリファレンスを設定
-     * 
-     * @since 0.03.00
-     */
-    protected function setRefference() {
-        if (!isset($_SESSION[static::ID]))
-            $_SESSION[static::ID] = [
-                'status' => 'logout'
-            ];
-        $this->refference =& $_SESSION[static::ID];
-        $this->setInfoFromSession();
     }
 
     /**

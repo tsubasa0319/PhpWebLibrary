@@ -4,6 +4,7 @@
 //
 // History:
 // 0.87.00 2025/04/05 作成。
+// 0.87.02 2025/04/08 リファレンスの更新を自動化。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use DateTime, DateInterval;
@@ -12,7 +13,7 @@ use DateTime, DateInterval;
  * セッション引き継ぎ先クラス
  * 
  * @since 0.87.00
- * @version 0.87.00
+ * @version 0.87.02
  */
 class SessionHandOver {
     // ---------------------------------------------------------------------------------------------
@@ -43,6 +44,21 @@ class SessionHandOver {
     // ---------------------------------------------------------------------------------------------
     // メソッド
     /**
+     * セッション情報のリファレンスを設定
+     */
+    public function setRefference() {
+        if (!isset($_SESSION[static::ID])) $_SESSION[static::ID] = [];
+        foreach ([
+            'sessionId', 'limitTime'
+        ] as $key)
+            if (!isset($_SESSION[static::ID][$key]))
+                $_SESSION[static::ID][$key] = null;
+
+        $this->refference =& $_SESSION[static::ID];
+        $this->setInfoFromRefference();
+    }
+
+    /**
      * 引き継ぎ先のセッションIDを取得
      * 
      * @return ?string セッションID
@@ -69,8 +85,7 @@ class SessionHandOver {
 
         // 不正
         if ($this->limitTime !== null and $this->sessionId === null) {
-            // セッションIDを変更し、追放
-            $this->session->regenerateId();
+            // セッションを破棄し、追放
             $this->session->destroy();
             throw new WebException('The session is invalid');
         }
@@ -103,9 +118,6 @@ class SessionHandOver {
                 throw new WebException('Failed to switch session');
             return false;
         }
-
-        // 成功していたら、リファレンスを更新
-        $this->setRefference();
 
         return true;
     }
@@ -149,7 +161,6 @@ class SessionHandOver {
         $this->session->writeClose();
         $this->session->id($sessionId);
         $this->session->start(true);
-        $this->setRefference();
 
         // 引き継ぎ先を設定、他を削除
         $this->setSessionId($newSessionId);
@@ -167,9 +178,6 @@ class SessionHandOver {
         $this->session->id($newSessionId);
         $this->session->start(true);
 
-        // リファレンスを更新
-        $this->setRefference();
-
         return true;
     }
 
@@ -181,21 +189,6 @@ class SessionHandOver {
     protected function setInit() {
         $this->limitTimeMicroSecond = 30000000; // 30秒
         $this->setRefference();
-    }
-
-    /**
-     * セッション情報のリファレンスを設定
-     */
-    protected function setRefference() {
-        if (!isset($_SESSION[static::ID])) $_SESSION[static::ID] = [];
-        foreach ([
-            'sessionId', 'limitTime'
-        ] as $key)
-            if (!isset($_SESSION[static::ID][$key]))
-                $_SESSION[static::ID][$key] = null;
-
-        $this->refference =& $_SESSION[static::ID];
-        $this->setInfoFromRefference();
     }
 
     /**

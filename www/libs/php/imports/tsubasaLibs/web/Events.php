@@ -35,6 +35,9 @@
 // 0.83.00 2025/03/27 最終アクセス日時の更新は、ログイン中にしか行わないように変更。
 // 0.84.00 2025/03/28 セッション取得の処理順を変更したため、DBへ実行者情報の設定を初期設定で行うように変更。
 // 0.87.01 2025/04/08 名前空間の変更に伴い、Smartyはここではrequireしないように変更。
+// 0.87.04 2025/04/24 実行者情報の取得タイミングを変更、セッションで利用できるようにするため。
+//                    無駄なDB接続を減らすため、セッションを取得した後にDB接続するように変更。
+//                    出力データのフラッシュをシャットダウン時に行うように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
@@ -57,7 +60,7 @@ use Exception;
  * イベントクラス
  * 
  * @since 0.00.00
- * @version 0.87.01
+ * @version 0.87.04
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -124,11 +127,15 @@ class Events {
             $this->sendDoctype();
         }
 
-        // DB接続
-        $this->db = $this->getDb();
-
         // セッションを取得
         $this->session = $this->getSession();
+        if (!($this->session instanceof Session) or !$this->session::statusIsActive())
+            throw new WebException('Not start a session');
+
+        // DB接続
+        $this->db = $this->getDb();
+        $this->db->setExecutor();
+        $this->db->executor->userId = $this->session->user->userId ?? '';
 
         // 初期設定
         $this->setInit();
@@ -177,7 +184,10 @@ class Events {
             }
         }
 
-        if (ob_get_level() > 0) ob_end_flush();
+        // シャットダウン時へイベント登録
+        register_shutdown_function(function () {
+            if (ob_get_level() > 0) ob_end_flush();
+        });
     }
 
     /**
@@ -282,9 +292,6 @@ class Events {
         $this->valuesForAjax = [];
         $this->callType = null;
         $this->callSubProgramId = null;
-
-        // 実行者を設定
-        $this->db->setExecutor();
     }
 
     /**

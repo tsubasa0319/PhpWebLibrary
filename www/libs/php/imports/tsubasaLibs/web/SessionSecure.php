@@ -4,6 +4,7 @@
 //
 // History:
 // 0.87.02 2025/04/08 作成。
+// 0.87.04 2025/04/24 初回かどうかの判定方法を変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 
@@ -11,7 +12,7 @@ namespace tsubasaLibs\web;
  * セッションの安全性確保処理クラス
  * 
  * @since 0.87.02
- * @version 0.87.02
+ * @version 0.87.04
  */
 class SessionSecure {
     // ---------------------------------------------------------------------------------------------
@@ -43,10 +44,11 @@ class SessionSecure {
     public function setRefference() {
         if (!isset($_SESSION[static::ID])) $_SESSION[static::ID] = [];
         foreach ([
-            'ipAddress'
+            'isNew', 'ipAddress'
         ] as $key)
             if (!isset($_SESSION[static::ID][$key]))
                 $_SESSION[static::ID][$key] = match ($key) {
+                    'isNew'     =>  true,
                     'ipAddress' =>  $this->getCurrentIpAddress(),
                     default     =>  null
                 };
@@ -61,16 +63,26 @@ class SessionSecure {
      * @return bool 結果
      */
     public function execute(): bool {
+        // 初回は実行しない
+        if ($this->refference['isNew']) {
+            $this->refference['isNew'] = false;
+            return true;
+        }
+
         // IPアドレスチェック
         if ($this->getCurrentIpAddress() !== $this->ipAddress) {
+            // 危険と判断し、このセッションは破棄
             $this->session->destroy();
-            throw new WebException('Session is accessed from a different ip-address');
+            trigger_error('Session is accessed from a different ip-address', E_USER_WARNING);
+            return false;
         }
 
         // セッションIDを変更
         if ($this->session->isRegeneratingAlways)
-            if (!$this->session->handOver->regenerateId())
-                throw new WebException('Failed to change a session-id');
+            if (!$this->session->handOver->regenerateId()) {
+                trigger_error('Could not change a session-id', E_USER_WARNING);
+                return false;
+            }
 
         return true;
     }
@@ -88,7 +100,7 @@ class SessionSecure {
      * セッションより情報設定
      */
     protected function setInfoFromRefference() {
-        $this->ipAddress = $this->refference['ipAddress'];
+        $this->ipAddress = $this->refference['ipAddress'] ?? null;
     }
 
     /**

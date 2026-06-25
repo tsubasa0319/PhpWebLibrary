@@ -6,6 +6,7 @@
 // 0.00.00 2024/01/23 作成。
 // 0.04.00 2024/02/10 microtimeを配列で受け取っていなかったため修正。
 // 0.32.00 2024/08/23 WindowsのCLIの場合、パスの区切文字が\になるので、/へ変換。
+// 0.87.04 2025/04/17 ユーザIDの初期値を空文字へ変更。クローンメソッドを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 use DateTime;
@@ -15,7 +16,7 @@ use Stringable;
  * 実行者クラス
  * 
  * @since 0.00.00
- * @version 0.32.00
+ * @version 0.87.04
  */
 class Executor {
     // ---------------------------------------------------------------------------------------------
@@ -35,6 +36,12 @@ class Executor {
     // コンストラクタ/デストラクタ
     public function __construct() {
         $this->setInit();
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // マジックメソッド
+    public function __clone() {
+        $this->time = clone $this->time;
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -76,6 +83,7 @@ class Executor {
      */
     protected function setInit() {
         $this->setTime();
+        $this->userId = '';
         $this->programId = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
         $this->isInput = false;
         $this->isChangedOnly = false;

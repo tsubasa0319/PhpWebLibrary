@@ -11,15 +11,18 @@
 // 0.26.01 2024/06/22 画面単位セッションIDをGETメソッドからも取得できるように対応。
 // 0.87.02 2025/04/08 リファレンスの更新を自動化。
 // 0.87.03 2025/04/09 古い画面単位セッションを削除時、自身も削除してしまっていたので訂正。
+// 0.87.04 2025/04/24 ユニットIDの変更を専用メソッドへ独立。現在画面の情報のリファレンスを追加。
+//                    デバッグ出力を追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
-use DateTime, DateInterval, Exception;
+use tsubasaLibs\type;
+use Exception;
 
 /**
  * 画面単位セッションクラス
  * 
  * @since 0.03.00
- * @version 0.87.03
+ * @version 0.87.04
  */
 class SessionUnit {
     // ---------------------------------------------------------------------------------------------
@@ -33,11 +36,15 @@ class SessionUnit {
     // プロパティ
     /** @var Session セッションインスタンス */
     protected $session;
-    /** @var array セッション情報のリファレンス */
-    protected $refference;
-    /** @var string 画面単位セッションID */
-    public $unitId;
     /** @var array 画面単位セッション情報のリファレンス */
+    protected $refference;
+    /** @var string 現在画面の単位セッションID */
+    public $unitId;
+    /** @var type\TimeStamp アクセス日時 */
+    public $lastAccessTime;
+    /** @var array 現在画面の情報のリファレンス */
+    public $info;
+    /** @var array 現在画面の入力データのリファレンス */
     public $data;
 
     // ---------------------------------------------------------------------------------------------
@@ -151,6 +158,34 @@ class SessionUnit {
         }
     }
 
+    /**
+     * デバッグ情報を画面出力
+     * 
+     * @since 0.87.04
+     */
+    public function displayInfoForDebug() {
+        if (!$this->session->checkDisplay()) return;
+
+        printf('<div style="width:calc(100vw - 20px); white-space:nowrap; overflow:hidden;">');
+        printf('Receive Unit-ID: %s<br>',
+            htmlspecialchars($_POST[static::UNIT_SESSION_ID] ?? $_GET[static::UNIT_SESSION_ID] ?? 'Null'));
+        printf('Current Unit-ID: %s<br>', htmlspecialchars($this->unitId ?? 'Null'));
+        printf('Current Unit-Data: [<br>');
+        foreach ($this->data ?? [] as $key => $val) {
+            $str = sprintf('"%s" => %s',
+                $key, json_encode($val, JSON_UNESCAPED_UNICODE));
+            printf('&nbsp;&nbsp;&nbsp;&nbsp;%s<br>', htmlspecialchars(mb_strimwidth($str, 0, 256)));
+        }
+        printf(']<br>');
+        foreach ($this->refference ?? [] as $id => $data)
+            if ($id !== 'info' and $id !== $this->unitId) {
+                $str = sprintf('Other Unit-Data(%s): %s',
+                    $id, json_encode($data, JSON_UNESCAPED_UNICODE));
+                printf('%s<br>', htmlspecialchars(mb_strimwidth($str, 0, 256)));
+            }
+        printf('</div>');
+    }
+
     // ---------------------------------------------------------------------------------------------
     // 内部処理
     /**
@@ -158,59 +193,94 @@ class SessionUnit {
      */
     protected function setInit() {
         $this->setRefference();
-        $this->removeOldUnits();
     }
 
     /**
-     * セッションより情報設定
+     * ユニットIDを変更
+     * 
+     * @since 0.87.04
      */
-    protected function setInfoFromSession() {
+    public function setUnitId() {
         // ユニットIDを受け取り
-        $unitId = match (true) {
+        $this->unitId = match (true) {
             isset($_POST[static::UNIT_SESSION_ID]) => $_POST[static::UNIT_SESSION_ID],
             isset($_GET[static::UNIT_SESSION_ID])  => $_GET[static::UNIT_SESSION_ID],
             default => null
         };
 
         // ユニットIDを発行
-        if ($unitId === null or !isset($this->refference[$unitId]))
-            $unitId = $this->makeUnit();
+        if ($this->unitId === null or !isset($this->refference[$this->unitId]))
+            $this->unitId = $this->makeUnit();
 
-        // ユニット情報を取得
-        $this->unitId = $unitId;
-        $this->data =& $this->refference[$unitId];
+        // セッションより情報を再設定
+        $this->setInfoFromSession();
 
         // 最終アクセスを更新
-        $this->refference['info'][$unitId]['lastAccessTime'] =
-            $this->getNow()->format('Y/m/d H:i:s.u');
+        $this->setLastAccessTime(new type\TimeStamp());
+
+        // 古い履歴を削除
+        $this->removeOldUnits();
+    }
+
+    /**
+     * セッションより情報設定
+     * 
+     * @since 0.87.04
+     */
+    protected function setInfoFromSession() {
+        $nothing = ['info' => null, 'data' => null];
+
+        // 情報のリファレンス
+        $this->info =& $nothing['info'];
+        if ($this->unitId !== null and isset($this->refference['info'][$this->unitId]))
+        $this->info =& $this->refference['info'][$this->unitId];
+
+        // 入力データのリファレンス
+        $this->data =& $nothing['data'];
+        if ($this->unitId !== null and isset($this->refference[$this->unitId]))
+            $this->data =& $this->refference[$this->unitId];
     }
 
     /**
      * 古い画面単位セッションを削除
      */
     protected function removeOldUnits() {
-        // 空、または1日以上経過したものは削除
-        $time = $this->getNow()->add(DateInterval::createFromDateString('-1 day'));
+        // 空、またはセッションタイムアウトと同じ時間以上経過したものは削除
+        $time = (new type\TimeStamp())->addMinutes($this->session->user->timeoutMinutes * -1);
         foreach ($this->refference['info'] as $unitId => $unitInfo) {
             // 自身は残す
             if ($unitId === $this->unitId) continue;
 
-            if (count($this->refference[$unitId]) == 0 or
-                $unitInfo['lastAccessTime'] <= $time->format('Y/m/d H:i:s.u')
-            ) {
+            $isTarget = false;
+
+            // 不正
+            if (!is_array($this->refference[$unitId] ?? null)) $isTarget = true;
+            if (!type\TimeStamp::checkTimeStamp($unitInfo['lastAccessTime'] ?? null)) $isTarget = true;
+
+            // 最終アクセス日時を取得
+            if (!$isTarget) $lastAccessTime = new type\TimeStamp($unitInfo['lastAccessTime']);
+
+            // 空
+            if (!$isTarget and count($this->refference[$unitId]) == 0) $isTarget = true;
+
+            // 一定期間以上経過
+            if (!$isTarget and $lastAccessTime->compare($time) <= 0) $isTarget = true;
+
+            // 削除
+            if ($isTarget) {
                 unset($this->refference[$unitId]);
                 unset($this->refference['info'][$unitId]);
             }
         }
 
         // 増えすぎた場合に、使っていないものから順に削除
-        if (count($this->refference['info']) > 100) {
+        if (count($this->refference['info']) > 100 or !$this->session->checkSizeForWarning()) {
             $entries = [];
             foreach ($this->refference['info'] as $unitId => $unitInfo)
                 $entries[] = ['id' => $unitId, 'time' => $unitInfo['lastAccessTime']];
             usort($entries, fn($a, $b) => $a['time'] <=> $b['time']);
             $times = 0;
-            while (count($entries) > 100) {
+            while (count($entries) > 100  or !$this->session->checkSizeForWarning()) {
                 if (++$times > 10) break;   // 無限ループ防止
                 $entry = array_shift($entries);
                 $unitId = $entry['id'];
@@ -238,26 +308,14 @@ class SessionUnit {
     }
 
     /**
-     * 現在日時を取得
+     * 最終アクセス日時を変更
      * 
-     * @return ?DateTime
+     * @since 0.87.04
+     * @param type\TimeStamp $time タイムスタンプ
      */
-    protected function getNow(): ?DateTime {
-        $mtimeArr = explode(' ', microtime());
-        $timeString = sprintf('%s%s',
-            date('Y/m/d H:i:s', (int)$mtimeArr[1]),
-            substr($mtimeArr[0], 1));
-        return $this->getTimeFromString($timeString);
-    }
-
-    /**
-     * 日時変換(文字列型→日時型)
-     * 
-     * @param string $timeString
-     * @return ?DateTime
-     */
-    protected function getTimeFromString(string $timeString): ?DateTime {
-        if ($timeString === null) return null;
-        return new DateTime($timeString);
+    protected function setLastAccessTime(type\TimeStamp $time) {
+        $this->lastAccessTime = clone $time;
+        if ($this->info !== null)
+            $this->info['lastAccessTime'] = (string)$time;
     }
 }

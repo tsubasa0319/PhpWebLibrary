@@ -34,6 +34,7 @@
 // 0.71.00 2025/01/18 SQL ServerのTOP句、MySQLのLIMIT句に対応。
 // 0.73.00 2025/02/04 SET句を生成時、値がNull値でもパラメータを追加するように訂正。
 // 0.84.00 2025/03/28 軽微な修正。
+// 0.87.04 2025/04/24 SELECT時に行単位の共有ロック/排他ロックを付与できるように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -50,7 +51,7 @@ use Stringable;
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.84.00
+ * @version 0.87.04
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -75,6 +76,10 @@ class Table {
     protected $limitRowCount;
     /** @var ?int 取得時に読み飛ばす行数 */
     protected $limitOffset;
+    /** @var bool 行の共有ロックを付与するかどうか(SELECTのみ) */
+    protected $withSLock;
+    /** @var bool 行の排他ロックを付与するかどうか(SELECTのみ) */
+    protected $withXLock;
     /** @var array<string, static> 生成済テンポラリテーブルのリスト */
     protected $tempTables;
     /** @var bool テンポラリテーブルかどうか */
@@ -914,6 +919,30 @@ class Table {
     }
 
     /**
+     * 1回のみ、SELECTの結果に行の共有ロックを付与する
+     * 
+     * @since 0.87.04
+     * @return static チェーン用
+     */
+    public function setSLock(): static {
+        $this->withSLock = true;
+        $this->withXLock = false;
+        return $this;
+    }
+
+    /**
+     * 1回のみ、SELECTの結果に行の排他ロックを付与する
+     * 
+     * @since 0.87.04
+     * @return static チェーン用
+     */
+    public function setXLock(): static {
+        $this->withSLock = false;
+        $this->withXLock = true;
+        return $this;
+    }
+
+    /**
      * テンポラリテーブルを作成
      * 
      * 現段階では、MySQLにのみ対応しています。
@@ -1120,6 +1149,8 @@ class Table {
         $this->isReversedOrder = false;
         $this->limitRowCount = null;
         $this->limitOffset = null;
+        $this->withSLock = false;
+        $this->withXLock = false;
         $this->tempTables = [];
         $this->isTemp = false;
         $this->queryPlanning = new QueryPlanning($this);
@@ -3492,14 +3523,24 @@ class Table {
         // LIMIT句
         $sqlLimit = $this->makeSqlLimit();
 
+        // ロック種類
+        $withSLock = $this->withSLock;
+        $withXLock = $this->withXLock;
+        $this->withSLock = false;
+        $this->withXLock = false;
+
         // 生成
         $sql = 'SELECT';
         if ($sqlTop !== false) $sql = sprintf('%s TOP(%s)', $sql, $sqlTop);
         $sql = sprintf('%s %s', $sql, $sqlItems);
         $sql = sprintf('%s FROM %s', $sql, $tableId);
+        if (!$withSLock and !$withXLock and $this->db->isMssql()) $sql = sprintf('%s WITH(NOLOCK)', $sql);
+        if ($withXLock and $this->db->isMssql()) $sql = sprintf('%s WITH(ROWLOCK, XLOCK)', $sql);
         if ($sqlWhere !== false) $sql = sprintf('%s WHERE %s', $sql, $sqlWhere);
         if ($sqlOrder !== false) $sql = sprintf('%s ORDER BY %s', $sql, $sqlOrder);
         if ($sqlLimit !== false) $sql = sprintf('%s LIMIT %s', $sql, $sqlLimit);
+        if ($withSLock and $this->db->isMysql()) $sql = sprintf('%s FOR SHARE', $sql);
+        if ($withXLock and $this->db->isMysql()) $sql = sprintf('%s FOR UPDATE', $sql);
 
         return $sql;
     }

@@ -29,6 +29,7 @@
 // 0.47.00 2024/10/19 タイムスタンプインスタンスを生成するメソッドを追加。
 // 0.67.00 2025/01/09 Ajaxイベント時もセッション情報を取得/設定するように変更。
 // 0.74.00 2025/02/19 エラー通知があってもDOCTYPEが欠落しないように対応。
+// 0.81.00 2025/03/15 データ出力/帳票出力時にもDOCTYPEを出力していたため訂正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
@@ -52,7 +53,7 @@ use Exception;
  * イベントクラス
  * 
  * @since 0.00.00
- * @version 0.74.00
+ * @version 0.81.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -66,6 +67,8 @@ class Events {
     public $now;
     /** @var Session セッション */
     public $session;
+    /** @var bool メインプログラムかどうか */
+    protected $isMainProgram;
     /** @var bool Ajax通信かどうか */
     protected $isAjax;
     /** @var DbBase|false DB */
@@ -102,6 +105,9 @@ class Events {
         // セッションを取得
         $this->session = $this->getSession();
 
+        // メインプログラムかどうか
+        $this->isMainProgram = !isset($_GET['SUB_PROGRAM_TYPE']);
+
         // Ajax通信かどうか、エラーハンドリングを設定
         $this->isAjax =
             isset($_SERVER['HTTP_X_REQUESTED_WITH']) and
@@ -110,7 +116,7 @@ class Events {
             $this->setErrorHandlerForAjax();
 
         // Web出力の場合、DOCTYPEを出力
-        if (!$this->isAjax)
+        if ($this->isMainProgram and !$this->isAjax)
             $this->sendDoctype();
 
         // DB接続

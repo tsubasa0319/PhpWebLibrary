@@ -15,6 +15,7 @@
 // 0.59.00 2024/12/14 コンソールにエラー出力時、スタックトレースを出力するように対応。
 // 0.70.00 2025/01/16 画面描画が完了するまで、カーソルアイコンを変更。
 // 0.79.00 2025/03/05 キー押下時処理にSpaceキーによるアンカークリック処理を追加。
+// 0.81.00 2025/03/15 サブプログラムであることを識別できるようにパラメータを追加。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import web from "./web.js";
@@ -23,7 +24,7 @@ import web from "./web.js";
  * フレーム処理
  * 
  * @since 0.05.00
- * @version 0.79.00
+ * @version 0.81.00
  */
 const frame = {
     // ---------------------------------------------------------------------------------------------
@@ -199,6 +200,7 @@ const frame = {
         if (elmProgramId.value === '') return;
 
         const url = './' + elmProgramId.value + '/?' +
+            'SUB_PROGRAM_TYPE=' + encodeURIComponent(elmType.value) + '&' +
             'UNIT_SESSION_ID=' + encodeURIComponent(elmSessionId.value);
         if (elmType.value === 'export')
             location.href = url;

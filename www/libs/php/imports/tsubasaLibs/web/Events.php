@@ -32,6 +32,7 @@
 // 0.81.00 2025/03/15 データ出力/帳票出力時にもDOCTYPEを出力していたため訂正。
 // 0.81.01 2025/03/22 メイン画面はバッファリング出力へ変更。後からHTTPステータスを変更に失敗するため。
 //                    後にセッション情報をDBに持つことを想定し、セッション取得をDB接続の後ろへ移動。
+// 0.83.00 2025/03/27 最終アクセス日時の更新は、ログイン中にしか行わないように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
@@ -55,7 +56,7 @@ use Exception;
  * イベントクラス
  * 
  * @since 0.00.00
- * @version 0.81.01
+ * @version 0.83.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -79,6 +80,8 @@ class Events {
     protected $smarty;
     /** @var bool デバッグモードかどうか */
     protected $isDebug;
+    /** @var bool ログインプログラムかどうか */
+    protected $isLoginProgram;
     /** @var bool ログインチェックするかどうか */
     public $isLoginCheck;
     /** @var string[]|true 許可する権限リスト(全権限に許可する場合は、true) */
@@ -128,16 +131,28 @@ class Events {
 
         // 初期設定
         $this->setInit();
-        if ($this->isLoginCheck) {
-            // ログインチェック、タイムアウト処理
-            if (!$this->session->user->isLogined()) $this->timeout();
+
+        // ログインチェック、タイムアウト処理
+        if (!$this->isLoginProgram and $this->isLoginCheck)
+            if (!$this->session->user->isLoggedIn() or $this->session->user->isTimeout())
+                $this->timeout();
+        if ($this->isLoginProgram)
+            if ($this->session->user->isLoggedIn() and $this->session->user->isTimeout())
+                $this->timeout();
+
+        // ログインが必要な画面の場合、ログインしていない場合は処理を中断
+        if (!$this->isLoginProgram and $this->isLoginCheck and !$this->session->user->isLoggedIn()) {
+            $this->stopEventByNotLoggedIn();
+            exit;
         }
 
-        // 権限チェック
-        if (!$this->checkRole($this->session->user->getRoles())) $this->roleError();
-
         // 最終アクセス日時を更新
-        $this->session->user->updateLastAccessTime();
+        if ($this->session->user->isLoggedIn())
+            $this->session->user->updateLastAccessTime();
+
+        // 権限チェック
+        if (!$this->isLoginProgram and $this->session->user->isLoggedIn())
+            if (!$this->checkRole($this->session->user->getRoles())) $this->roleError();
 
         // ログアウト後、タイムアウト後などのメッセージを取得
         if ($this->session->user->isLogoutAfter()) $this->addMessage(Message::ID_LOGOUT);
@@ -256,6 +271,7 @@ class Events {
     protected function setInit() {
         $this->smarty = $this->makeNewSmarty();
         $this->isDebug = false;
+        $this->isLoginProgram = false;
         $this->isLoginCheck = true;
         $this->allowRoles = [];
         $this->messages = [];
@@ -274,6 +290,37 @@ class Events {
      */
     protected function timeout() {
         $this->session->user->setTimeout();
+    }
+
+    /**
+     * 未ログインによるイベント停止
+     * 
+     * ログイン画面へ遷移させたい場合は、このメソッドをオーバーライドしてください。
+     * 
+     * @since 0.83.00
+     */
+    protected function stopEventByNotLoggedIn() {
+        // 既定では、URL自身が無かったものとして返す
+        header('HTTP', true, 404);
+        if (ob_get_level() > 0) ob_end_clean();
+    }
+
+    /**
+     * ログイン画面へ遷移
+     * 
+     * @since 0.83.00
+     */
+    protected function transferLogin() {
+        // 無限ループ防止
+        $url = explode('?', $_SERVER['REQUEST_URI'])[0];
+        if ($url === '/login/') return;
+
+        // ログイン画面へ遷移し、処理終了
+        $arr = explode('/', $_SERVER['REQUEST_URI']);
+        array_shift($arr);
+        array_pop($arr);
+        $newUrl = sprintf('/login/?pgmid=%s', urlencode(implode('/', $arr)));
+        header(sprintf('Location: %s', $newUrl), true);
     }
 
     /**

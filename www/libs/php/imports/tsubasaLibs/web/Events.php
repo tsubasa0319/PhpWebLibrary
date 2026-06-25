@@ -30,6 +30,8 @@
 // 0.67.00 2025/01/09 Ajaxイベント時もセッション情報を取得/設定するように変更。
 // 0.74.00 2025/02/19 エラー通知があってもDOCTYPEが欠落しないように対応。
 // 0.81.00 2025/03/15 データ出力/帳票出力時にもDOCTYPEを出力していたため訂正。
+// 0.81.01 2025/03/22 メイン画面はバッファリング出力へ変更。後からHTTPステータスを変更に失敗するため。
+//                    後にセッション情報をDBに持つことを想定し、セッション取得をDB接続の後ろへ移動。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
@@ -53,7 +55,7 @@ use Exception;
  * イベントクラス
  * 
  * @since 0.00.00
- * @version 0.81.00
+ * @version 0.81.01
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -102,9 +104,6 @@ class Events {
         // 現在日時を取得
         $this->now = $this->makeNewTimeStamp();
 
-        // セッションを取得
-        $this->session = $this->getSession();
-
         // メインプログラムかどうか
         $this->isMainProgram = !isset($_GET['SUB_PROGRAM_TYPE']);
 
@@ -115,12 +114,17 @@ class Events {
         if ($this->isAjax)
             $this->setErrorHandlerForAjax();
 
-        // Web出力の場合、DOCTYPEを出力
-        if ($this->isMainProgram and !$this->isAjax)
+        // Web出力の場合、DOCTYPEを出力(バッファリング)
+        if ($this->isMainProgram and !$this->isAjax) {
+            ob_start();
             $this->sendDoctype();
+        }
 
         // DB接続
         $this->db = $this->getDb();
+
+        // セッションを取得
+        $this->session = $this->getSession();
 
         // 初期設定
         $this->setInit();
@@ -156,6 +160,8 @@ class Events {
                 $this->eventAfterForAjax();
             }
         }
+
+        if (ob_get_level() > 0) ob_end_flush();
     }
 
     /**
@@ -292,6 +298,7 @@ class Events {
      */
     protected function roleError() {
         header('HTTP', true, 403);
+        if (ob_get_level() > 0) ob_end_clean();
         exit;
     }
 
@@ -338,6 +345,7 @@ class Events {
      */
     protected function eventError() {
         header('HTTP', true, 500);
+        if (ob_get_level() > 0) ob_end_clean();
         exit;
     }
 

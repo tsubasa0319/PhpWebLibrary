@@ -3,17 +3,18 @@
    吹き出し
 
    [HTML構図]
-   a.bubble
+   span.bubble
        label
-           span /span      - アイコン
+           a /a            - アイコン
            input[checkbox] - ON/OFF管理(非表示)
        /label
        div /div            - 吹き出し(ホバー or ON時に表示)
-   /a
+   /span
 
    History:
    0.08.00 2024/02/27 作成。
    0.08.01 2024/02/28 タブ移動の対象となるように変更。
+   0.79.00 2025/03/05 HTML構図を変更。吹き出しをアンカー領域より外へ移動。
 --------------------------------------------------------------------------------------------------*/
 /* 全体 */
 .bubble {
@@ -21,27 +22,26 @@
     overflow: visible;
 }
 
-a.bubble {
-    color: inherit;
-}
-
-a.bubble:hover {
-    font-weight: inherit;
+/* アイコン(上書き) */
+.bubble > label:has(input[type="checkbox"]) > a {
+    display: inline-block;
+    height: 18px;
 }
 
 /* アイコン */
-.bubble > label > span {
-    display: inline-block;
+.bubble > label > a {
     width: 18px;
-    height: 18px;
     border: 2px black solid;
     border-radius: 10px;
     background-color: lightgreen;
     text-align: center;
+    color: inherit;
+    text-decoration: none;
 }
 
-.bubble > label > span:hover {
-    cursor: pointer;
+/* アイコンのホバー時 */
+.bubble > label > a:hover {
+    font-weight: inherit;
 }
 
 /* ON/OFF管理 */
@@ -60,7 +60,26 @@ a.bubble:hover {
     padding: 2px;
 }
 
+/* 吹き出しの余白(ホバーの有効範囲を拡大) */
+.bubble > div:after {
+    content: '';
+    display: block;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: -5px;
+    border: 5px solid transparent;
+    z-index: -1;
+}
+
 /* OFF時は、吹き出しを非表示 */
-.bubble:not(:hover):not(:focus):has(input:not(:checked)) > div {
+.bubble:not(:has(> label > a:hover, > label > a:focus, > label > input:checked)) > div:not(:hover) {
     display: none;
+}
+
+/* ON時は、アイコンの背景色を変更 */
+.bubble > label:has(> input:checked) > a {
+    background-color: deepskyblue;
 }

@@ -1,0 +1,67 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Edit(www/libs/php/imports/**)",
+      "Write(www/libs/php/imports/**)",
+      "Edit(www/html/css/imports/tsubasaLibs/**)",
+      "Write(www/html/css/imports/tsubasaLibs/**)",
+      "Edit(www/html/js/imports/tsubasaLibs/**)",
+      "Write(www/html/js/imports/tsubasaLibs/**)",
+      "Edit(www/smarty/**)",
+      "Write(www/smarty/**)",
+      "Write(temp/**)",
+      "Edit(temp/**)",
+      "Edit(CLAUDE.md)",
+      "Write(CLAUDE.md)",
+
+      "Bash(cd:*)",
+
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git --no-pager log:*)",
+      "Bash(git show:*)",
+      "Bash(git --no-pager show:*)",
+      "Bash(git diff:*)",
+      "Bash(git --no-pager diff:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git branch:*)",
+      "Bash(git hash-object:*)",
+      "Bash(git cat-file:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(git config --get:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git merge:*)",
+      "Bash(git merge-base:*)",
+      "Bash(git checkout:*)",
+      "Bash(git rm www/libs/php/imports/*)",
+      "Bash(git rm www/html/css/imports/tsubasaLibs/*)",
+      "Bash(git rm www/html/js/imports/tsubasaLibs/*)",
+      "Bash(git rm www/smarty/*)",
+
+      "Bash(xxd:*)",
+      "Bash(tr:*)",
+      "Bash(wc:*)",
+      "Bash(diff:*)",
+      "Bash(printf:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(sort:*)",
+      "Bash(cut:*)",
+      "Bash(rm temp/*)",
+      "Bash(bash temp/*)",
+      "Bash(sh temp/*)"
+    ],
+    "deny": [
+      "Bash(git push:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean:*)",
+      "Bash(git rebase:*)",
+      "Bash(git branch -D:*)",
+      "Bash(rm -rf:*)"
+    ]
+  }
+}

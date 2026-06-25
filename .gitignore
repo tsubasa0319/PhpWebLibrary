@@ -1,0 +1,3 @@
+/temp/*
+!/temp/.gitempty
+.claude/settings.local.json

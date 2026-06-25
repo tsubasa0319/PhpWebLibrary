@@ -21,6 +21,11 @@
 // 0.86.00 2025/04/02 アクセス過多に対する制限を実装。
 //                    DBの実行者情報へユーザIDの初期値を設定。
 // 0.88.00 2025/05/10 プロセス数を監視し、同時処理数を制限できるように対応。
+// 0.90.00 2025/05/16 エラー時にそれまでの出力を取り消すため、バッファリング対応。
+//                    ログファイルを閉じるタイミングを、デストラクタへ移動。
+//                    ファイル関数の失敗で送られた不要なエラー情報を、エラーハンドリングで拾わないように対処。
+//                    ロック処理に、即時脱出とリトライを追加。
+//                    順番待ちループで自身の順番待ちファイルを削除する可能性があるため訂正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
@@ -31,7 +36,7 @@ use Stringable;
  * APIイベントクラス
  * 
  * @since 0.09.00
- * @version 0.88.00
+ * @version 0.90.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -70,6 +75,10 @@ class Events {
     protected $processFilePointer;
     /** @var ?type\TimeStamp 実行開始日時 */
     protected $executeStartTime;
+    /** @var bool 強制終了したかどうか */
+    protected $isExited;
+    /** @var bool 監視を中断(処理は継続) */
+    protected $canceledMonitoring;
 
     // ---------------------------------------------------------------------------------------------
     // プロパティ(アクセス過多に対する制限)
@@ -87,23 +96,27 @@ class Events {
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct() {
+        // エラーハンドラを設定
         $this->setErrorHandler();
+
+        // 出力をバッファリング
+        ob_start();
 
         // 現在日時を取得
         $this->now = new type\TimeStamp();
 
         // 設定
+        $this->isExited = false;
+        $this->canceledMonitoring = false;
         $this->setMonitorInfo();
         $this->setRequestInfo();
-        if (mb_strlen($this->remoteHost) > 50)
-            $this->error('Too long remote-host length');
         $this->logFilePath = $this->getLogFilePath();
 
         // ログファイルを開く
         if ($this->logFilePath !== null) {
-            $this->logFilePointer = fopen($this->logFilePath, 'a');
-            if ($this->logFilePointer === false)
+            if (!$filePointer = $this->openFile($this->logFilePath, 'a'))
                 $this->error('Failed to open log file');
+            $this->logFilePointer = $filePointer;
         }
         $this->startLog();
 
@@ -111,7 +124,7 @@ class Events {
         if (!$this->checkRole()) $this->roleError();
 
         // 同時処理数チェック
-        if (!$this->checkNumberOfProcesses())
+        if (!$this->checkNumberOfProcesses() and !$this->canceledMonitoring)
             $this->error('Failed to check number of processes');
 
         // DB接続
@@ -148,9 +161,7 @@ class Events {
         // 処理数から除外
         $this->destroyProcessFile();
 
-        // ログファイルを閉じる
         $this->endLog();
-        fclose($this->logFilePointer);
     }
 
     /**
@@ -166,6 +177,10 @@ class Events {
         // DB
         if ($this->db !== null)
             $this->db->dispose();
+
+        // ログファイルを閉じる
+        fclose($this->logFilePointer);
+        $this->logFilePointer = null;
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -177,17 +192,37 @@ class Events {
      */
     protected function setErrorHandler() {
         ini_set('display_errors', false);
-        register_shutdown_function(function () {
+        register_shutdown_function(function (self $me) {
             $error = error_get_last();
-            if ($error !== null) {
-                $message = sprintf('[type:%s]%s',
-                    $error['type'],
-                    $error['message']
-                );
-                $this->log('Abort: ' . $message);
-                $this->error($message);
+            switch ($error['type'] ?? null) {
+                case E_ERROR:
+                case E_USER_ERROR:
+                    $message = sprintf('PHP Fatal error:  %s in %s on line %s',
+                        $error['message'] ?? '',
+                        $error['file'] ?? '',
+                        $error['line'] ?? ''
+                    );
+                    $me->log($message, true);
+                    $me->sendError('An unexpected error has occurred');
+                    break;
+
+                case E_WARNING:
+                case E_USER_WARNING:
+                    $message = sprintf('PHP Warning:  %s in %s on line %s',
+                        $error['message'] ?? '',
+                        $error['file'] ?? '',
+                        $error['line'] ?? ''
+                    );
+                    $me->log($message, true);
+                    break;
             }
-        });
+
+            // 出力のバッファリングを終了
+            if (ob_get_level()) ob_end_flush();
+
+            // 強制終了している場合、デストラクタを実行
+            if ($me->isExited) $me->__destruct();
+        }, $this);
     }
 
     /**
@@ -254,18 +289,20 @@ class Events {
      * @return bool 結果
      */
     protected function checkRole(): bool {
-        if ($this->remoteHost === null) {
+        if (!is_string($this->remoteHost)) {
             $this->errorMessage = 'Failed to get Remote-Host: No such parameter in request header';
             return false;
         }
+
         $host = explode(':', $this->remoteHost)[0];
+        $remoteHostForLog = substr($this->remoteHost, 0, 50);
 
         // リモートホスト名と、リモートIPアドレスの整合チェック
         $ips = $this->getIpsByHost($host);
         if (!in_array($_SERVER['REMOTE_ADDR'], $ips, true)) {
             if (!$this->checkAllowedIpUnconditionally()) {
                 $this->errorMessage = sprintf(
-                    '%s and %s are inconsistent', $this->remoteHost, $_SERVER['REMOTE_ADDR']
+                    '%s and %s are inconsistent', $remoteHostForLog, $_SERVER['REMOTE_ADDR']
                 );
                 return false;
             }
@@ -274,10 +311,11 @@ class Events {
         // 許可したリモートホスト名かどうか
         if ($this->allowHosts !== null and !in_array($host, $this->allowHosts, true)) {
             $this->errorMessage = sprintf(
-                '%s is not allowed', $this->remoteHost
+                '%s is not allowed', $remoteHostForLog
             );
             return false;
         }
+
         return true;
     }
 
@@ -311,8 +349,10 @@ class Events {
      * @return never
      */
     protected function roleError() {
-        $this->log('Role error: ' . $this->errorMessage);
-        $this->error($this->errorMessage, 403);
+        $this->log('Role error: ' . $this->errorMessage, true);
+        $this->sendError($this->errorMessage, 403);
+        $this->isExited = true;
+        exit;
     }
 
     /**
@@ -331,49 +371,46 @@ class Events {
         $baseDir = $this->getSaveDirPathForProcess();
         if ($baseDir === null) return true; // 指定が無ければ、チェックしない
         if (!is_dir($baseDir)) {
-            trigger_error(sprintf('Directory is not found: %s', $baseDir), E_USER_WARNING);
+            $this->log(sprintf('Directory is not found: %s', $baseDir), true);
             return false;
         }
 
-        // 子ディレクトリを取得
+        // 子ディレクトリを用意
         $childDir = sprintf('%s/api', $baseDir);
+        if (!$this->prepareDirectory($childDir)) return false;
 
-        // ディレクトリが無ければ、生成
-        if (!file_exists($childDir)) @mkdir($childDir);
-        if (!is_dir($childDir)) {
-            trigger_error(sprintf('Not directory: %s', $childDir), E_USER_WARNING);
-            return false;
-        }
+        // プロセスIDディレクトリを用意
+        $idsDir = sprintf('%s/ids', $childDir);
+        if (!$this->prepareDirectory($idsDir)) return false;
 
         // プロセスIDを発行
-        $processId = $this->makeProcessId($childDir);
+        $processId = $this->makeProcessId($idsDir, $onceWaitTime, $maxTimes, $times);
         if ($processId === null) {
-            trigger_error('Could not generate a process-id', E_USER_WARNING);
+            $this->log('Could not generate a process-id', true);
             return false;
         }
 
         // 順番待ち
         if (!$this->waitMyTurnForProcess(
             $childDir, $processId, $onceWaitTime, $maxTimes, $times)) {
-            trigger_error('My turn didn\'t come', E_USER_WARNING);
-            $this->destroyWaitFile();
+            $this->log('My turn didn\'t come', true);
             return false;
         }
 
         // 処理数が少なくなるまで待機
         if (!$this->ajustNumberOfProcessing($childDir, $onceWaitTime, $maxTimes, $times)) {
-            trigger_error('Too many processes', E_USER_WARNING);
-            $this->destroyWaitFile();
+            $this->log('Too many processes', true);
             return false;
         }
 
         // API処理中ファイルを生成、ロック
-        if (!$this->lockProcessFile($childDir, $processId)) {
-            trigger_error(sprintf('Could not lock a process-file: %s', $processId), E_USER_WARNING);
-            $this->destroyProcessFile();
-            $this->destroyWaitFile();
+        if (!$this->lockProcessFile($childDir, $processId, $onceWaitTime, $maxTimes, $times)) {
+            $this->log(sprintf('Could not lock a process-file: %s', $processId), true);
             return false;
         }
+
+        // 古いプロセスIDを破棄
+        $this->destroyOldProcessId($idsDir);
 
         // 順番待ちファイルを解放
         $this->destroyWaitFile();
@@ -396,24 +433,55 @@ class Events {
      * 
      * @since 0.88.00
      * @param string $dir プロセスファイルのディレクトリパス
+     * @param int $onceWaitTime 1回当たりの待機時間(秒)
+     * @param int $maxTimes 最大試行回数
+     * @param int $times 現在の試行回数
      * @return ?string プロセスID
      */
-    protected function makeProcessId(string $dir): ?string {
-        $times = 0;
-        while ($times++ < 100) {
+    protected function makeProcessId(
+        string $dir, int $onceWaitTime, int $maxTimes, int &$times
+    ): ?string {
+        $savedTimes = $times;
+        while ($times++ < $maxTimes) {
+            // 2回目以降は、待機
+            if ($times > $savedTimes + 1) usleep($onceWaitTime);
+
             // 発行
             $id = uniqid((new type\TimeStamp())->format('YmdHisu'), true);
 
             // 存在チェック(id_*を生成できればOK)
             $path = sprintf('%s/id_%s', $dir, $id);
             if (file_exists($path)) continue;
-            $filePointer = @fopen($path, 'x');
-            if (!$filePointer) continue;
+            if (!$filePointer = $this->openFile($path, 'x', false)) continue;
             fclose($filePointer);
 
             return $id;
         }
         return null;
+    }
+
+    /**
+     * 古いプロセスIDを破棄
+     * 
+     * @since 0.90.00
+     * @param string $dir プロセスファイルのディレクトリパス
+     * @return ?string プロセスID
+     */
+    protected function destroyOldProcessId(string $dir) {
+        // プロセス一覧
+        $paths = glob(sprintf('%s/id_*', $dir));
+        if ($paths === false) return;
+        sort($paths, SORT_REGULAR);
+
+        // 残す対象は、作成してから1時間まで
+        $time = (new type\TimeStamp())->addHours(-1);
+        $limitPath = sprintf('%s/id_%s', $dir, $time->format('YmdHisu'));
+
+        // ループ
+        foreach ($paths as $path) {
+            if ($path > $limitPath) break;
+            $this->destroyNoXLockFile($path);
+        }
     }
 
     /**
@@ -432,28 +500,37 @@ class Events {
     ): bool {
         // 順番待ちファイルを生成
         $path = sprintf('%s/wait_%s', $dir, $id);
-        $filePointer = fopen($path, 'w');
-        if (!$filePointer) return false;
+        if (!$filePointer = $this->openFile($path, 'w')) return false;
         $this->waitFilePointer = $filePointer;
-        if (!flock($filePointer, LOCK_EX | LOCK_NB)) return false;
+
+        // 排他ロック
+        if (!$this->xlockFileWithRetry($filePointer, $onceWaitTime, $maxTimes, $times))
+            return false;
 
         // 待機中のプロセス一覧を取得
         $paths = glob(sprintf('%s/wait_*', $dir));
-        if ($paths === false) return false;
+        if ($paths === false) {
+            $this->log('Could not get a waiting process list', true);
+            return false;
+        }
         sort($paths, SORT_REGULAR);
 
         // 先頭が自身になるまでループ
         while ($times++ < $maxTimes and count($paths) > 0 and $path !== $paths[0]) {
             // 万一ロックされていないファイルがあれば、削除
             foreach ($paths as $_path)
-                $this->destroyNoXLockFile($_path);
+                if ($_path !== $path)
+                    $this->destroyNoXLockFile($_path);
 
             // 待機
             usleep($onceWaitTime);
 
             // 再取得
             $paths = glob(sprintf('%s/wait_*', $dir));
-            if ($paths === false) return false;
+            if ($paths === false) {
+                $this->log('Could not get a waiting process list', true);
+                return false;
+            }
             sort($paths, SORT_REGULAR);
         }
 
@@ -475,11 +552,14 @@ class Events {
     ): bool {
         // プロセス一覧を取得
         $paths = glob(sprintf('%s/process_*', $dir));
-        if ($paths === false) return false;
+        if ($paths === false) {
+            $this->log('Could not get an active process list', true);
+            return false;
+        }
 
         // プロセス数が少なくなるまでループ
         $savedTimes = $times;
-        while ($times++ < $maxTimes and count($paths) > $this->maxNumberOfProcesses) {
+        while ($times++ < $maxTimes and count($paths) >= $this->maxNumberOfProcesses) {
             // 万一ロックされていないファイルがあれば、削除
             foreach ($paths as $path)
                 $this->destroyNoXLockFile($path);
@@ -491,10 +571,19 @@ class Events {
 
             // 再取得
             $paths = glob(sprintf('%s/process_*', $dir));
-            if ($paths === false) return false;
+            if ($paths === false) {
+                $this->log('Could not get an active process list', true);
+                return false;
+            }
         }
 
-        return count($paths) <= $this->maxNumberOfProcesses;
+        // アクセス数
+        if (count($paths) >= $this->maxNumberOfProcesses) {
+            $this->log(sprintf('Number of processes: %s ...', number_format(count($paths))), true);
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -503,18 +592,105 @@ class Events {
      * @since 0.88.00
      * @param string $dir プロセスファイルのディレクトリパス
      * @param string $id プロセスID
+     * @param int $onceWaitTime 1回当たりの待機時間(秒)
+     * @param int $maxTimes 最大試行回数
+     * @param int $times 現在の試行回数
      * @return bool 成否
      */
-    protected function lockProcessFile(string $dir, string $id): bool {
+    protected function lockProcessFile(
+        string $dir, string $id, int $onceWaitTime, int $maxTimes, int &$times
+    ): bool {
         $path = sprintf('%s/process_%s', $dir, $id);
 
         // 開く
-        $filePointer = fopen($path, 'w');
-        if (!$filePointer) return false;
+        if (!$filePointer = $this->openFile($path, 'w')) return false;
         $this->processFilePointer = $filePointer;
 
-        // ロック
-        if (!flock($filePointer, LOCK_EX | LOCK_NB)) return false;
+        // 排他ロック
+        if (!$this->xlockFileWithRetry($filePointer, $onceWaitTime, $maxTimes, $times))
+            return false;
+
+        return true;
+    }
+
+    /**
+     * ディレクトリを用意
+     * 
+     * @since 0.90.00
+     * @param string $path ディレクトリパス
+     * @param bool $isLogged ログを取るかどうか
+     * @return bool 成否
+     */
+    protected function prepareDirectory(string $path, bool $isLogged = true): bool {
+        // 無ければ、生成、失敗してもエラー情報を残さない
+        if (!file_exists($path))
+            if (!@mkdir($path)) error_clear_last();
+
+        // チェック
+        if (!is_dir($path)) {
+            if ($isLogged)
+                $this->log(sprintf('Not directory: %s', $path), true);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * ファイルを開く
+     * 
+     * @since 0.90.00
+     * @param string $path ファイルパス
+     * @param string $mode モード
+     * @param bool $isLogged ログを取るかどうか
+     * @return resource|false ファイルポインタ
+     */
+    protected function openFile(string $path, string $mode, bool $isLogged = true): mixed {
+        // 開く、失敗してもエラー情報を残さない
+        if (!$filePointer = @fopen($path, $mode)) error_clear_last();
+        if (!$filePointer) {
+            if ($isLogged)
+                $this->log(sprintf('Could not open a file: %s', $path), true);
+            return false;
+        }
+
+        return $filePointer;
+    }
+
+    /**
+     * ファイルを排他ロック(リトライ付き)
+     * 
+     * @since 0.90.00
+     * @param resource $filePointer ファイルポインタ
+     * @param int $onceWaitTime 1回当たりの待機時間(秒)
+     * @param int $maxTimes 最大試行回数
+     * @param int $times 現在の試行回数
+     * @param bool $isLogged ログを取るかどうか
+     * @return bool 成否
+     */
+    protected function xlockFileWithRetry(
+        $filePointer, int $onceWaitTime, int $maxTimes, int &$times, bool $isLogged = true
+    ): bool {
+        $isLocked = false;
+        $isFailed = false;
+        $meta = null;
+        while ($times++ < $maxTimes and (!$isLocked = flock($filePointer, LOCK_EX | LOCK_NB))) {
+            // 初回の失敗のみ、ログ出力
+            if (!$isFailed) {
+                $isFailed = true;
+                $meta = stream_get_meta_data($filePointer);
+                if ($isLogged)
+                    $this->log(sprintf('Could not lock a file: %s', $meta['uri'] ?? ''), true);
+            }
+
+            // 待機
+            usleep($onceWaitTime);
+        }
+        if (!$isLocked) return false;
+
+        // リトライで成功した場合
+        if ($isFailed)
+            $this->log(sprintf('Could lock a file by retrying: %s', $meta['uri'] ?? ''), true);
 
         return true;
     }
@@ -531,8 +707,7 @@ class Events {
         if (!is_file($path)) return false;
 
         // 開く
-        $filePointer = @fopen($path, 'r');
-        if (!$filePointer) return false;
+        if (!$filePointer = $this->openFile($path, 'r', false)) return false;
 
         // 排他ロックされていないことを確認
         $isLocked = flock($filePointer, LOCK_SH | LOCK_NB);
@@ -540,7 +715,8 @@ class Events {
         if (!$isLocked) return false;
 
         // 削除
-        return @unlink($path);
+        if (!$result = @unlink($path)) error_clear_last();
+        return $result;
     }
 
     /**
@@ -550,10 +726,17 @@ class Events {
      */
     protected function destroyWaitFile() {
         if (!$this->waitFilePointer) return;
+
+        // URLを取得
         $meta = stream_get_meta_data($this->waitFilePointer);
+
+        // 閉じる
         fclose($this->waitFilePointer);
-        if (isset($meta['uri'])) @unlink($meta['uri']);
         $this->waitFilePointer = null;
+
+        // 削除
+        if (isset($meta['uri']))
+            if (!@unlink($meta['uri'])) error_clear_last();
     }
 
     /**
@@ -563,10 +746,17 @@ class Events {
      */
     protected function destroyProcessFile() {
         if (!$this->processFilePointer) return;
+
+        // URLを取得
         $meta = stream_get_meta_data($this->processFilePointer);
+
+        // 閉じる
         fclose($this->processFilePointer);
-        if (isset($meta['uri'])) @unlink($meta['uri']);
         $this->processFilePointer = null;
+
+        // 削除
+        if (isset($meta['uri']))
+            if (!@unlink($meta['uri'])) error_clear_last();
     }
 
     /**
@@ -990,19 +1180,13 @@ class Events {
      */
     protected function error(string $message, int $httpCode = 500) {
         // ログ出力
-        $this->log(sprintf('Error: %s', $message));
+        $this->log(sprintf('Error: %s', $message), true);
 
-        // HTTP通信
-        header('HTTP', true, $httpCode);
+        // 送信
+        $this->sendError($message, $httpCode);
 
-        // メッセージ送信(JSON形式)
-        if ($this->canResponseError) {
-            $this->outputJson([
-                'error' => [
-                    'message' => $message
-                ]
-            ]);
-        }
+        // 強制終了
+        $this->isExited = true;
         exit;
     }
 
@@ -1011,9 +1195,14 @@ class Events {
      * 
      * @since 0.13.00
      * @param string $message メッセージ
+     * @param bool $isError エラーかどうか
      */
-    protected function log(string $message) {
-        if ($this->logFilePointer === null) return;
+    protected function log(string $message, bool $isError = false) {
+        // エラーの場合は、ログファイルを取得できなくても、エラーログへ出力する
+        if ($this->logFilePointer === null) {
+            if ($isError) error_log($message);
+            return;
+        }
 
         $time = new type\TimeStamp();
         fwrite($this->logFilePointer, implode(', ', [
@@ -1025,13 +1214,43 @@ class Events {
     }
 
     /**
+     * エラーを送信
+     * 
+     * @since 0.90.00
+     * @param string $message メッセージ
+     * @param int $httpCode HTTPステータスコード
+     */
+    protected function sendError(string $message, int $httpCode = 500) {
+        // 出力バッファリングを消去
+        if (ob_get_level()) ob_clean();
+
+        // HTTP通信
+        if (!headers_sent()) header('HTTP', true, $httpCode);
+
+        // メッセージ送信(JSON形式)
+        if ($this->canResponseError) {
+            $this->outputJson([
+                'error' => [
+                    'message' => $message
+                ]
+            ]);
+        }
+    }
+
+    /**
      * 開始ログを出力
      * 
      * @since 0.13.00
      */
     protected function startLog() {
+        $remoteHostForLog = $this->remoteHost;
+        if ($remoteHostForLog !== null and !is_scalar($remoteHostForLog))
+            $remoteHostForLog = null;
+        if (is_string($remoteHostForLog) and strlen($remoteHostForLog) > 50)
+            $remoteHostForLog = substr($remoteHostForLog, 0, 50);
+
         $this->log('Start: ' . json_encode([
-            'Remote-Host' => $this->remoteHost
+            'Remote-Host' => $remoteHostForLog
         ], JSON_UNESCAPED_UNICODE));
 
         // リクエストヘッダ

@@ -11,6 +11,9 @@
 // 0.51.00 2024/11/13 検索速度を上げるため、キャッシュの持ち方を変更。
 // 0.52.00 2024/11/14 非同期処理に対応。
 // 0.88.00 2025/05/10 非同期処理を開始する度にマルチハンドルを取り直すように訂正。
+// 0.90.00 2025/05/16 非同期処理を開始時、他のメソッドで同一のマルチハンドルを使用している場合に、
+//                    併せて開始するように対応。
+//                    一括キー検索用は別のクラスへ分離したため、キャッシュ機能を削除。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\web;
@@ -19,7 +22,7 @@ use tsubasaLibs\web;
  * APIメソッドクラス
  * 
  * @since 0.12.00
- * @version 0.88.00
+ * @version 0.90.00
  */
 class Method {
     // ---------------------------------------------------------------------------------------------
@@ -35,24 +38,17 @@ class Method {
     // プロパティ
     /** @var ?web\Events イベント */
     protected $events;
-    /** @var string http(s)+host */
-    protected $webRoot;
-    /** @var bool キャッシュを取るかどうか */
-    protected $isCaching;
-    /** @var array<string, int> キャッシュキー */
-    protected $cacheKeys;
-    /** @var array キャッシュデータ */
-    protected $cacheDatas;
-    /** @var int キャッシュ数(削除済を含む) */
-    protected $indexCount;
     /** @var web\Curl[] 実行中のcURLインスタンスリスト */
     protected $curls;
     /** @var web\Curl[] 登録したcURLインスタンスリスト(未開始) */
     protected $registedCurls;
-    /** @var web\Curl[] 再開するcURLインスタンスリスト(未完了) */
-    protected $resumingCurls;
     /** @var ?web\CurlMulti cURLマルチインスタンス */
     protected $curlMulti;
+
+    // ---------------------------------------------------------------------------------------------
+    // プロパティ(静的)
+    /** @var static[] 生成済メソッドリスト */
+    static protected $methods = [];
 
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
@@ -62,6 +58,9 @@ class Method {
     public function __construct(web\Events $events = null) {
         $this->setInit();
         $this->events = $events;
+
+        // 生成済リストへ登録
+        static::$methods[] = $this;
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -120,7 +119,7 @@ class Method {
         if ($this->curlMulti === null)
             $this->setCurlMulti();
 
-        // マルチハンドルへ登録
+        // マルチハンドルを設定し、登録
         $curl->setCurlMulti($this->curlMulti);
         if (!$curl->regist()) return false;
 
@@ -141,40 +140,73 @@ class Method {
         if (count($this->registedCurls) == 0)
             $this->regist();
 
-        // 登録するものが無かった場合、終了
-        if (count($this->registedCurls) == 0)
-            return true;
+        // 他のメソッドも登録
+        foreach (static::$methods as $method)
+            if ($method !== $this)
+                if ($method->getCurlMulti() === $this->getCurlMulti())
+                    $method->_asyncForBatchProcessing1();
 
-        // 再開処理用に、マルチハンドル別に1件のみ登録
-        $curlMultis = [];
-        foreach ($this->registedCurls as $curl)
-            if (!in_array($curl->getCurlMulti(), $curlMultis, true)) {
-                $this->resumingCurls[] = $curl;
-                $curlMultis[] = $curl->getCurlMulti();
-            }
+        // 開始
+        $result = $this->curlMulti->async();
 
-        // 非同期処理を開始
-        $result = true;
+        // 開始できたcURLインスタンスを取得
         foreach ($this->registedCurls as $curl)
-            if ($curl->async())
+            if ($curl->checkConnected())
                 $this->curls[] = $curl;
-            else
-                $result = false;
+
+        // 登録リストを初期化
         $this->registedCurls = [];
 
+        // 他のメソッドも開始後処理
+        foreach (static::$methods as $method)
+            if ($method !== $this)
+                if ($method->getCurlMulti() === $this->getCurlMulti())
+                    $method->_asyncForBatchProcessing2();
+
         return $result;
+    }
+
+    /**
+     * 非同期処理を開始(一括処理用、登録)
+     * 
+     * このメソッドは、外部から実行しないでください。
+     * 
+     * @since 0.90.00
+     * @return bool 結果
+     */
+    public function _asyncForBatchProcessing1(): bool {
+        // 1件も登録が無ければ、登録も兼ねていると判断
+        if (count($this->registedCurls) == 0)
+            $this->regist();
+
+        return true;
+    }
+
+    /**
+     * 非同期処理を開始(一括処理用、開始後処理)
+     * 
+     * このメソッドは、外部から実行しないでください。
+     * 
+     * @since 0.90.00
+     * @return bool 結果
+     */
+    public function _asyncForBatchProcessing2(): bool {
+        // 開始できたcURLインスタンスを取得
+        foreach ($this->registedCurls as $curl)
+            if ($curl->checkConnected())
+                $this->curls[] = $curl;
+
+        // 登録リストを初期化
+        $this->registedCurls = [];
+
+        return true;
     }
 
     /**
      * 非同期処理を再開
      */
     public function resume() {
-        $resumingCurls = [];
-        foreach ($this->resumingCurls as $curl)
-            // 次のアクティビティがあるかタイムアウトまで、非同期処理を進める
-            if ($curl->resume())
-                $resumingCurls[] = $curl;
-        $this->resumingCurls = $resumingCurls;
+        return $this->curlMulti->resume();
     }
 
     /**
@@ -188,35 +220,16 @@ class Method {
         $curls = $this->curls;
         $this->curls = [];
         $this->registedCurls = [];
-        $this->resumingCurls = [];
 
         // 残りの処理を進めて、結果を受け取り
-        $results = [];
+        $result = [];
         foreach ($curls as $curl) {
-            $result = $this->receive($curl, $curl->await());
-            if ($result === false) return false;
-            $results[] = $result;
+            $datas = $this->receive($curl, $curl->await());
+            if ($datas === false) return false;
+            $result[] = $datas;
         }
 
-        return $results;
-    }
-
-    /**
-     * キャッシュより削除
-     * 
-     * @since 0.45.00
-     * @param mixed $key アクセスキー
-     */
-    public function removeCache($key) {
-        $cacheKey = $this->getCacheKey($key);
-
-        // 検索
-        $index = $this->cacheKeys[$cacheKey] ?? false;
-        if ($index === false) return;
-
-        // 削除
-        unset($this->cacheKeys[$cacheKey]);
-        unset($this->cacheDatas[$index]);
+        return $result;
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -225,13 +238,8 @@ class Method {
      * 初期設定
      */
     protected function setInit() {
-        $this->isCaching = true;
-        $this->cacheKeys = [];
-        $this->cacheDatas = [];
-        $this->indexCount = 0;
         $this->curls = [];
         $this->registedCurls = [];
-        $this->resumingCurls = [];
         $this->curlMulti = null;
         $this->clearParams();
     }
@@ -288,84 +296,10 @@ class Method {
     /**
      * パラメータリストを取得
      * 
-     * @param array<string, mixed> パラメータリスト
+     * @return array<string, mixed> パラメータリスト
      */
     protected function getParams(): array {
         return [];
-    }
-
-    /**
-     * キャッシュキーを取得
-     * 
-     * @since 0.45.00
-     * @param mixed $key アクセスキー
-     * @return string キャッシュキー
-     */
-    protected function getCacheKey($key) {
-        return json_encode($key);
-    }
-
-    /**
-     * キャッシュへ追加
-     * 
-     * @since 0.45.00
-     * @param mixed $key アクセスキー
-     * @param mixed $data 取得データ
-     */
-    protected function addChache($key, $data) {
-        if (!$this->isCaching) return;
-
-        $cacheKey = $this->getCacheKey($key);
-
-        // 存在チェック
-        if (isset($this->cacheKeys[$cacheKey]))
-            return;
-
-        // 登録
-        $this->cacheKeys[$cacheKey] = $this->indexCount++;
-        $this->cacheDatas[] = $data;
-    }
-
-    /**
-     * キャッシュを編集
-     * 
-     * @since 0.52.00
-     * @param mixed $key アクセスキー
-     * @param mixed $data 取得データ
-     */
-    protected function editChache($key, $data) {
-        if (!$this->isCaching) return;
-
-        $cacheKey = $this->getCacheKey($key);
-
-        // 存在チェック
-        if (!isset($this->cacheKeys[$cacheKey])) {
-            $this->addChache($key, $data);
-            return;
-        }
-
-        // 編集
-        $index = $this->cacheKeys[$cacheKey];
-        $this->cacheDatas[$index] = $data;
-    }
-
-    /**
-     * キャッシュより取得
-     * 
-     * @since 0.45.00
-     * @param mixed $key アクセスキー
-     * @return mixed 取得データ、未登録の場合はNull値
-     */
-    protected function getCache($key) {
-        if (!$this->isCaching) return null;
-
-        $cacheKey = $this->getCacheKey($key);
-
-        // 検索
-        $index = $this->cacheKeys[$cacheKey] ?? false;
-        if ($index === false) return null;
-
-        return $this->cacheDatas[$index];
     }
 
     /**
@@ -376,7 +310,7 @@ class Method {
      * @param string|false $response cURLの結果文字列
      * @return mixed 結果
      */
-    protected function receive(web\Curl $curl, string|false $response): mixed {
+    protected function receive($curl, string|false $response): mixed {
         // 結果を受け取り
         $error = null;
         $data = null;

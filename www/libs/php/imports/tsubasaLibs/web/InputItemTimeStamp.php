@@ -44,7 +44,7 @@ class InputItemTimeStamp extends InputItemBase {
 
     // 値を設定(Web値より)
     protected function setValueFromWebValue() {
-        $this->value = $this->webValue !== '' ? $this->getNewTimeStamp($this->webValue) : null;
+        $this->value = $this->webValue !== '' ? $this->makeNewTimeStamp($this->webValue) : null;
     }
 
     // Web値へ変換し取得(値より)
@@ -58,9 +58,9 @@ class InputItemTimeStamp extends InputItemBase {
         if ($value === '') return true;
 
         // 型チェック
-        $dateFormat1 = '([0-9]{1,4}\/)?[0-9]{1,2}\/[0-9]{1,2}';               // (yyyy/)MM/dd
-        $dateFormat2 = '([0-9]{1,4}\-)?[0-9]{1,2}\-[0-9]{1,2}';               // (yyyy-)MM-dd
-        $timeFormat = '[0-9]{1,2}:[0-9]{1,2}((:[0-9]{1,2})?\.[0-9]{1,6})?';   // HH:ii(:ss(.uuuuuu))
+        $dateFormat1 = '([0-9]{4}\/)?[0-9]{1,2}\/[0-9]{1,2}';                 // (Y/)m/d
+        $dateFormat2 = '([0-9]{4}\-)?[0-9]{1,2}\-[0-9]{1,2}';                 // (Y-)m-d
+        $timeFormat = '[0-9]{1,2}:[0-9]{1,2}((:[0-9]{1,2})?\.[0-9]{1,6})?';   // H:i(:s(.u))
         if (!preg_match(sprintf('/\A%s\z/', $dateFormat1), $value) and
             !preg_match(sprintf('/\A%s\z/', $dateFormat2), $value) and
             !preg_match(sprintf('/\A%s\z/', $timeFormat), $value) and
@@ -85,7 +85,7 @@ class InputItemTimeStamp extends InputItemBase {
             $arr = explode('/', str_replace('-', '/', $date));
             if (match (count($arr)) {
                 3 => !checkdate((int)$arr[1], (int)$arr[2], (int)$arr[0]),
-                2 => !checkdate((int)$arr[0], (int)$arr[1], $this->getNewTimeStamp()->getYear()),
+                2 => !checkdate((int)$arr[0], (int)$arr[1], $this->makeNewTimeStamp()->getYear()),
                 default => true
             }) {
                 $this->errorId = Message::ID_VALUE_INVALID_DATE;
@@ -105,7 +105,7 @@ class InputItemTimeStamp extends InputItemBase {
         }
 
         // 値の範囲
-        $timestamp = $this->getNewTimeStamp($value);
+        $timestamp = $this->makeNewTimeStamp($value);
         if ($this->minValue !== null) {
             if ($timestamp->compare($this->minValue) < 0) {
                 if ($this->maxValue === null) {
@@ -142,7 +142,7 @@ class InputItemTimeStamp extends InputItemBase {
      * @param string $value タイムスタンプ文字列
      * @return type\TimeStamp タイムスタンプ型
      */
-    protected function getNewTimeStamp(string $value = 'now'): type\TimeStamp {
+    protected function makeNewTimeStamp(string $value = 'now'): type\TimeStamp {
         return new type\TimeStamp($value);
     }
 }

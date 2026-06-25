@@ -11,6 +11,7 @@
 //                    int型に対応。
 //                    静的メソッドに、日付を表す値かどうかチェックを追加。
 // 0.64.00 2024/12/20 日付を表す文字列であるかどうかチェックが空文字を許可しなくなっていたので修正。
+// 0.82.00 2025/03/26 日付を表す文字列の型チェック/型変換を各種追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\type;
 use Stringable;
@@ -20,7 +21,7 @@ use DateTime, DateTimeZone;
  * 日付型クラス
  * 
  * @since 0.00.00
- * @version 0.64.00
+ * @version 0.82.00
  */
 class Date implements Stringable {
     // ---------------------------------------------------------------------------------------------
@@ -287,32 +288,413 @@ class Date implements Stringable {
      * int型やDateTime型、Stringable型も使用できます。
      * 
      * @since 0.42.00
-     * @param mixed $val 値
+     * @param mixed $value 値
      * @return bool 成否
      */
-    static public function checkDate($val): bool {
+    static public function checkDate($value): bool {
         // DateTime型はOK
-        if ($val instanceof DateTime) return true;
+        if ($value instanceof DateTime) return true;
 
         // 文字列型以外の場合の変換
-        if (is_int($val)) $val = (string)$val;
-        if ($val instanceof Stringable) $val = (string)$val;
-        if (!is_string($val)) return false;
+        if (is_int($value)) $value = (string)$value;
+        if ($value instanceof Stringable) $value = (string)$value;
+        if (!is_string($value)) return false;
 
         // 空文字はNG
-        if ($val === '') return false;
+        if ($value === '') return false;
 
         // 'now'はOK
-        if ($val === 'now') return true;
+        if ($value === 'now') return true;
 
-        // yyyyMMdd型
-        if (!!preg_match('/\A[0-9]{8}\z/', $val))
-            $val = sprintf('%s/%s/%s', substr($val, 0, 4), substr($val, 4, 2), substr($val, 6));
+        // YYYYmmdd型
+        if (!!preg_match('/\A[0-9]{8}\z/', $value))
+            $value = sprintf('%s/%s/%s',
+                substr($value, 0, 4), substr($value, 4, 2), substr($value, 6));
 
-        // yyyyMM型
-        if (!!preg_match('/\A[0-9]{6}\z/', $val))
-            $val = sprintf('%s/%s/01', substr($val, 0, 4), substr($val, 4));
+        // YYYYmm型
+        if (!!preg_match('/\A[0-9]{6}\z/', $value))
+            $value = sprintf('%s/%s/01', substr($value, 0, 4), substr($value, 4));
 
-        return static::checkDateString($val);
+        return static::checkDateString($value);
+    }
+
+    /**
+     * Y/m/d型、Y-m-d型、YYYYmmdd型であるかどうかチェック
+     * 
+     * 型のみをチェックし、日付として有効であるかどうかは考慮しません。
+     * 
+     * @since 0.82.00
+     * @param mixed $value 値
+     * @return bool 成否
+     */
+    static public function checkTypeY4md($value): bool {
+        // DateTime型はOK
+        if ($value instanceof DateTime) return true;
+
+        // 文字列型以外の場合の変換
+        if (is_int($value)) $value = (string)$value;
+        if ($value instanceof Stringable) $value = (string)$value;
+        if (!is_string($value)) return false;
+
+        return (
+            !!preg_match('/\A[0-9]{4}\/[0-9]{1,2}\/[0-9]{1,2}\z/', $value) or
+            !!preg_match('/\A[0-9]{4}\-[0-9]{1,2}\-[0-9]{1,2}\z/', $value) or
+            !!preg_match('/\A[0-9]{8}\z/', $value));
+    }
+
+    /**
+     * y/m型、y-m型、yymm型であるかどうかチェック
+     * 
+     * 型のみをチェックし、日付として有効であるかどうかは考慮しません。
+     * 
+     * @since 0.82.00
+     * @param mixed $value 値
+     * @return bool 成否
+     */
+    static public function checkTypeY2md($value): bool {
+        // DateTime型はOK
+        if ($value instanceof DateTime) return true;
+
+        // 文字列型以外の場合の変換
+        if (is_int($value)) $value = (string)$value;
+        if ($value instanceof Stringable) $value = (string)$value;
+        if (!is_string($value)) return false;
+
+        return (
+            !!preg_match('/\A[0-9]{2}\/[0-9]{1,2}\/[0-9]{1,2}\z/', $value) or
+            !!preg_match('/\A[0-9]{2}\-[0-9]{1,2}\-[0-9]{1,2}\z/', $value) or
+            !!preg_match('/\A[0-9]{6}\z/', $value));
+    }
+
+    /**
+     * m/d型、m-d型、mmdd型であるかどうかチェック
+     * 
+     * 型のみをチェックし、日付として有効であるかどうかは考慮しません。
+     * 
+     * @since 0.82.00
+     * @param mixed $value 値
+     * @return bool 成否
+     */
+    static public function checkTypeMd($value): bool {
+        // DateTime型はOK
+        if ($value instanceof DateTime) return true;
+
+        // 文字列型以外の場合の変換
+        if (is_int($value)) $value = (string)$value;
+        if ($value instanceof Stringable) $value = (string)$value;
+        if (!is_string($value)) return false;
+
+        return (
+            !!preg_match('/\A[0-9]{1,2}\/[0-9]{1,2}\z/', $value) or
+            !!preg_match('/\A[0-9]{1,2}\-[0-9]{1,2}\z/', $value) or
+            !!preg_match('/\A[0-9]{4}\z/', $value));
+    }
+
+    /**
+     * Y/m型、Y-m型、YYYYmm型であるかどうかチェック
+     * 
+     * 型のみをチェックし、日付として有効であるかどうかは考慮しません。
+     * 
+     * @since 0.82.00
+     * @param mixed $value 値
+     * @return bool 成否
+     */
+    static public function checkTypeY4m($value): bool {
+        // DateTime型はOK
+        if ($value instanceof DateTime) return true;
+
+        // 文字列型以外の場合の変換
+        if (is_int($value)) $value = (string)$value;
+        if ($value instanceof Stringable) $value = (string)$value;
+        if (!is_string($value)) return false;
+
+        return (
+            !!preg_match('/\A[0-9]{4}\/[0-9]{1,2}\z/', $value) or
+            !!preg_match('/\A[0-9]{4}\-[0-9]{1,2}\z/', $value) or
+            !!preg_match('/\A[0-9]{6}\z/', $value));
+    }
+
+    /**
+     * y/m型、y-m型、yymm型であるかどうかチェック
+     * 
+     * 型のみをチェックし、日付として有効であるかどうかは考慮しません。
+     * 
+     * @since 0.82.00
+     * @param mixed $value 値
+     * @return bool 成否
+     */
+    static public function checkTypeY2m($value): bool {
+        // DateTime型はOK
+        if ($value instanceof DateTime) return true;
+
+        // 文字列型以外の場合の変換
+        if (is_int($value)) $value = (string)$value;
+        if ($value instanceof Stringable) $value = (string)$value;
+        if (!is_string($value)) return false;
+
+        return (
+            !!preg_match('/\A[0-9]{2}\/[0-9]{1,2}\z/', $value) or
+            !!preg_match('/\A[0-9]{2}\-[0-9]{1,2}\z/', $value) or
+            !!preg_match('/\A[0-9]{4}\z/', $value));
+    }
+
+    /**
+     * Y型であるかどうかチェック
+     * 
+     * 型のみをチェックし、日付として有効であるかどうかは考慮しません。
+     * 
+     * @since 0.82.00
+     * @param mixed $value 値
+     * @return bool 成否
+     */
+    static public function checkTypeY4($value): bool {
+        // DateTime型はOK
+        if ($value instanceof DateTime) return true;
+
+        // 文字列型以外の場合の変換
+        if (is_int($value)) $value = (string)$value;
+        if ($value instanceof Stringable) $value = (string)$value;
+        if (!is_string($value)) return false;
+
+        return !!preg_match('/\A[0-9]{4}\z/', $value);
+    }
+
+    /**
+     * y型であるかどうかチェック
+     * 
+     * 型のみをチェックし、日付として有効であるかどうかは考慮しません。
+     * 
+     * @since 0.82.00
+     * @param mixed $value 値
+     * @return bool 成否
+     */
+    static public function checkTypeY2($value): bool {
+        // DateTime型はOK
+        if ($value instanceof DateTime) return true;
+
+        // 文字列型以外の場合の変換
+        if (is_int($value)) $value = (string)$value;
+        if ($value instanceof Stringable) $value = (string)$value;
+        if (!is_string($value)) return false;
+
+        return !!preg_match('/\A[0-9]{2}\z/', $value);
+    }
+
+    /**
+     * m型であるかどうかチェック
+     * 
+     * 型のみをチェックし、日付として有効であるかどうかは考慮しません。
+     * 
+     * @since 0.82.00
+     * @param mixed $value 値
+     * @return bool 成否
+     */
+    static public function checkTypeM($value): bool {
+        // DateTime型はOK
+        if ($value instanceof DateTime) return true;
+
+        // 文字列型以外の場合の変換
+        if (is_int($value)) $value = (string)$value;
+        if ($value instanceof Stringable) $value = (string)$value;
+        if (!is_string($value)) return false;
+
+        return !!preg_match('/\A[0-9]{1,2}\z/', $value);
+    }
+
+    /**
+     * d型であるかどうかチェック
+     * 
+     * 型のみをチェックし、日付として有効であるかどうかは考慮しません。
+     * 
+     * @since 0.82.00
+     * @param mixed $value 値
+     * @return bool 成否
+     */
+    static public function checkTypeD($value): bool {
+        // DateTime型はOK
+        if ($value instanceof DateTime) return true;
+
+        // 文字列型以外の場合の変換
+        if (is_int($value)) $value = (string)$value;
+        if ($value instanceof Stringable) $value = (string)$value;
+        if (!is_string($value)) return false;
+
+        return !!preg_match('/\A[0-9]{1,2}\z/', $value);
+    }
+
+    /**
+     * y型からY型へ変換
+     * 
+     * @since 0.82.00
+     * @param string $value y型
+     * @param mixed $baseDate 基準日
+     * @return ?string Y型
+     */
+    static public function y2ToY4(string $value, $baseDate = 'now'): ?string {
+        // 基準日
+        if (!($baseDate instanceof static)) {
+            if (!static::checkDate($baseDate)) return null;
+            $baseDate = new static($baseDate);
+        }
+
+        // 基準年
+        $baseYear = $baseDate->getYear();
+        $baseYearTop = intdiv($baseYear, 100);
+        $baseYear2 = $baseYear % 100;
+
+        // 対象年(2桁)
+        $year2 = intval($value);
+
+        // 対象年の頭2桁を算出
+        $yearTop = $baseYearTop;
+        if ($baseYear2 < 25 and $year2 >= 75) $yearTop--;
+        if ($baseYear2 >= 75 and $year2 < 25) $yearTop++;
+
+        return sprintf('%02d%s', $yearTop, $value);
+    }
+
+    /**
+     * m/d型からY/M/d型へ変換
+     * 
+     * @since 0.82.00
+     * @param string $value m/d型、m-d型、mmdd型
+     * @param mixed $baseDate 基準日
+     * @return ?string Y/m/d型
+     */
+    static public function mdToY4md(string $value, $baseDate = 'now'): ?string {
+        // 基準日
+        if (!($baseDate instanceof static)) {
+            if (!static::checkDate($baseDate)) return null;
+            $baseDate = new static($baseDate);
+        }
+
+        // 年を算出
+        $valueY4 = $baseDate->format('Y');
+
+        // 変換
+        return match (true) {
+            !!preg_match('/\//', $value) => sprintf('%s/%s', $valueY4, $value),
+            !!preg_match('/\-/', $value) => sprintf('%s-%s', $valueY4, $value),
+            default                      => sprintf('%s%s', $valueY4, $value),
+        };
+    }
+
+    /**
+     * y/m/d型からY/m/d型へ変換
+     * 
+     * @since 0.82.00
+     * @param string $value y/m/d型、y-m-d型、yymmdd型
+     * @param mixed $baseDate 基準日
+     * @return ?string Y/m/d型
+     */
+    static public function y2mdToY4md(string $value, $baseDate = 'now'): ?string {
+        // 年を4桁へ変換
+        $valueY4 = static::y2ToY4(substr($value, 0, 2), $baseDate);
+        if ($valueY4 === null) return null;
+
+        return sprintf('%s%s', $valueY4, substr($value, 2));
+    }
+
+    /**
+     * Y/m型からY/m/d型へ変換
+     * 
+     * @since 0.82.00
+     * @param string $value Y/m型、Y-m型、YYYYmm型
+     * @return string Y/m/d型
+     */
+    static public function y4mToY4md(string $value): string {
+        return match (true) {
+            !!preg_match('/\//', $value) => sprintf('%s/1', $value),
+            !!preg_match('/\-/', $value) => sprintf('%s-1', $value),
+            default                      => sprintf('%s01', $value)
+        };
+    }
+
+    /**
+     * y/m型からY/m/d型へ変換
+     * 
+     * @since 0.82.00
+     * @param string $value y/m型、y-m型、yymm型
+     * @param mixed $baseDate 基準日
+     * @return ?string Y/m/d型
+     */
+    static public function y2mToY4md(string $value, $baseDate = 'now'): ?string {
+        // 年を4桁へ変換
+        $valueY4 = static::y2ToY4(substr($value, 0, 2), $baseDate);
+        if ($valueY4 === null) return null;
+
+        // yyyy/M型へ変換
+        $valueY4m = sprintf('%s%s', $valueY4, substr($value, 2));
+
+        return static::y4mToY4md($valueY4m);
+    }
+
+    /**
+     * Y型からY/m/d型へ変換
+     * 
+     * @since 0.82.00
+     * @param string $value Y型
+     * @return string Y/m/d型
+     */
+    static public function y4ToY4md(string $value): string {
+        return sprintf('%s/1/1', $value);
+    }
+
+    /**
+     * y型からY/m/d型へ変換
+     * 
+     * @since 0.82.00
+     * @param string $value y型
+     * @param mixed $baseDate 基準日
+     * @return ?string Y/m/d型
+     */
+    static public function y2ToY4md(string $value, $baseDate = 'now'): ?string {
+        // 年を4桁へ変換
+        $valueY4 = static::y2ToY4(substr($value, 0, 2), $baseDate);
+        if ($valueY4 === null) return null;
+
+        return sprintf('%s/1/1', $valueY4);
+    }
+
+    /**
+     * m型からY/m/d型へ変換
+     * 
+     * @since 0.82.00
+     * @param string $value m型
+     * @param mixed $baseDate 基準日
+     * @return ?string Y/m/d型
+     */
+    static public function mToY4md(string $value, $baseDate = 'now'): ?string {
+        // 基準日
+        if (!($baseDate instanceof static)) {
+            if (!static::checkDate($baseDate)) return null;
+            $baseDate = new static($baseDate);
+        }
+
+        // 年を算出
+        $valueY4 = $baseDate->format('Y');
+
+        return sprintf('%s/%s/1', $valueY4, $value);
+    }
+
+    /**
+     * d型からY/m/d型へ変換
+     * 
+     * @since 0.82.00
+     * @param string $value d型
+     * @param mixed $baseDate 基準日
+     * @return ?string Y/m/d型
+     */
+    static public function dToY4md(string $value, $baseDate = 'now'): ?string {
+        // 基準日
+        if (!($baseDate instanceof static)) {
+            if (!static::checkDate($baseDate)) return null;
+            $baseDate = new static($baseDate);
+        }
+
+        // 年月を算出
+        $valueY4m = $baseDate->format('Y/m');
+
+        return sprintf('%s/%s', $valueY4m, $value);
     }
 }

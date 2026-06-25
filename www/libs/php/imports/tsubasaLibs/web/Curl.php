@@ -13,6 +13,7 @@
 // 0.78.00 2025/03/01 タイムアウト時間を設定。予期しない長時間処理を防止するため。
 // 0.88.00 2025/05/10 マルチハンドルをクラス化し、他のcURLと合わせて非同期処理できるように対応。
 //                    標準のcURL関数をメソッド化。マルチハンドルの処理の記述を外部へ移動。
+// 0.90.06 2025/05/30 マルチハンドルを変更時、マルチハンドルにハンドルを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/CurlMulti.php';
@@ -22,7 +23,7 @@ use CurlHandle;
  * cURLクラス
  * 
  * @since 0.09.00
- * @version 0.88.00
+ * @version 0.90.06
  */
 class Curl {
     // ---------------------------------------------------------------------------------------------
@@ -245,6 +246,54 @@ class Curl {
     }
 
     /**
+     * 実行前の準備
+     * 
+     * @since 0.52.00
+     */
+    public function prepare() {
+        // URL
+        $this->setopt(CURLOPT_URL, $this->url);
+
+        // タイムアウト
+        if ($this->connectTimeout !== null)
+            $this->setopt(CURLOPT_CONNECTTIMEOUT, $this->connectTimeout);
+        if ($this->timeout !== null)
+            $this->setopt(CURLOPT_TIMEOUT, $this->timeout);
+
+        // 圧縮
+        $this->setopt(CURLOPT_ACCEPT_ENCODING, 'gzip, deflate');
+
+        // リクエストヘッダ
+        $headers = [];
+        $headers[] = sprintf('Remote-Host: %s', $_SERVER['HTTP_HOST']);
+        if ($this->requestContentType !== null)
+            $headers[] = $this->requestCharset !== null ?
+                sprintf('Content-Type: %s; charset=%s',
+                    $this->requestContentType, $this->requestCharset) :
+                sprintf('Content-Type: %s', $this->requestContentType);
+        if ($this->responseCharset !== null)
+            $headers[] = sprintf('Response-Charset: %s', $this->responseCharset);
+        $this->setopt(CURLOPT_HTTPHEADER, $headers);
+
+        // ユーザエージェント
+        $this->setopt(CURLOPT_USERAGENT, sprintf(
+            'cURL from %s', $_SERVER['HTTP_HOST']
+        ));
+
+        // 送信メソッド
+        if ($this->method === static::METHOD_POST)
+            $this->setopt(CURLOPT_POST, true);
+
+        // 返り値を受け取るかどうか
+        if ($this->isReturnTransfer)
+            $this->setopt(CURLOPT_RETURNTRANSFER, true);
+
+        // 送信データ
+        if ($this->method === static::METHOD_POST and $this->data !== null)
+            $this->setopt(CURLOPT_POSTFIELDS, http_build_query($this->data));
+    }
+
+    /**
      * 転送結果のHTTPステータスを取得
      * 
      * @return int HTTPステータス
@@ -280,7 +329,14 @@ class Curl {
      * @param ?CurlMulti $curlMulti cURLマルチインスタンス
      */
     public function setCurlMulti(?CurlMulti $curlMulti) {
+        // 変更前より自身を削除
+        if ($this->curlMulti !== null) $this->curlMulti->removeCurl($this);
+
+        // 変更
         $this->curlMulti = $curlMulti;
+
+        // 変更後へ自身を追加
+        if (!$curlMulti->hasCurl($this)) $curlMulti->addCurl($this);
     }
 
     /**
@@ -327,7 +383,10 @@ class Curl {
         if ($this->checkConnected()) return true;
 
         // cURLマルチが用意されていなければ、失敗
-        if ($this->curlMulti === null) return false;
+        if ($this->curlMulti === null) {
+            trigger_error('curlMulti is empty', E_USER_WARNING);
+            return false;
+        }
 
         // マルチハンドルを使用し、非同期処理を開始
         return $this->curlMulti->async();
@@ -345,7 +404,10 @@ class Curl {
         if ($this->checkFinished()) return true;
 
         // cURLマルチが用意されていなければ、失敗
-        if ($this->curlMulti === null) return false;
+        if ($this->curlMulti === null) {
+            trigger_error('curlMulti is empty', E_USER_WARNING);
+            return false;
+        }
 
         // マルチハンドルを使用し、非同期処理を再開
         return $this->curlMulti->resume();
@@ -363,7 +425,10 @@ class Curl {
         if ($this->errno()) return false;
 
         // cURLマルチが用意されていなければ、失敗
-        if ($this->curlMulti === null) return false;
+        if ($this->curlMulti === null) {
+            trigger_error('curlMulti is empty', E_USER_WARNING);
+            return false;
+        }
 
         // 戻ってくるまで待機
         if (!$this->checkFinished())
@@ -411,54 +476,6 @@ class Curl {
      */
     protected function makeCurlMultiInstance() {
         return new CurlMulti();
-    }
-
-    /**
-     * 実行前の準備
-     * 
-     * @since 0.52.00
-     */
-    protected function prepare() {
-        // URL
-        $this->setopt(CURLOPT_URL, $this->url);
-
-        // タイムアウト
-        if ($this->connectTimeout !== null)
-            $this->setopt(CURLOPT_CONNECTTIMEOUT, $this->connectTimeout);
-        if ($this->timeout !== null)
-            $this->setopt(CURLOPT_TIMEOUT, $this->timeout);
-
-        // 圧縮
-        $this->setopt(CURLOPT_ACCEPT_ENCODING, 'gzip, deflate');
-
-        // リクエストヘッダ
-        $headers = [];
-        $headers[] = sprintf('Remote-Host: %s', $_SERVER['HTTP_HOST']);
-        if ($this->requestContentType !== null)
-            $headers[] = $this->requestCharset !== null ?
-                sprintf('Content-Type: %s; charset=%s',
-                    $this->requestContentType, $this->requestCharset) :
-                sprintf('Content-Type: %s', $this->requestContentType);
-        if ($this->responseCharset !== null)
-            $headers[] = sprintf('Response-Charset: %s', $this->responseCharset);
-        $this->setopt(CURLOPT_HTTPHEADER, $headers);
-
-        // ユーザエージェント
-        $this->setopt(CURLOPT_USERAGENT, sprintf(
-            'cURL from %s', $_SERVER['HTTP_HOST']
-        ));
-
-        // 送信メソッド
-        if ($this->method === static::METHOD_POST)
-            $this->setopt(CURLOPT_POST, true);
-
-        // 返り値を受け取るかどうか
-        if ($this->isReturnTransfer)
-            $this->setopt(CURLOPT_RETURNTRANSFER, true);
-
-        // 送信データ
-        if ($this->method === static::METHOD_POST and $this->data !== null)
-            $this->setopt(CURLOPT_POSTFIELDS, http_build_query($this->data));
     }
 
     /**

@@ -31,6 +31,7 @@
 // 0.56.00 2024/12/10 SELECTの並び順を逆にできるように対応。
 // 0.61.00 2024/12/17 makeBindItemsWhereEqFromRecordが正常に動作していなかったので修正。
 // 0.65.00 2024/12/23 バインド項目を生成時、値の型チェックを削除。
+// 0.71.00 2025/01/18 SQL ServerのTOP句、MySQLのLIMIT句に対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -47,7 +48,7 @@ use Stringable;
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.65.00
+ * @version 0.71.00
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -68,6 +69,10 @@ class Table {
     public $indexes;
     /** @var bool 逆順かどうか */
     protected $isReversedOrder;
+    /** @var ?int 取得/更新する最大行数 */
+    protected $limitRowCount;
+    /** @var ?int 取得時に読み飛ばす行数 */
+    protected $limitOffset;
     /** @var array<string, static> 生成済テンポラリテーブルのリスト */
     protected $tempTables;
     /** @var bool テンポラリテーブルかどうか */
@@ -890,6 +895,23 @@ class Table {
     }
 
     /**
+     * 1回のみ、対象レコードの行数に制限をかける
+     * 
+     * SQL ServerのTOP句、MySQLのLIMIT句を設定します。  
+     * SELECTの他、DELETEクエリにも効果があります。
+     * 
+     * @since 0.71.00
+     * @param ?int $rowCount 最大行数
+     * @param ?int $offset 読み飛ばす行数(MySQLのSELECTクエリにのみ有効)
+     * @return static チェーン用
+     */
+    public function setLimit(?int $rowCount, ?int $offset = null): static {
+        $this->limitRowCount = $rowCount;
+        $this->limitOffset = $offset;
+        return $this;
+    }
+
+    /**
      * テンポラリテーブルを作成
      * 
      * 現段階では、MySQLにのみ対応しています。
@@ -1094,6 +1116,8 @@ class Table {
      */
     protected function setInit() {
         $this->isReversedOrder = false;
+        $this->limitRowCount = null;
+        $this->limitOffset = null;
         $this->tempTables = [];
         $this->isTemp = false;
         $this->queryPlanning = new QueryPlanning($this);
@@ -2519,6 +2543,26 @@ class Table {
     }
 
     /**
+     * SQLステートメントを生成(TOP句)
+     * 
+     * @since 0.71.00
+     * @return string|false SQLステートメント
+     */
+    protected function makeSqlTop(): string|false {
+        // SQL Serverのみ
+        if (!$this->db->isMssql()) return false;
+
+        // 最大行数の指定が無い場合
+        if ($this->limitRowCount === null) return false;
+
+        $sql = (string)$this->limitRowCount;
+        $this->limitRowCount = null;
+        $this->limitOffset = null;
+
+        return $sql;
+    }
+
+    /**
      * SQLステートメントを生成(WHERE句、一致)
      * 
      * @param Key $key キー
@@ -2816,9 +2860,10 @@ class Table {
     /**
      * SQLステートメントを生成(ORDER句)
      * 
+     * @param ?string $prefix テーブルの接頭語
      * @return string|false SQLステートメント
      */
-    protected function makeSqlOrder(): string|false {
+    protected function makeSqlOrder(?string $prefix = null): string|false {
         $keyItems = $this->indexKey->getKeyItems();
         $keyCount = count($keyItems);
 
@@ -2828,7 +2873,7 @@ class Table {
         // キーが有る場合
         $orderItemIds = [];
         foreach ($keyItems as $keyItem) {
-            $sqlId = $this->getIdForSql($keyItem->item->id);
+            $sqlId = $this->getIdForSql($keyItem->item->id, $prefix);
             $isAscend = $keyItem->isAscend;
             if ($this->isReversedOrder) $isAscend = !$isAscend;
             $orderItemIds[] = sprintf('%s%s',
@@ -2838,6 +2883,57 @@ class Table {
         }
         $this->isReversedOrder = false;
         return implode(', ', $orderItemIds);
+    }
+
+    /**
+     * SQLステートメントを生成(ORDER句、更新用)
+     * 
+     * @since 0.71.00
+     * @param ?string $prefix テーブルの接頭語
+     * @return string|false SQLステートメント
+     */
+    protected function makeSqlOrderForUpdate(?string $prefix = null): string|false {
+        $keyItems = $this->primaryKey->getKeyItems();
+        $keyCount = count($keyItems);
+
+        // キーが無い場合
+        if ($keyCount == 0) return false;
+
+        // キーが有る場合
+        $orderItemIds = [];
+        foreach ($keyItems as $keyItem) {
+            $sqlId = $this->getIdForSql($keyItem->item->id, $prefix);
+            $isAscend = $keyItem->isAscend;
+            if ($this->isReversedOrder) $isAscend = !$isAscend;
+            $orderItemIds[] = sprintf('%s%s',
+                $sqlId,
+                $isAscend ? '' : ' desc'
+            );
+        }
+        $this->isReversedOrder = false;
+        return implode(', ', $orderItemIds);
+    }
+
+    /**
+     * SQLステートメントを生成(LIMIT句)
+     * 
+     * @since 0.71.00
+     * @return string|false SQLステートメント
+     */
+    protected function makeSqlLimit(): string|false {
+        // MySQLのみ
+        if (!$this->db->isMysql()) return false;
+
+        // 最大行数の指定が無い場合
+        if ($this->limitRowCount === null) return false;
+
+        $sql = $this->limitOffset === null ?
+            (string)$this->limitRowCount :
+            sprintf('%s, %s', $this->limitOffset, $this->limitRowCount);
+        $this->limitRowCount = null;
+        $this->limitOffset = null;
+
+        return $sql;
     }
 
     /**
@@ -3385,31 +3481,35 @@ class Table {
     /**
      * SQLステートメントを生成(SELECTクエリ)
      * 
-     * @param string|false $whereSql WHERE句
+     * @param string|false $sqlWhere WHERE句
      * @return string SQLステートメント
      */
-    protected function makeSqlSelect($whereSql): string {
+    protected function makeSqlSelect($sqlWhere): string {
+        // TOP句
+        $sqlTop = $this->makeSqlTop();
+
         // テーブルID
         $tableId = $this->getIdForSql($this->id);
 
         // 項目群
-        $itemsSql = $this->makeSqlSelectItems(['*']);
+        $sqlItems = $this->makeSqlSelectItems(['*']);
 
         // ORDER句
-        $orderSql = $this->makeSqlOrder();
+        $sqlOrder = $this->makeSqlOrder();
 
-        // ORDER句が無い場合(WHERE句も無い)
-        if ($orderSql === false) return sprintf(
-            'SELECT %s FROM %s',
-            $itemsSql, $tableId);
+        // LIMIT句
+        $sqlLimit = $this->makeSqlLimit();
 
-        // WHERE句が無い場合
-        if ($whereSql === false) return sprintf(
-            'SELECT %s FROM %s ORDER BY %s',
-            $itemsSql, $tableId, $orderSql);
+        // 生成
+        $sql = 'SELECT';
+        if ($sqlTop !== false) $sql = sprintf('%s TOP(%s)', $sql, $sqlTop);
+        $sql = sprintf('%s %s', $sql, $sqlItems);
+        $sql = sprintf('%s FROM %s', $sql, $tableId);
+        if ($sqlWhere !== false) $sql = sprintf('%s WHERE %s', $sql, $sqlWhere);
+        if ($sqlOrder !== false) $sql = sprintf('%s ORDER BY %s', $sql, $sqlOrder);
+        if ($sqlLimit !== false) $sql = sprintf('%s LIMIT %s', $sql, $sqlLimit);
 
-        return sprintf('SELECT %s FROM %s WHERE %s ORDER BY %s',
-            $itemsSql, $tableId, $whereSql, $orderSql);
+        return $sql;
     }
 
     /**
@@ -3430,10 +3530,18 @@ class Table {
      * @return string SQLステートメント
      */
     protected function makeSqlInsert(string|false $sqlIntoItems, string|false $sqlValues): string {
+        // TOP句
+        $sqlTop = $this->makeSqlTop();
+ 
+        // テーブルID
         $tableId = $this->getIdForSql($this->id);
 
-        return sprintf('INSERT INTO %s %s VALUES %s',
-            $tableId, $sqlIntoItems, $sqlValues);
+        // 生成
+        $sql = 'INSERT';
+        if ($sqlTop !== false) $sql = sprintf('%s TOP(%s)', $sql, $sqlTop);
+        $sql = sprintf('%s INTO %s %s VALUES %s', $sql, $tableId, $sqlIntoItems, $sqlValues);
+
+        return $sql;
     }
 
     /**
@@ -3453,6 +3561,10 @@ class Table {
      * @return string SQLステートメント
      */
     protected function makeSqlInsertFromTable(self $tempTable): string {
+        // TOP句
+        $sqlTop = $this->makeSqlTop();
+ 
+        // テーブルID
         $tableId = $this->getIdForSql($this->id);
         $tempTableId = $this->getIdForSql($tempTable->id);
 
@@ -3470,7 +3582,7 @@ class Table {
         }
 
         // 更新先の項目リスト
-        $toItemsSql = $this->makeSqlSelectItems([
+        $sqlToItems = $this->makeSqlSelectItems([
             ...$commonNormalItemIds,
             ...$executorIds
         ]);
@@ -3483,7 +3595,7 @@ class Table {
         }
 
         // 更新元の項目リスト
-        $fromItemsSql = $this->makeSqlSelectItems([
+        $sqlFromItems = $this->makeSqlSelectItems([
             ...$commonNormalItemIds,
             ...$fromBindParams
         ], 'tmp');
@@ -3498,13 +3610,22 @@ class Table {
         // プライマリキーの第1項目ID
         $keyFirstId = $this->getIdForSql($keyItemIds[0]);
 
-        return sprintf(
-            'INSERT INTO %s (%s) ' .
-            'SELECT %s FROM %s AS tmp LEFT JOIN %s AS tbl ON %s WHERE tbl.%s IS NULL',
-            $tableId, $toItemsSql,
-            $fromItemsSql, $tempTableId, $tableId, implode(' AND ', $joinEquations),
-            $keyFirstId
-        );
+        // ORDER句
+        $sqlOrder = $this->makeSqlOrderForUpdate('tmp');
+
+        // LIMIT句
+        $sqlLimit = $this->makeSqlLimit();
+
+        // 生成
+        $sql = sprintf('INSERT INTO %s (%s) SELECT', $tableId, $sqlToItems);
+        if ($sqlTop !== false) $sql = sprintf('%s TOP(%s)', $sql, $sqlTop);
+        $sql = sprintf('%s %s FROM %s AS tmp LEFT JOIN %s AS tbl ON %s WHERE tbl.%s IS NULL',
+            $sql, $sqlFromItems, $tempTableId, $tableId, implode(' AND ', $joinEquations),
+            $keyFirstId);
+        if ($sqlLimit !== false) $sql = sprintf('%s ORDER BY %s LIMIT %s',
+            $sql, $sqlOrder, $sqlLimit);
+
+        return $sql;
     }
 
     /**
@@ -3531,7 +3652,7 @@ class Table {
         }
 
         // 更新先の項目リスト
-        $toItemsSql = $this->makeSqlSelectItems([
+        $sqlToItems = $this->makeSqlSelectItems([
             ...$commonNormalItemIds,
             ...$executorIds
         ]);
@@ -3544,7 +3665,7 @@ class Table {
         }
 
         // 更新元の項目リスト
-        $fromItemsSql = $this->makeSqlSelectItems([
+        $sqlFromItems = $this->makeSqlSelectItems([
             ...$commonNormalItemIds,
             ...$fromBindParams
         ]);
@@ -3552,8 +3673,8 @@ class Table {
         return sprintf(
             'INSERT INTO %s (%s) ' .
             'SELECT %s FROM %s',
-            $tableId, $toItemsSql,
-            $fromItemsSql, $tempTableId
+            $tableId, $sqlToItems,
+            $sqlFromItems, $tempTableId
         );
     }
 
@@ -3568,7 +3689,17 @@ class Table {
     protected function makeSqlUpdate(
         string|false $sqlSet, string|false $sqlWhere, string|false $sqlWhereChangedOnly
     ): string|false {
+        // TOP句
+        $sqlTop = $this->makeSqlTop();
+
+        // テーブルID
         $tableId = $this->getIdForSql($this->id);
+
+        // ORDER句
+        $sqlOrder = $this->makeSqlOrderForUpdate();
+
+        // LIMIT句
+        $sqlLimit = $this->makeSqlLimit();
 
         if ($sqlSet === false) return false;
         if ($sqlWhere === false) return false;
@@ -3580,9 +3711,15 @@ class Table {
             $sqlWhere = implode(' AND ', $equations);
         }
 
-        return sprintf('UPDATE %s SET %s WHERE %s',
-            $tableId, $sqlSet, $sqlWhere);
-    }
+        // 生成
+        $sql = 'UPDATE';
+        if ($sqlTop !== false) $sql = sprintf('%s TOP(%s)', $sql, $sqlTop);
+        $sql = sprintf('%s %s SET %s WHERE %s', $sql, $tableId, $sqlSet, $sqlWhere);
+        if ($sqlLimit !== false) $sql = sprintf('%s ORDER BY %s LIMIT %s',
+            $sql, $sqlOrder, $sqlLimit);
+
+        return $sql;
+     }
 
     /**
      * 値をバインド(UPDATEクエリ)
@@ -3608,8 +3745,10 @@ class Table {
     protected function makeSqlUpdateFromTable(
         self $tempTable, ?array $tempIntoItemIds
     ): string|false {
+        // テーブルID
         $tableId = $this->getIdForSql($this->id);
         $tempTableId = $this->getIdForSql($tempTable->id);
+
         $keyItemIds = $this->primaryKey->getItemIds();
         $executorIds = $this->getExecutorIds();
         $executorIdsForUpdate = $this->getExecutorIdsForUpdate();
@@ -3658,39 +3797,45 @@ class Table {
         if ($isChangedOnly)
             $whereEquations[] = $this->makeSqlWhereChangedOnlyFromTable($setIds);
 
-        // WHERE句が無い場合
-        if (count($whereEquations) == 0) {
-            return sprintf(
-                'UPDATE %s AS tbl INNER JOIN %s AS tmp ON %s SET %s',
-                $tableId, $tempTableId, implode(' AND ', $joinEquations), implode(', ', $setEquations)
-            );
-        }
+        // 生成
+        $sql = 'UPDATE';
+        $sql = sprintf('%s %s AS tbl INNER JOIN %s AS tmp ON %s SET %s',
+            $sql, $tableId, $tempTableId, implode(' AND ', $joinEquations),
+            implode(', ', $setEquations));
+        if (count($whereEquations) > 0) sprintf('%s WHERE %s',
+            $sql, implode(' AND ', $whereEquations));
 
-        return sprintf(
-            'UPDATE %s AS tbl INNER JOIN %s AS tmp ON %s SET %s WHERE %s',
-            $tableId, $tempTableId, implode(' AND ', $joinEquations), implode(', ', $setEquations),
-            implode(' AND ', $whereEquations)
-        );
+        return $sql;
     }
 
     /**
      * SQLステートメントを生成(DELETEクエリ)
      * 
-     * @param string|false $whereSql WHERE句
+     * @param string|false $sqlWhere WHERE句
      * @return string SQLステートメント
      */
-    protected function makeSqlDelete($whereSql): string {
+    protected function makeSqlDelete($sqlWhere): string {
+        // TOP句
+        $sqlTop = $this->makeSqlTop();
+
         // テーブルID
         $tableId = $this->getIdForSql($this->id);
 
-        // WHERE句が無い場合
-        if ($whereSql === false) return sprintf(
-            'DELETE FROM %s',
-            $tableId);
+        // ORDER句
+        $sqlOrder = $this->makeSqlOrderForUpdate();
 
-        return sprintf(
-            'DELETE FROM %s WHERE %s',
-            $tableId, $whereSql);
+        // LIMIT句
+        $sqlLimit = $this->makeSqlLimit();
+
+        // 生成
+        $sql = 'DELETE';
+        if ($sqlTop !== false) $sql = sprintf('%s TOP(%s)', $sql, $sqlTop);
+        $sql = sprintf('%s FROM %s', $sql, $tableId);
+        if ($sqlWhere !== false) $sql = sprintf('%s WHERE %s', $sql, $sqlWhere);
+        if ($sqlLimit !== false) $sql = sprintf('%s ORDER BY %s LIMIT %s',
+            $sql, $sqlOrder, $sqlLimit);
+
+        return $sql;
     }
 
     /**

@@ -34,6 +34,7 @@
 //                    後にセッション情報をDBに持つことを想定し、セッション取得をDB接続の後ろへ移動。
 // 0.83.00 2025/03/27 最終アクセス日時の更新は、ログイン中にしか行わないように変更。
 // 0.84.00 2025/03/28 セッション取得の処理順を変更したため、DBへ実行者情報の設定を初期設定で行うように変更。
+// 0.87.01 2025/04/08 名前空間の変更に伴い、Smartyはここではrequireしないように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
@@ -45,7 +46,6 @@ require_once __DIR__ . '/InputTable.php';
 require_once __DIR__ . '/Menu.php';
 require_once __DIR__ . '/Message.php';
 require_once __DIR__ . '/WebException.php';
-require_once __DIR__ . '/Smarty.php';
 use tsubasaLibs\type;
 use tsubasaLibs\database\DbBase;
 use Smarty;
@@ -57,7 +57,7 @@ use Exception;
  * イベントクラス
  * 
  * @since 0.00.00
- * @version 0.84.00
+ * @version 0.87.01
  */
 class Events {
     // ---------------------------------------------------------------------------------------------

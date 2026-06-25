@@ -4,8 +4,9 @@
 //
 // History:
 // 0.87.00 2025/04/05 作成。
+// 0.87.01 2025/04/08 tsubasaLibs\smartyへ移動。
 // -------------------------------------------------------------------------------------------------
-namespace tsubasaLibs\web;
+namespace tsubasaLibs\smarty;
 use Smarty_Internal_Template as BaseClass;
 
 // Smartyを未導入の場合に読み込み
@@ -15,7 +16,7 @@ if (!class_exists(BaseClass::class)) require __DIR__ . '/#phpdoc/Smarty_Internal
  * Smartyテンプレートクラス
  * 
  * @since 0.87.00
- * @version 0.87.00
+ * @version 0.87.01
  */
 class Smarty_Internal_Template extends BaseClass {
     // ---------------------------------------------------------------------------------------------

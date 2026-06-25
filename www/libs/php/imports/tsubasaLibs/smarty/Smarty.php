@@ -9,8 +9,9 @@
 // 0.44.00 2024/10/12 作成。
 // 0.75.00 2025/02/19 テンプレート/プラグインディレクトリを内包。
 // 0.87.00 2025/04/05 開発環境のみ、ログを出力するように対応。
+// 0.87.01 2025/04/08 tsubasaLibs\smartyへ移動。
 // -------------------------------------------------------------------------------------------------
-namespace tsubasaLibs\web;
+namespace tsubasaLibs\smarty;
 require_once __DIR__ . '/Smarty_Internal_Template.php';
 use Smarty as BaseClass;
 
@@ -21,7 +22,7 @@ if (!class_exists(BaseClass::class)) require __DIR__ . '/#phpdoc/Smarty.php';
  * Smartyクラス
  * 
  * @since 0.44.00
- * @version 0.87.00
+ * @version 0.87.01
  */
 class Smarty extends BaseClass {
     // ---------------------------------------------------------------------------------------------
@@ -37,8 +38,8 @@ class Smarty extends BaseClass {
     // コンストラクタ/デストラクタ
     public function __construct() {
         parent::__construct();
-        $this->setTemplateDir(__DIR__ . '/../smarty/templates');
-        $this->addPluginsDir(__DIR__ . '/../smarty/plugins');
+        $this->setTemplateDir(__DIR__ . '/templates');
+        $this->addPluginsDir(__DIR__ . '/plugins');
     }
 
     // ---------------------------------------------------------------------------------------------

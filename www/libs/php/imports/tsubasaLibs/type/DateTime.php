@@ -5,6 +5,7 @@
 // History:
 // 0.00.00 2024/01/23 作成。
 // 0.11.00 2024/03/08 データ型のクラス名を変更。
+// 0.87.00 2025/04/05 時を取得が12時間周期になっていたので訂正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\type;
 require_once __DIR__ . '/Date.php';
@@ -16,7 +17,7 @@ use DateTime as _DateTime, DateTimeZone;
  * 日時型クラス
  * 
  * @since 0.00.00
- * @version 0.11.00
+ * @version 0.87.00
  */
 class DateTime extends Date {
     // ---------------------------------------------------------------------------------------------
@@ -54,7 +55,7 @@ class DateTime extends Date {
      * 時を取得
      */
     public function getHour() {
-        return (int)$this->datetime->format('h');
+        return (int)$this->datetime->format('H');
     }
 
     /**

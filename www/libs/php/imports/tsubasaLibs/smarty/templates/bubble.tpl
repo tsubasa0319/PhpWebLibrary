@@ -5,11 +5,12 @@
    0.08.00 2024/02/27 作成。
    0.08.01 2024/02/28 タブ移動できるように対応。
    0.75.00 2025/02/19 ライブラリへ移動。
+   0.79.00 2025/03/05 吹き出しをアンカー領域より外へ移動。
 ------------------------------------------------------------------------------------------------- *}
-<a href="#" class="bubble {$class|default:''}">
+<span class="bubble {$class|default:''}">
     <label>
-        <span>？</span>
+        <a href="javascript:void(0)" onclick="this.parentNode.click();">？</a>
         <input type="checkbox">
     </label>
     <div>{$content|default:''}</div>
-</a>
+</span>

@@ -26,6 +26,8 @@
 //                    ファイル関数の失敗で送られた不要なエラー情報を、エラーハンドリングで拾わないように対処。
 //                    ロック処理に、即時脱出とリトライを追加。
 //                    順番待ちループで自身の順番待ちファイルを削除する可能性があるため訂正。
+// 0.90.02 2025/05/20 ファイルを開いてからロックするまでの間に割り込まれる可能性を考慮。
+//                    デバッグモードを実装。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
@@ -36,7 +38,7 @@ use Stringable;
  * APIイベントクラス
  * 
  * @since 0.09.00
- * @version 0.90.00
+ * @version 0.90.02
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -92,6 +94,8 @@ class Events {
     protected $maxRetryTimes;
     /** @var int 実行開始までの最大待ち時間(マイクロ秒) */
     protected $maxWaitTime;
+    /** @var bool デバッグモード */
+    protected $isDebug;
 
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
@@ -236,6 +240,7 @@ class Events {
         $this->maxNumberOfAccesses = 50;    // 監視期間内に許容するアクセス数は50個まで
         $this->maxRetryTimes = 100;         // 実行開始を延期するリトライ回数は100回まで
         $this->maxWaitTime = 30000000;      // 実行開始までの待ち時間は最大30秒間
+        $this->isDebug = false;             // デバッグモード
     }
 
     /**
@@ -369,7 +374,8 @@ class Events {
 
         // 保存するベースディレクトリパスを取得
         $baseDir = $this->getSaveDirPathForProcess();
-        if ($baseDir === null) return true; // 指定が無ければ、チェックしない
+        if ($baseDir) $baseDir = realpath($baseDir);
+        if (!$baseDir) return true; // 指定が無ければ、チェックしない
         if (!is_dir($baseDir)) {
             $this->log(sprintf('Directory is not found: %s', $baseDir), true);
             return false;
@@ -453,7 +459,11 @@ class Events {
             $path = sprintf('%s/id_%s', $dir, $id);
             if (file_exists($path)) continue;
             if (!$filePointer = $this->openFile($path, 'x', false)) continue;
-            fclose($filePointer);
+            $this->closeFile($filePointer);
+
+            // デバッグ
+            if ($this->isDebug)
+                $this->log(sprintf('[Debug]process-id: %s', $id));
 
             return $id;
         }
@@ -498,14 +508,16 @@ class Events {
     protected function waitMyTurnForProcess(
         string $dir, string $id, int $onceWaitTime, int $maxTimes, int &$times
     ): bool {
-        // 順番待ちファイルを生成
+        // 順番待ちファイルを生成し、排他ロック
         $path = sprintf('%s/wait_%s', $dir, $id);
-        if (!$filePointer = $this->openFile($path, 'w')) return false;
+        $filePointer = $this->repeatOpenFileWithLock(
+            $path, 'w', LOCK_EX, $onceWaitTime, $maxTimes, $times);
+        if (!$filePointer) return false;
         $this->waitFilePointer = $filePointer;
 
-        // 排他ロック
-        if (!$this->xlockFileWithRetry($filePointer, $onceWaitTime, $maxTimes, $times))
-            return false;
+        // デバッグ
+        if ($this->isDebug)
+            $this->log('[Debug]Lock a waiting-file: ok');
 
         // 待機中のプロセス一覧を取得
         $paths = glob(sprintf('%s/wait_*', $dir));
@@ -516,7 +528,16 @@ class Events {
         sort($paths, SORT_REGULAR);
 
         // 先頭が自身になるまでループ
+        $savedTimes = $times;
+        $perTimes = intdiv(60000000, $onceWaitTime);    // 1分間あたりの回数
         while ($times++ < $maxTimes and count($paths) > 0 and $path !== $paths[0]) {
+            // デバッグ
+            if ($this->isDebug and ($times - $savedTimes) % $perTimes === 1) {
+                $this->log(sprintf('[Debug]Number of waiting-files: %s', number_format(count($paths))));
+                if (count($paths) > 0)
+                    $this->log(sprintf('[Debug]First waiting-file: %s', $paths[0]));
+            }
+
             // 万一ロックされていないファイルがあれば、削除
             foreach ($paths as $_path)
                 if ($_path !== $path)
@@ -532,6 +553,13 @@ class Events {
                 return false;
             }
             sort($paths, SORT_REGULAR);
+        }
+
+        // デバッグ
+        if ($this->isDebug) {
+            $this->log(sprintf('[Debug]Number of waiting-files: %s', number_format(count($paths))));
+            if (count($paths) > 0)
+                $this->log(sprintf('[Debug]First waiting-file: %s', $paths[0]));
         }
 
         return count($paths) > 0 and $path === $paths[0];
@@ -559,6 +587,7 @@ class Events {
 
         // プロセス数が少なくなるまでループ
         $savedTimes = $times;
+        $perTimes = intdiv(60000000, $onceWaitTime);    // 1分間あたりの回数
         while ($times++ < $maxTimes and count($paths) >= $this->maxNumberOfProcesses) {
             // 万一ロックされていないファイルがあれば、削除
             foreach ($paths as $path)
@@ -566,7 +595,7 @@ class Events {
 
             // 待機(1分間に1回通知)
             usleep($onceWaitTime);
-            if ((($times - $savedTimes) % intdiv(60000000, $onceWaitTime)) == 1)
+            if ((($times - $savedTimes) % $perTimes) == 1)
                 $this->log(sprintf('Number of processes: %s ...', number_format(count($paths))));
 
             // 再取得
@@ -581,7 +610,8 @@ class Events {
         if (count($paths) >= $this->maxNumberOfProcesses) {
             $this->log(sprintf('Number of processes: %s ...', number_format(count($paths))), true);
             return false;
-        }
+        } elseif ($this->isDebug)
+            $this->log(sprintf('[Debug]Number of processes: %s ...', number_format(count($paths))));
 
         return true;
     }
@@ -601,14 +631,14 @@ class Events {
         string $dir, string $id, int $onceWaitTime, int $maxTimes, int &$times
     ): bool {
         $path = sprintf('%s/process_%s', $dir, $id);
-
-        // 開く
-        if (!$filePointer = $this->openFile($path, 'w')) return false;
+        $filePointer = $this->repeatOpenFileWithLock(
+            $path, 'w', LOCK_EX, $onceWaitTime, $maxTimes, $times);
+        if (!$filePointer) return false;
         $this->processFilePointer = $filePointer;
 
-        // 排他ロック
-        if (!$this->xlockFileWithRetry($filePointer, $onceWaitTime, $maxTimes, $times))
-            return false;
+        // デバッグ
+        if ($this->isDebug)
+            $this->log('[Debug]Lock a process-file: ok');
 
         return true;
     }
@@ -658,41 +688,85 @@ class Events {
     }
 
     /**
-     * ファイルを排他ロック(リトライ付き)
+     * ファイルをロック
      * 
-     * @since 0.90.00
+     * @since 0.90.02
      * @param resource $filePointer ファイルポインタ
+     * @param int $mode モード
+     * @return bool 成否
+     */
+    protected function lockFile($filePointer, int $mode): bool {
+        return flock($filePointer, $mode);
+    }
+
+    /**
+     * ファイルを閉じる
+     * 
+     * @since 0.90.02
+     * @param ?resource $filePointer
+     * @return bool 成否
+     */
+    protected function closeFile(&$filePointer): bool {
+        if (!fclose($filePointer)) return false;
+
+        $filePointer = null;
+        return true;
+    }
+
+    /**
+     * ファイルを開く(ロック付き)
+     * 
+     * @since 0.90.02
+     * @param string $path ファイルパス
+     * @param string $openMode 開くモード
+     * @param int $lockMode ロックモード
+     * @param bool $isLogged ログを取るかどうか
+     * @return resource|false
+     */
+    protected function openFileWithLock(
+        string $path, string $openMode, int $lockMode, bool $isLogged = true
+    ): mixed {
+        // 開く
+        $filePointer = $this->openFile($path, $openMode, $isLogged);
+        if (!$filePointer) return false;
+
+        // ロック
+        if (!$this->lockFile($filePointer, $lockMode)) {
+            $this->closeFile($filePointer);
+            return false;
+        }
+
+        return $filePointer;
+    }
+
+    /**
+     * ファイルを開く(ロック付き)までループ
+     * 
+     * @since 0.90.02
+     * @param string $path ファイルパス
+     * @param string $openMode 開くモード
+     * @param int $lockMode ロックモード
      * @param int $onceWaitTime 1回当たりの待機時間(秒)
      * @param int $maxTimes 最大試行回数
      * @param int $times 現在の試行回数
      * @param bool $isLogged ログを取るかどうか
-     * @return bool 成否
+     * @return resource|false
      */
-    protected function xlockFileWithRetry(
-        $filePointer, int $onceWaitTime, int $maxTimes, int &$times, bool $isLogged = true
-    ): bool {
-        $isLocked = false;
-        $isFailed = false;
-        $meta = null;
-        while ($times++ < $maxTimes and (!$isLocked = flock($filePointer, LOCK_EX | LOCK_NB))) {
-            // 初回の失敗のみ、ログ出力
-            if (!$isFailed) {
-                $isFailed = true;
-                $meta = stream_get_meta_data($filePointer);
-                if ($isLogged)
-                    $this->log(sprintf('Could not lock a file: %s', $meta['uri'] ?? ''), true);
-            }
+    protected function repeatOpenFileWithLock(
+        string $path, string $openMode, int $lockMode,
+        int $onceWaitTime, int $maxTimes, int &$times, bool $isLogged = true
+    ): mixed {
+        // ループ
+        $filePointer = false;
+        while ($times++ < $maxTimes and !$filePointer)
+            if (!$filePointer = $this->openFileWithLock($path, $openMode, $lockMode, false))
+                usleep($onceWaitTime);
 
-            // 待機
-            usleep($onceWaitTime);
-        }
-        if (!$isLocked) return false;
+        // 失敗時
+        if (!$filePointer and $isLogged)
+            $this->log(sprintf('Could not open or not lock a file: %s', $path), true);
 
-        // リトライで成功した場合
-        if ($isFailed)
-            $this->log(sprintf('Could lock a file by retrying: %s', $meta['uri'] ?? ''), true);
-
-        return true;
+        return $filePointer;
     }
 
     /**
@@ -710,8 +784,8 @@ class Events {
         if (!$filePointer = $this->openFile($path, 'r', false)) return false;
 
         // 排他ロックされていないことを確認
-        $isLocked = flock($filePointer, LOCK_SH | LOCK_NB);
-        fclose($filePointer);
+        $isLocked = $this->lockFile($filePointer, LOCK_SH | LOCK_NB);
+        $this->closeFile($filePointer);
         if (!$isLocked) return false;
 
         // 削除
@@ -731,12 +805,16 @@ class Events {
         $meta = stream_get_meta_data($this->waitFilePointer);
 
         // 閉じる
-        fclose($this->waitFilePointer);
-        $this->waitFilePointer = null;
+        $this->closeFile($this->waitFilePointer);
 
         // 削除
+        $result = false;
         if (isset($meta['uri']))
-            if (!@unlink($meta['uri'])) error_clear_last();
+            if (!$result = @unlink($meta['uri'])) error_clear_last();
+
+        // デバッグ
+        if ($this->isDebug and $result)
+            $this->log('[Debug]Destroy a waiting-file: ok');
     }
 
     /**
@@ -751,12 +829,16 @@ class Events {
         $meta = stream_get_meta_data($this->processFilePointer);
 
         // 閉じる
-        fclose($this->processFilePointer);
-        $this->processFilePointer = null;
+        $this->closeFile($this->processFilePointer);
 
         // 削除
+        $result = false;
         if (isset($meta['uri']))
-            if (!@unlink($meta['uri'])) error_clear_last();
+            if (!$result = @unlink($meta['uri'])) error_clear_last();
+
+        // デバッグ
+        if ($this->isDebug and $result)
+            $this->log('[Debug]Destroy a process-file: ok');
     }
 
     /**

@@ -13,6 +13,7 @@
 // 0.29.00 2024/07/24 初期化時、現在の頁番号を初期化するように変更。
 // 0.67.00 2025/01/09 行を追加/削除時、頁を移動するように変更。
 // 0.68.00 2025/01/09 行を変更/削除時、入力者情報を更新するように変更。
+// 0.80.00 2025/03/06 頁を遷移時、対象のボタンへフォーカス移動するように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/InputTableRow.php';
@@ -23,7 +24,7 @@ use tsubasaLibs\type\ArrayLike;
  * 入力テーブルクラス
  * 
  * @since 0.18.00
- * @version 0.68.00
+ * @version 0.80.00
  */
 class InputTable extends ArrayLike {
     // ---------------------------------------------------------------------------------------------
@@ -238,6 +239,19 @@ class InputTable extends ArrayLike {
         $this->pageCount--;
         if ($this->pageCount < 0) $this->pageCount = 0;
         if ($this->pageCount > $this->getMaxPageCount()) $this->pageCount = $this->getMaxPageCount();
+
+        // フォーカス
+        $pageItemNum = null;
+        if (is_array($_POST['prevPageButtonName']))
+            foreach ($_POST['prevPageButtonName'] as $i => $eventName)
+                if (isset($_POST[$eventName])) {
+                    $pageItemNum = $i;
+                    break;
+                }
+        if (is_int($pageItemNum))
+            $this->events->focusName = $this->pageCount > 0 ?
+                $_POST['prevPageButtonName'][$pageItemNum] ?? null :
+                $_POST['nextPageButtonName'][$pageItemNum] ?? null;
     }
 
     /**
@@ -247,6 +261,19 @@ class InputTable extends ArrayLike {
         $this->pageCount++;
         if ($this->pageCount < 0) $this->pageCount = 0;
         if ($this->pageCount > $this->getMaxPageCount()) $this->pageCount = $this->getMaxPageCount();
+
+        // フォーカス
+        $pageItemNum = null;
+        if (is_array($_POST['nextPageButtonName']))
+            foreach ($_POST['nextPageButtonName'] as $i => $eventName)
+                if (isset($_POST[$eventName])) {
+                    $pageItemNum = $i;
+                    break;
+                }
+        if (is_int($pageItemNum))
+            $this->events->focusName = $this->pageCount < $this->getMaxPageCount() ?
+                $_POST['nextPageButtonName'][$pageItemNum] ?? null :
+                $_POST['prevPageButtonName'][$pageItemNum] ?? null;
     }
 
     /**

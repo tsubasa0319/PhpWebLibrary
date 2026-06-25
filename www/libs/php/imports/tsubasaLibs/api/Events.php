@@ -18,6 +18,8 @@
 // 0.40.00 2024/09/25 デストラクタを追加。DBインスタンスを可能な範囲で解放。
 // 0.43.00 2024/10/11 JSON形式で受け取った値を配列型へ対応。
 // 0.72.00 2025/01/29 無条件に許可するIPアドレスかどうかチェックをメソッドとして独立。
+// 0.86.00 2025/04/02 アクセス過多に対する制限を実装。
+//                    DBの実行者情報へユーザIDの初期値を設定。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
@@ -28,7 +30,7 @@ use Stringable;
  * APIイベントクラス
  * 
  * @since 0.09.00
- * @version 0.72.00
+ * @version 0.86.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -61,6 +63,19 @@ class Events {
     protected $logFilePath;
     /** @var ?resource ログファイルポインタ */
     protected $logFilePointer;
+    /** @var ?type\TimeStamp 実行開始日時 */
+    protected $executeStartTime;
+
+    // ---------------------------------------------------------------------------------------------
+    // プロパティ(アクセス過多に対する制限)
+    /** @var int アクセスを監視する直近の時間幅(マイクロ秒) */
+    protected $monitorTimeSpan;
+    /** @var int 最大アクセス数 */
+    protected $maxNumberOfAccesses;
+    /** @var int 最大リトライ回数(実行開始日時の設定) */
+    protected $maxRetryTimes;
+    /** @var int 最大待ち時間(マイクロ秒) */
+    protected $maxWaitTime;
 
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
@@ -70,11 +85,12 @@ class Events {
         // 現在日時を取得
         $this->now = new type\TimeStamp();
 
-        // DB接続
-        $this->db = $this->getDb();
-
-        // 初期設定
-        $this->setInit();
+        // 設定
+        $this->setMonitorInfo();
+        $this->setRequestInfo();
+        if (mb_strlen($this->remoteHost) > 50)
+            $this->error('Too long remote-host length');
+        $this->logFilePath = $this->getLogFilePath();
 
         // ログファイルを開く
         if ($this->logFilePath !== null) {
@@ -87,11 +103,36 @@ class Events {
         // 権限チェック
         if (!$this->checkRole()) $this->roleError();
 
+        // DB接続
+        $this->db = $this->getDb();
+        $this->db->setExecutor();
+        $this->db->executor->userId = 'api';
+
+        // 実行開始時間を設定
+        if (!$this->setExecuteStartTime())
+            $this->error('Too many requests');
+
+        // 履歴へ登録
+        $this->insertHistory();
+
+        // 待機
+        if (!$this->wait())
+            $this->error('Too long wait-time');
+
+        // 初期設定
+        $this->setInit();
+
         // イベント
         $this->eventBefore();
+        $this->updateHistoryForParameter();
         if (!$this->event())
             $this->error('Event processing failed');
         $this->eventAfter();
+
+        // 履歴を更新(完了)
+        $this->db->executor->time = (new type\TimeStamp())->toDateTime();
+        $this->updateHistoryForEndTime();
+        $this->db->executor->time = $this->now->toDateTime();
 
         // ログファイルを閉じる
         $this->endLog();
@@ -129,18 +170,23 @@ class Events {
     }
 
     /**
-     * DBを取得
+     * アクセス過多に対する制限情報を設定
+     * 
+     * @since 0.86.00
      */
-    protected function getDb(): database\DbBase|false {
-        return false;
+    protected function setMonitorInfo() {
+        $this->monitorTimeSpan = 1000000;   // 直近1秒間のアクセスを監視
+        $this->maxNumberOfAccesses = 50;    // 監視期間内に許容するアクセス数は50個まで
+        $this->maxRetryTimes = 100;         // 実行開始を延期するリトライ回数は100回まで
+        $this->maxWaitTime = 30000000;      // 実行開始までの待ち時間は最大30秒間
     }
 
     /**
-     * 初期設定
+     * リクエスト情報を設定
+     * 
+     * @since 0.86.00
      */
-    protected function setInit() {
-        $this->allowHosts = [];
-
+    protected function setRequestInfo() {
         // リクエストヘッダ
         $this->remoteHost = null;
         $this->contentType = null;
@@ -168,11 +214,16 @@ class Events {
         if (!!preg_match('/charset=(.*?)\z/i', $this->contentType, $matches)) {
             $this->charset = trim($matches[1]);
         }
+    }
 
-        $this->_post = [];
-        $this->errorMessage = null;
-        $this->canResponseError = false;
-        $this->logFilePath = null;
+    /**
+     * ログファイルのパスを取得
+     * 
+     * @since 0.86.00
+     * @return ?string ファイルパス
+     */
+    protected function getLogFilePath(): ?string {
+        return null;
     }
 
     /**
@@ -240,6 +291,122 @@ class Events {
     protected function roleError() {
         $this->log('Role error: ' . $this->errorMessage);
         $this->error($this->errorMessage, 403);
+    }
+
+    /**
+     * DBを取得
+     * 
+     * @return database\DbBase|false DB
+     */
+    protected function getDb(): database\DbBase|false {
+        return false;
+    }
+
+    /**
+     * 実行開始日時を設定
+     * 
+     * @since 0.86.00
+     * @return bool 成否
+     */
+    protected function setExecuteStartTime(): bool {
+        $this->executeStartTime = new type\TimeStamp($this->now);
+
+        for ($i = 0; $i < $this->maxRetryTimes; $i++) {
+            // 直近の履歴を取得
+            $rcds = $this->getHistoryRecords();
+            if ($rcds === null) return false;
+
+            // アクセス過多でなければ、成功
+            if (count($rcds) < $this->maxNumberOfAccesses) return true;
+
+            // 実行開始日時を再設定
+            $rcd = $rcds[count($rcds) - $this->maxNumberOfAccesses];
+            $executeStartTime = $this->getRecordExecuteStartTime($rcd);
+            if ($executeStartTime === null) return false;
+
+            // 余裕持って0.01秒多めに設定
+            $executeStartTime->addMicroseconds($this->monitorTimeSpan + 1000);
+
+            $this->executeStartTime = $executeStartTime;
+        }
+
+        return false;
+    }
+
+    /**
+     * 直近の実行履歴を取得
+     * 
+     * @since 0.86.00
+     * @return ?database\Record[] 履歴レコードのリスト
+     */
+    protected function getHistoryRecords(): ?array {
+        return null;
+    }
+
+    /**
+     * レコードより実行開始日時を取得
+     * 
+     * @since 0.86.00
+     * @param database\Record $rcd レコード
+     * @return ?type\TimeStamp 実行開始日時
+     */
+    protected function getRecordExecuteStartTime(database\Record $rcd): ?type\TimeStamp {
+        return null;
+    }
+
+    /**
+     * 呼出履歴を登録
+     * 
+     * @since 0.86.00
+     * @return bool 成否
+     */
+    protected function insertHistory(): bool {
+        return false;
+    }
+
+    /**
+     * 実行開始まで待機
+     * 
+     * @since 0.86.00
+     * @return bool 成否
+     */
+    protected function wait(): bool {
+        $onceWaitTime = 10000;  // ループ1回当たりの待ち時間0.01秒
+        $maxTimes = intdiv($this->maxWaitTime, $onceWaitTime);
+
+        // 開始日時まで待機
+        $now = new type\TimeStamp();
+        $times = 0;
+        while ($times++ < $maxTimes and $now->compare($this->executeStartTime) < 0) {
+            usleep($onceWaitTime);
+            $now = new type\TimeStamp();
+        }
+        return $times < $maxTimes;
+    }
+
+    /**
+     * 呼出履歴を更新(呼出パラメータ)
+     * 
+     * @since 0.86.00
+     */
+    protected function updateHistoryForParameter() {}
+
+    /**
+     * 呼出履歴を更新(実行終了日時)
+     * 
+     * @since 0.86.00
+     */
+    protected function updateHistoryForEndTime() {}
+
+    /**
+     * 初期設定
+     */
+    protected function setInit() {
+        $this->allowHosts = [];
+
+        $this->_post = [];
+        $this->errorMessage = null;
+        $this->canResponseError = false;
     }
 
     /**

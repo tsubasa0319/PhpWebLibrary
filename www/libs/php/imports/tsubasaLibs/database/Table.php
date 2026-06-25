@@ -32,6 +32,7 @@
 // 0.61.00 2024/12/17 makeBindItemsWhereEqFromRecordが正常に動作していなかったので修正。
 // 0.65.00 2024/12/23 バインド項目を生成時、値の型チェックを削除。
 // 0.71.00 2025/01/18 SQL ServerのTOP句、MySQLのLIMIT句に対応。
+// 0.73.00 2025/02/04 SET句を生成時、値がNull値でもパラメータを追加するように訂正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -48,7 +49,7 @@ use Stringable;
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.71.00
+ * @version 0.73.00
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -3023,7 +3024,7 @@ class Table {
      * 
      * @since 0.48.00
      * @param array{0:string, 1:mixed}[] $idValues 項目IDと値の組み合わせリスト
-     * @return string SQLステートメント
+     * @return string|false SQLステートメント
      */
     protected function makeSqlSetItems(array $idValues): string|false {
         $setItems = [];
@@ -3045,22 +3046,10 @@ class Table {
 
         foreach ($idValues as $idValue) {
             $id = $idValue[0];
-            $value = $idValue[1];
 
-            // 通常項目
-            if (!in_array($id, $executorIds, true)) {
-                $setItems[] = sprintf('%s = %s',
-                    $this->getIdForSql($id),
-                    $value !== null ? '?' : 'NULL'
-                );
-            }
-
-            // 実行者項目
-            if (in_array($id, $executorIds, true)) {
-                $setItems[] = sprintf('%s = ?',
-                    $this->getIdForSql($id)
-                );
-            }
+            $setItems[] = sprintf('%s = ?',
+                $this->getIdForSql($id)
+            );
         }
 
         return implode(', ', $setItems);

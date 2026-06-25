@@ -33,6 +33,7 @@
 // 0.65.00 2024/12/23 バインド項目を生成時、値の型チェックを削除。
 // 0.71.00 2025/01/18 SQL ServerのTOP句、MySQLのLIMIT句に対応。
 // 0.73.00 2025/02/04 SET句を生成時、値がNull値でもパラメータを追加するように訂正。
+// 0.84.00 2025/03/28 軽微な修正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -49,7 +50,7 @@ use Stringable;
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.73.00
+ * @version 0.84.00
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -1391,6 +1392,8 @@ class Table {
 
         if ($this->db->isMssql())
             return '1 = 0';
+
+        $this->db->throwException('未対応のDBエンジンであるため、処理できませんでした。');
     }
 
     /**
@@ -2070,7 +2073,7 @@ class Table {
      * @param array{0:string, 1:mixed}[] $idValues2 項目IDと値の組み合わせのリスト(終了)
      * @return ?string|bool 等式文字列、true:無条件、false:必ず満たさない条件、null:処理失敗
      */
-    protected function makeEquationMultipleBetween($idValues1, $idValues2): string|bool {
+    protected function makeEquationMultipleBetween($idValues1, $idValues2): string|bool|null {
         // 項目IDチェック
         $idValueCount = min(count($idValues1), count($idValues2));
         for ($i = 0; $i < $idValueCount; $i++) {
@@ -2172,7 +2175,7 @@ class Table {
      * @param array{0:string, 1:mixed} ...$idValues 項目IDと値の組み合わせ
      * @return ?string|bool 等式文字列、true:無条件、false:必ず満たさない条件、null:処理失敗
      */
-    protected function makeEquationMultipleLike(...$idValues): string|bool {
+    protected function makeEquationMultipleLike(...$idValues): string|bool|null {
         if (count($idValues) == 0) return true;
 
         $equations = [];

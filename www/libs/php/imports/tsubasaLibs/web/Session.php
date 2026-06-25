@@ -8,6 +8,7 @@
 // 0.87.00 2025/04/05 常にセッションIDを取り直すことができるように対応。
 // 0.87.02 2025/04/08 安全性確保処理を追加。リファレンスの更新を自動化。
 // 0.87.04 2025/04/24 DB保存に対応。デバッグモードを実装。
+// 0.90.01 2025/05/17 セッションを破棄して異常終了させる際の例外出力を訂正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/SessionHandOver.php';
@@ -21,7 +22,7 @@ use Exception;
  * セッションクラス
  * 
  * @since 0.00.00
- * @version 0.87.04
+ * @version 0.90.01
  */
 class Session {
     // ---------------------------------------------------------------------------------------------
@@ -473,10 +474,10 @@ class Session {
     public function abortProgramWithDestroy(string|Exception $msgOrEx) {
         try {
             // 例外を出力
-            throw new WebException(
-                $msgOrEx?->getMessage() ?? $msgOrEx,
-                $msgOrEx?->getCode() ?? 0,
-                $msgOrEx instanceof Exception ? $msgOrEx : null);
+            if (is_string($msgOrEx))
+                throw new WebException($msgOrEx, 0, null);
+            else
+                throw new WebException('Exception is occured', 0, $msgOrEx);
         } catch (Exception $ex) {
         }
 

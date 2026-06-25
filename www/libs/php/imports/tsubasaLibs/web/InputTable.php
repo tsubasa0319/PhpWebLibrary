@@ -12,6 +12,7 @@
 //                    登録済チェック/存在する行のリストを取得を実装。行を変更イベントを実装。
 // 0.29.00 2024/07/24 初期化時、現在の頁番号を初期化するように変更。
 // 0.67.00 2025/01/09 行を追加/削除時、頁を移動するように変更。
+// 0.68.00 2025/01/09 行を変更/削除時、入力者情報を更新するように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/InputTableRow.php';
@@ -22,7 +23,7 @@ use tsubasaLibs\type\ArrayLike;
  * 入力テーブルクラス
  * 
  * @since 0.18.00
- * @version 0.67.00
+ * @version 0.68.00
  */
 class InputTable extends ArrayLike {
     // ---------------------------------------------------------------------------------------------
@@ -549,6 +550,7 @@ class InputTable extends ArrayLike {
         if (!$row->checkFromWeb()) return true;
         if (!$row->check()) return true;
 
+        $this->events->db->executor->isInput = true;
         if (!$row->updateForEdit()) return false;
 
         return true;
@@ -568,6 +570,7 @@ class InputTable extends ArrayLike {
             return false;
         }
 
+        $this->events->db->executor->isInput = true;
         if (!$row->updateForDelete()) return false;
         $row->delete();
 

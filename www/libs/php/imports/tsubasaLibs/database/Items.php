@@ -5,6 +5,7 @@
 // History:
 // 0.00.00 2024/01/23 作成。
 // 0.48.00 2024/10/24 項目IDのリストを取得。
+// 0.90.00 2025/05/16 各リストをキャッシュ対応し、再取得を高速化。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/Item.php';
@@ -16,13 +17,21 @@ require_once __DIR__ . '/advance/ItemsUpdaterItem.php';
  * 項目定義リストクラス
  * 
  * @since 0.00.00
- * @version 0.48.00
+ * @version 0.90.00
  */
 class Items {
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var string[] 追加項目 */
     public $addedItems;
+    /** @var string[] 項目IDのリスト(通常項目)のキャッシュ */
+    protected $cachedNormalItemIds;
+    /** @var string[] 項目IDのリスト(追加項目)のキャッシュ */
+    protected $cachedAddedItemIds;
+    /** @var string[] 項目IDのリスト(全項目)のキャッシュ */
+    protected $cachedItemIds;
+    /** @var array<string, Item> 項目定義リスト(連想配列型)の連想配列型のキャッシュ */
+    protected $cachedItemsArray;
 
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
@@ -45,6 +54,7 @@ class Items {
      * @return string[] 項目IDのリスト
      */
     public function getNormalItemIds(): array {
+        if ($this->cachedNormalItemIds !== null) return $this->cachedNormalItemIds;
         $itemIds = [];
 
         foreach (get_object_vars($this) as $name => $item) {
@@ -53,6 +63,7 @@ class Items {
             $itemIds[] = $name;
         }
 
+        $this->cachedNormalItemIds = $itemIds;
         return $itemIds;
     }
 
@@ -63,6 +74,7 @@ class Items {
      * @return string[] 項目IDのリスト
      */
     public function getAddedItemIds(): array {
+        if ($this->cachedAddedItemIds !== null) return $this->cachedAddedItemIds;
         $itemIds = [];
 
         foreach ($this->addedItems as $name) {
@@ -72,6 +84,7 @@ class Items {
             $itemIds[] = $name;
         }
 
+        $this->cachedAddedItemIds = $itemIds;
         return $itemIds;
     }
 
@@ -82,7 +95,12 @@ class Items {
      * @return string[] 項目IDのリスト
      */
     public function getItemIds(): array {
-        return [...$this->getNormalItemIds(), ...$this->getAddedItemIds()];
+        if ($this->cachedItemIds !== null) return $this->cachedItemIds;
+
+        $itemIds = [...$this->getNormalItemIds(), ...$this->getAddedItemIds()];
+
+        $this->cachedItemIds = $itemIds;
+        return $itemIds;
     }
 
     /**
@@ -91,6 +109,7 @@ class Items {
      * @return array<string, Item>
      */
     public function getItemsArray(): array {
+        if ($this->cachedItemsArray !== null) return $this->cachedItemsArray;
         $itemsArray = [];
 
         // 通常の項目
@@ -108,6 +127,7 @@ class Items {
             $itemsArray[$name] = $item;
         }
 
+        $this->cachedItemsArray = $itemsArray;
         return $itemsArray;
     }
 
@@ -145,6 +165,10 @@ class Items {
      */
     protected function setInit() {
         $this->addedItems = [];
+        $this->cachedNormalItemIds = null;
+        $this->cachedAddedItemIds = null;
+        $this->cachedItemIds = null;
+        $this->cachedItemsArray = null;
     }
 
     /**

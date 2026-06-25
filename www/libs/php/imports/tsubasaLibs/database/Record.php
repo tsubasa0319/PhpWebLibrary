@@ -11,6 +11,7 @@
 // 0.40.01 2024/09/26 原因は別にあったので、キャンセル。
 // 0.40.02 2024/09/27 一時利用のため、ステートメントインスタンスがNullである場合を考慮。
 // 0.48.00 2024/10/24 入力/変更されている項目IDのリストを取得を追加。
+// 0.90.00 2025/05/16 項目IDリストの取得を、項目リストのインスタンスで行い効率化。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/advance/RecordCreatorItem.php';
@@ -24,7 +25,7 @@ use Stringable;
  * レコードクラス
  * 
  * @since 0.00.00
- * @version 0.48.00
+ * @version 0.90.00
  */
 class Record {
     // ---------------------------------------------------------------------------------------------
@@ -110,13 +111,13 @@ class Record {
      * @return static チェーン用
      */
     public function setValuesFromArray(array $rm): static {
-        foreach ($rm as $name => $value) {
-            if (!is_string($name)) continue;
-            $this->{$name} = $value;
+        // レコードより取得
+        foreach ($rm as $id => $value) {
+            if (!is_string($id)) continue;
+            $this->{$id} = $value;
         }
-        $this->convertValues();
-        $this->setComputedValues();
-        return $this;
+
+        return $this->refresh();
     }
 
     /**
@@ -127,13 +128,12 @@ class Record {
      */
     public function setValuesFromRecord(self $that): static {
         $table = $this->stmt->table;
-        foreach (get_object_vars($table->items) as $name => $value) {
-            if (!($value instanceof Item)) continue;
-            $this->{$name} = $that->{$name};
-        }
-        $this->convertValues();
-        $this->setComputedValues();
-        return $this;
+
+        // レコードより取得
+        foreach ($table->items->getItemIds() as $id)
+            $this->{$id} = $that->{$id};
+
+        return $this->refresh();
     }
 
     /**
@@ -149,6 +149,7 @@ class Record {
         $this->setCreatorValues($executor);
         $this->setInputterValues($executor);
         $this->setUpdaterValues($executor);
+
         return $this;
     }
 
@@ -164,6 +165,7 @@ class Record {
 
         $this->setInputterValues($executor);
         $this->setUpdaterValues($executor);
+
         return $this;
     }
 
@@ -187,10 +189,9 @@ class Record {
         $table = $this->stmt->table;
 
         $nothing = $this->getNothing();
-        foreach (get_object_vars($table->items) as $name => $value) {
-            if (!($value instanceof Item)) continue;
-            $this->{$name} = $nothing;
-        }
+        foreach ($table->items->getItemIds() as $id)
+            $this->{$id} = $nothing;
+
         return $this;
     }
 
@@ -208,6 +209,7 @@ class Record {
         if (!($items->{$id} instanceof Item)) return false;
         if (!property_exists($this, $id)) return false;
         if ($this->{$id} instanceof type\Nothing) return false;
+
         return true;
     }
 
@@ -224,6 +226,7 @@ class Record {
         $values = [];
         foreach ($key->getKeyItems() as $keyItem)
             $values[] = $this->{$keyItem->item->id};
+
         return $values;
     }
 
@@ -234,9 +237,10 @@ class Record {
      * @return string[] 項目IDリスト
      */
     public function getInputtedIds(): array {
-        $ids = [];
+        $table = $this->stmt->table;
 
-        foreach (array_keys($this->stmt->table->items->getItemsArray()) as $id)
+        $ids = [];
+        foreach ($table->items->getItemIds() as $id)
             if ($this->isInputted($id))
                 $ids[] = $id;
 
@@ -261,7 +265,6 @@ class Record {
         }
 
         $ids = [];
-
         foreach ($this->getInputtedIds() as $id) {
             if (!$this->previousRecord->isInputted($id)) {
                 $ids[] = $id;
@@ -302,10 +305,8 @@ class Record {
         $table = $this->stmt->table;
 
         $items = $table->items;
-        foreach (get_object_vars($items) as $name => $item) {
-            if (!($item instanceof Item)) continue;
-            $this->convertValue($name, $item->type);
-        }
+        foreach ($items->getItemsArray() as $id => $item)
+            $this->convertValue($id, $item->type);
     }
 
     /**

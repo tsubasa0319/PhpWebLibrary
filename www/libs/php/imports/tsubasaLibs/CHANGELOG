@@ -1,3 +1,17 @@
+0.90.00 2025/05/16 17:53:03
+[変更]
+一括キー検索用APIメソッドを追加。各種リスト/履歴のキャッシュ対応で高速化。APIのバッファリングと非同期処理を改善。
+api/Events.php: エラー時にそれまでの出力を取り消すため、バッファリング対応。
+api/Method.php: 非同期処理開始時、他メソッドと同一マルチハンドル使用時に対応。
+api/MethodByKeys.php, database/Records.php: 新規追加。
+api/loader.php: APIメソッドクラス(一括キー検索用)を追加。
+database/Items.php: 各リストをキャッシュ対応し、再取得を高速化。
+database/Key.php: 項目IDリストをキャッシュ対応し、再取得を高速化。
+database/QueryPlanning.php: レコード取得履歴の持ち方を変更し、取得を高速化。
+database/Record.php: 項目IDリストの取得を、項目リストのインスタンスで行い効率化。
+database/Table.php: 実行者の項目IDリストをキャッシュ対応し、再取得を高速化。
+web/CurlMulti.php: 非同期処理の開始時、既に開始済があれば先に終わらせる。
+
 0.89.00 2025/05/10 18:05:48
 [変更]
 JavaScriptで、頁非表示時/暗転処理の解除を追加。

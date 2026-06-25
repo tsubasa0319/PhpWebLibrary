@@ -5,13 +5,14 @@
 // 0.05.00 2024/02/20 作成。
 // 0.55.00 2024/12/04 数値型/整数型/ブール型/関数型チェック、パラメータチェックを追加。
 // 0.59.00 2024/12/14 HTMLエレメント/ウィンドウチェックを追加。
+// 0.70.00 2025/01/16 ブラウザがFirefoxかどうかを追加。
 // -------------------------------------------------------------------------------------------------
 
 /**
  * チェック処理
  * 
  * @since 0.05.00
- * @version 0.59.00
+ * @version 0.70.00
  */
 const checker = {
     // ---------------------------------------------------------------------------------------------
@@ -169,6 +170,17 @@ const checker = {
         if (value === undefined) return false;
         if (value === null) return isNullable;
         return Object.prototype.toString.call(value) === '[object Window]';
+    },
+
+    /**
+     * ブラウザがFirefoxかどうか
+     * 
+     * @since 0.70.00
+     * @return {boolean} 結果
+     */
+    isFirefox: () => {
+        if (!self.isWindow(window)) return false;
+        return window.navigator.userAgent.indexOf('Firefox') != -1
     },
 
     /**

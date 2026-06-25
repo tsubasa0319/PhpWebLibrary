@@ -13,6 +13,7 @@
 //                    ステートメントクラス属性のパラメータが循環参照のため、弱い参照へ変更。
 // 0.40.02 2024/09/27 生成済テーブルインスタンスは通常の参照へ戻す。途中でメモリ解放されてしまうため。
 //                    メモリ解放はdisposeメソッドか、ガベージコレクションで行う。
+// 0.84.00 2025/03/28 実行者を設定するメソッドを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/DbStatement.php';
@@ -29,7 +30,7 @@ use Throwable;
  * DBクラス(PDOベース)
  * 
  * @since 0.00.00
- * @version 0.40.02
+ * @version 0.84.00
  */
 class DbBase extends PDO {
     // ---------------------------------------------------------------------------------------------
@@ -352,6 +353,15 @@ class DbBase extends PDO {
      */
     public function isPersistent(): bool {
         return (bool)$this->getAttribute(static::ATTR_PERSISTENT);
+    }
+
+    /**
+     * 実行者を設定
+     * 
+     * @since 0.84.00
+     */
+    public function setExecutor() {
+        $this->executor = new Executor();
     }
 
     // ---------------------------------------------------------------------------------------------

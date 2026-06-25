@@ -1,3 +1,12 @@
+0.87.02 2025/04/08 18:14:43
+[変更]
+セッションの安全性確保とリファレンス更新の自動化に対応。
+web/Session.php: 安全性確保処理を追加。リファレンスの更新を自動化。
+web/SessionHandOver.php: リファレンスの更新を自動化。
+web/SessionSecure.php: 新規追加。
+web/SessionUnit.php: リファレンスの更新を自動化。
+web/SessionUser.php: ログイン時、現在のセッションをログアウトにし、新規セッションへ切り替えるように変更。
+
 0.87.01 2025/04/08 11:51:25
 [変更]
 Smartyクラス群を tsubasaLibs\web から tsubasaLibs\smarty へ移動。Smarty用クラスローダを追加。

@@ -9,6 +9,7 @@
 // 0.18.00 2024/03/30 データの設定/取得/追加メソッドを追加。
 // 0.19.00 2024/04/16 セッションより値を削除するメソッドを追加。
 // 0.26.01 2024/06/22 画面単位セッションIDをGETメソッドからも取得できるように対応。
+// 0.87.02 2025/04/08 リファレンスの更新を自動化。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use DateTime, DateInterval, Exception;
@@ -17,7 +18,7 @@ use DateTime, DateInterval, Exception;
  * 画面単位セッションクラス
  * 
  * @since 0.03.00
- * @version 0.26.01
+ * @version 0.87.02
  */
 class SessionUnit {
     // ---------------------------------------------------------------------------------------------
@@ -29,6 +30,8 @@ class SessionUnit {
 
     // ---------------------------------------------------------------------------------------------
     // プロパティ
+    /** @var Session セッションインスタンス */
+    protected $session;
     /** @var array セッション情報のリファレンス */
     protected $refference;
     /** @var string 画面単位セッションID */
@@ -38,12 +41,31 @@ class SessionUnit {
 
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
-    public function __construct() {
+    public function __construct(Session $session) {
+        $this->session = $session;
         $this->setInit();
     }
 
     // ---------------------------------------------------------------------------------------------
     // メソッド
+    /**
+     * セッション情報のリファレンスを設定
+     */
+    public function setRefference() {
+        if (!isset($_SESSION[static::ID])) $_SESSION[static::ID] = [];
+        foreach ([
+            'info'
+        ] as $key)
+            if (!isset($_SESSION[static::ID][$key]))
+                $_SESSION[static::ID][$key] = match ($key) {
+                    'info'  =>  [],
+                    default =>  null
+                };
+
+        $this->refference =& $_SESSION[static::ID];
+        $this->setInfoFromSession();
+    }
+
     /**
      * セッションより値を取得
      * 
@@ -136,18 +158,6 @@ class SessionUnit {
     protected function setInit() {
         $this->setRefference();
         $this->removeOldUnits();
-    }
-
-    /**
-     * セッション情報のリファレンスを設定
-     */
-    protected function setRefference() {
-        if (!isset($_SESSION[static::ID]))
-            $_SESSION[static::ID] = [
-                'info' => []
-            ];
-        $this->refference =& $_SESSION[static::ID];
-        $this->setInfoFromSession();
     }
 
     /**

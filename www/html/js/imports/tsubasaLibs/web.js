@@ -28,6 +28,7 @@
 // 0.71.01 2025/01/21 Firefoxかどうか判定するメソッドの名前空間を訂正。
 // 0.79.00 2025/03/05 Spaceキーによるアンカークリック処理を追加。
 // 0.80.00 2025/03/06 頁を遷移するボタンが複数あった時、階層が一番近いものを選択するように変更。
+// 0.89.00 2025/05/10 暗転処理を解除を追加。
 // -------------------------------------------------------------------------------------------------
 import forArray from "./forArray.js";
 import checker from "./checker.js";
@@ -37,7 +38,7 @@ import Ajax from "./Ajax.js";
  * Web処理
  * 
  * @since 0.05.00
- * @version 0.80.00
+ * @version 0.89.00
  */
 const web = {
     // ---------------------------------------------------------------------------------------------
@@ -222,6 +223,7 @@ const web = {
      */
     setBlackout: () => {
         const elm = document.createElement('div');
+        elm.classList.add('blackout');
         elm.style.position = 'fixed';
         elm.style.top = '0';
         elm.style.left = '0';
@@ -230,6 +232,18 @@ const web = {
         elm.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
         document.body.append(elm);
         document.body.classList.add('wait');
+    },
+
+    /**
+     * 暗転処理を解除
+     * 
+     * @since 0.89.00
+     */
+    clearBlackout: () => {
+        Array.from(document.body.getElementsByClassName('blackout')).forEach(elm => {
+            elm.remove();
+        })
+        document.body.classList.remove('wait');
     },
 
     /**

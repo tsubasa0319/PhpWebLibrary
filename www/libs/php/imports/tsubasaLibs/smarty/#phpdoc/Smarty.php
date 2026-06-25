@@ -6,6 +6,7 @@
 // 0.08.00 2024/02/27 作成。
 // 0.75.00 2025/02/19 setTemplateDir/addTemplateDir/setCompileDir/setCacheDir/addPluginsDirを追加。
 // 0.87.00 2025/04/05 getTemplateDir/display/createTemplate/_getSmartyObj/_getTemplateIdを追加。
+// 0.87.01 2025/04/08 ディレクトリを移動。
 // -------------------------------------------------------------------------------------------------
 use tsubasaLibs\web\WebException;
 

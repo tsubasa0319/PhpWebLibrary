@@ -20,6 +20,7 @@
 // 0.72.00 2025/01/29 無条件に許可するIPアドレスかどうかチェックをメソッドとして独立。
 // 0.86.00 2025/04/02 アクセス過多に対する制限を実装。
 //                    DBの実行者情報へユーザIDの初期値を設定。
+// 0.88.00 2025/05/10 プロセス数を監視し、同時処理数を制限できるように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
@@ -30,7 +31,7 @@ use Stringable;
  * APIイベントクラス
  * 
  * @since 0.09.00
- * @version 0.86.00
+ * @version 0.88.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -63,18 +64,24 @@ class Events {
     protected $logFilePath;
     /** @var ?resource ログファイルポインタ */
     protected $logFilePointer;
+    /** @var ?resource 順番待ちファイルポインタ(プロセス監視用) */
+    protected $waitFilePointer;
+    /** @var ?resource プロセスファイルポインタ */
+    protected $processFilePointer;
     /** @var ?type\TimeStamp 実行開始日時 */
     protected $executeStartTime;
 
     // ---------------------------------------------------------------------------------------------
     // プロパティ(アクセス過多に対する制限)
-    /** @var int アクセスを監視する直近の時間幅(マイクロ秒) */
+    /** @var int 最大同時処理数 */
+    protected $maxNumberOfProcesses;
+    /** @var int 同一ホストによるアクセスを監視する直近の時間幅(マイクロ秒) */
     protected $monitorTimeSpan;
-    /** @var int 最大アクセス数 */
+    /** @var int 同一ホストによる監視時間内の最大アクセス数 */
     protected $maxNumberOfAccesses;
-    /** @var int 最大リトライ回数(実行開始日時の設定) */
+    /** @var int 実行開始日時を延期する最大リトライ回数 */
     protected $maxRetryTimes;
-    /** @var int 最大待ち時間(マイクロ秒) */
+    /** @var int 実行開始までの最大待ち時間(マイクロ秒) */
     protected $maxWaitTime;
 
     // ---------------------------------------------------------------------------------------------
@@ -102,6 +109,10 @@ class Events {
 
         // 権限チェック
         if (!$this->checkRole()) $this->roleError();
+
+        // 同時処理数チェック
+        if (!$this->checkNumberOfProcesses())
+            $this->error('Failed to check number of processes');
 
         // DB接続
         $this->db = $this->getDb();
@@ -134,6 +145,9 @@ class Events {
         $this->updateHistoryForEndTime();
         $this->db->executor->time = $this->now->toDateTime();
 
+        // 処理数から除外
+        $this->destroyProcessFile();
+
         // ログファイルを閉じる
         $this->endLog();
         fclose($this->logFilePointer);
@@ -143,6 +157,13 @@ class Events {
      * @since 0.40.00
      */
     public function __destruct() {
+        // 順番待ちファイル
+        $this->destroyWaitFile();
+
+        // プロセスファイル
+        $this->destroyProcessFile();
+
+        // DB
         if ($this->db !== null)
             $this->db->dispose();
     }
@@ -175,6 +196,7 @@ class Events {
      * @since 0.86.00
      */
     protected function setMonitorInfo() {
+        $this->maxNumberOfProcesses = 100;  // 同時に処理する数は100個まで
         $this->monitorTimeSpan = 1000000;   // 直近1秒間のアクセスを監視
         $this->maxNumberOfAccesses = 50;    // 監視期間内に許容するアクセス数は50個まで
         $this->maxRetryTimes = 100;         // 実行開始を延期するリトライ回数は100回まで
@@ -294,6 +316,260 @@ class Events {
     }
 
     /**
+     * プロセス数をチェック
+     * 
+     * @since 0.88.00
+     * @return bool 結果
+     */
+    protected function checkNumberOfProcesses(): bool {
+        $onceWaitTime = 10000;                              // ループ1回当たりの待ち時間0.01秒
+        $maxWaitTime = 1800000000;                          // 最大待ち時間30分
+        $times = 0;                                         // 試行回数
+        $maxTimes = intdiv($maxWaitTime, $onceWaitTime);    // 最大試行回数
+
+        // 保存するベースディレクトリパスを取得
+        $baseDir = $this->getSaveDirPathForProcess();
+        if ($baseDir === null) return true; // 指定が無ければ、チェックしない
+        if (!is_dir($baseDir)) {
+            trigger_error(sprintf('Directory is not found: %s', $baseDir), E_USER_WARNING);
+            return false;
+        }
+
+        // 子ディレクトリを取得
+        $childDir = sprintf('%s/api', $baseDir);
+
+        // ディレクトリが無ければ、生成
+        if (!file_exists($childDir)) @mkdir($childDir);
+        if (!is_dir($childDir)) {
+            trigger_error(sprintf('Not directory: %s', $childDir), E_USER_WARNING);
+            return false;
+        }
+
+        // プロセスIDを発行
+        $processId = $this->makeProcessId($childDir);
+        if ($processId === null) {
+            trigger_error('Could not generate a process-id', E_USER_WARNING);
+            return false;
+        }
+
+        // 順番待ち
+        if (!$this->waitMyTurnForProcess(
+            $childDir, $processId, $onceWaitTime, $maxTimes, $times)) {
+            trigger_error('My turn didn\'t come', E_USER_WARNING);
+            $this->destroyWaitFile();
+            return false;
+        }
+
+        // 処理数が少なくなるまで待機
+        if (!$this->ajustNumberOfProcessing($childDir, $onceWaitTime, $maxTimes, $times)) {
+            trigger_error('Too many processes', E_USER_WARNING);
+            $this->destroyWaitFile();
+            return false;
+        }
+
+        // API処理中ファイルを生成、ロック
+        if (!$this->lockProcessFile($childDir, $processId)) {
+            trigger_error(sprintf('Could not lock a process-file: %s', $processId), E_USER_WARNING);
+            $this->destroyProcessFile();
+            $this->destroyWaitFile();
+            return false;
+        }
+
+        // 順番待ちファイルを解放
+        $this->destroyWaitFile();
+
+        return true;
+    }
+
+    /**
+     * プロセス管理用のディレクトリパスを取得
+     * 
+     * @since 0.88.00
+     * @return ?string ディレクトリパス
+     */
+    protected function getSaveDirPathForProcess(): ?string {
+        return null;
+    }
+
+    /**
+     * プロセスIDを発行
+     * 
+     * @since 0.88.00
+     * @param string $dir プロセスファイルのディレクトリパス
+     * @return ?string プロセスID
+     */
+    protected function makeProcessId(string $dir): ?string {
+        $times = 0;
+        while ($times++ < 100) {
+            // 発行
+            $id = uniqid((new type\TimeStamp())->format('YmdHisu'), true);
+
+            // 存在チェック(id_*を生成できればOK)
+            $path = sprintf('%s/id_%s', $dir, $id);
+            if (file_exists($path)) continue;
+            $filePointer = @fopen($path, 'x');
+            if (!$filePointer) continue;
+            fclose($filePointer);
+
+            return $id;
+        }
+        return null;
+    }
+
+    /**
+     * プロセス処理のための順番を待つ
+     * 
+     * @since 0.88.00
+     * @param string $dir プロセスファイルのディレクトリパス
+     * @param string $id プロセスID
+     * @param int $onceWaitTime 1回当たりの待機時間(秒)
+     * @param int $maxTimes 最大試行回数
+     * @param int $times 現在の試行回数
+     * @return bool 成否
+     */
+    protected function waitMyTurnForProcess(
+        string $dir, string $id, int $onceWaitTime, int $maxTimes, int &$times
+    ): bool {
+        // 順番待ちファイルを生成
+        $path = sprintf('%s/wait_%s', $dir, $id);
+        $filePointer = fopen($path, 'w');
+        if (!$filePointer) return false;
+        $this->waitFilePointer = $filePointer;
+        if (!flock($filePointer, LOCK_EX | LOCK_NB)) return false;
+
+        // 待機中のプロセス一覧を取得
+        $paths = glob(sprintf('%s/wait_*', $dir));
+        if ($paths === false) return false;
+        sort($paths, SORT_REGULAR);
+
+        // 先頭が自身になるまでループ
+        while ($times++ < $maxTimes and count($paths) > 0 and $path !== $paths[0]) {
+            // 万一ロックされていないファイルがあれば、削除
+            foreach ($paths as $_path)
+                $this->destroyNoXLockFile($_path);
+
+            // 待機
+            usleep($onceWaitTime);
+
+            // 再取得
+            $paths = glob(sprintf('%s/wait_*', $dir));
+            if ($paths === false) return false;
+            sort($paths, SORT_REGULAR);
+        }
+
+        return count($paths) > 0 and $path === $paths[0];
+    }
+
+    /**
+     * プロセス数を調整
+     * 
+     * @since 0.88.00
+     * @param string $dir プロセスファイルのディレクトリパス
+     * @param int $onceWaitTime 1回当たりの待機時間(秒)
+     * @param int $maxTimes 最大試行回数
+     * @param int $times 現在の試行回数
+     * @return bool 成否
+     */
+    protected function ajustNumberOfProcessing(
+        string $dir, int $onceWaitTime, int $maxTimes, int &$times
+    ): bool {
+        // プロセス一覧を取得
+        $paths = glob(sprintf('%s/process_*', $dir));
+        if ($paths === false) return false;
+
+        // プロセス数が少なくなるまでループ
+        $savedTimes = $times;
+        while ($times++ < $maxTimes and count($paths) > $this->maxNumberOfProcesses) {
+            // 万一ロックされていないファイルがあれば、削除
+            foreach ($paths as $path)
+                $this->destroyNoXLockFile($path);
+
+            // 待機(1分間に1回通知)
+            usleep($onceWaitTime);
+            if ((($times - $savedTimes) % intdiv(60000000, $onceWaitTime)) == 1)
+                $this->log(sprintf('Number of processes: %s ...', number_format(count($paths))));
+
+            // 再取得
+            $paths = glob(sprintf('%s/process_*', $dir));
+            if ($paths === false) return false;
+        }
+
+        return count($paths) <= $this->maxNumberOfProcesses;
+    }
+
+    /**
+     * プロセスファイルを生成しロック
+     * 
+     * @since 0.88.00
+     * @param string $dir プロセスファイルのディレクトリパス
+     * @param string $id プロセスID
+     * @return bool 成否
+     */
+    protected function lockProcessFile(string $dir, string $id): bool {
+        $path = sprintf('%s/process_%s', $dir, $id);
+
+        // 開く
+        $filePointer = fopen($path, 'w');
+        if (!$filePointer) return false;
+        $this->processFilePointer = $filePointer;
+
+        // ロック
+        if (!flock($filePointer, LOCK_EX | LOCK_NB)) return false;
+
+        return true;
+    }
+
+    /**
+     * 排他ロックされていないことを確認し、ファイルを削除
+     * 
+     * @since 0.88.00
+     * @param string $path ファイルパス
+     * @return bool 成否
+     */
+    protected function destroyNoXLockFile(string $path): bool {
+        // ファイルかどうか
+        if (!is_file($path)) return false;
+
+        // 開く
+        $filePointer = @fopen($path, 'r');
+        if (!$filePointer) return false;
+
+        // 排他ロックされていないことを確認
+        $isLocked = flock($filePointer, LOCK_SH | LOCK_NB);
+        fclose($filePointer);
+        if (!$isLocked) return false;
+
+        // 削除
+        return @unlink($path);
+    }
+
+    /**
+     * 順番待ちファイルを破棄
+     * 
+     * @since 0.88.00
+     */
+    protected function destroyWaitFile() {
+        if (!$this->waitFilePointer) return;
+        $meta = stream_get_meta_data($this->waitFilePointer);
+        fclose($this->waitFilePointer);
+        if (isset($meta['uri'])) @unlink($meta['uri']);
+        $this->waitFilePointer = null;
+    }
+
+    /**
+     * プロセスファイルを破棄
+     * 
+     * @since 0.88.00
+     */
+    protected function destroyProcessFile() {
+        if (!$this->processFilePointer) return;
+        $meta = stream_get_meta_data($this->processFilePointer);
+        fclose($this->processFilePointer);
+        if (isset($meta['uri'])) @unlink($meta['uri']);
+        $this->processFilePointer = null;
+    }
+
+    /**
      * DBを取得
      * 
      * @return database\DbBase|false DB
@@ -374,13 +650,30 @@ class Events {
         $onceWaitTime = 10000;  // ループ1回当たりの待ち時間0.01秒
         $maxTimes = intdiv($this->maxWaitTime, $onceWaitTime);
 
+        // 実行者情報を一時保存
+        $executor = $this->db->executor;
+
         // 開始日時まで待機
         $now = new type\TimeStamp();
         $times = 0;
         while ($times++ < $maxTimes and $now->compare($this->executeStartTime) < 0) {
+            // DB接続を一時的に切る
+            if ($this->db !== null) {
+                $this->db->dispose();
+                $this->db = null;
+            }
+
+            // 待機
             usleep($onceWaitTime);
             $now = new type\TimeStamp();
         }
+
+        // DB再接続
+        if ($this->db === null) {
+            $this->db = $this->getDb();
+            $this->db->executor = $executor;
+        }
+
         return $times < $maxTimes;
     }
 

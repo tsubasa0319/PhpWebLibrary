@@ -10,16 +10,16 @@
 // 0.47.01 2024/10/19 2回目の実行時、1回目のパラメータを再度実行してしまうため修正。
 // 0.51.00 2024/11/13 検索速度を上げるため、キャッシュの持ち方を変更。
 // 0.52.00 2024/11/14 非同期処理に対応。
+// 0.88.00 2025/05/10 非同期処理を開始する度にマルチハンドルを取り直すように訂正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\web;
-use CurlMultiHandle;
 
 /**
  * APIメソッドクラス
  * 
  * @since 0.12.00
- * @version 0.52.00
+ * @version 0.88.00
  */
 class Method {
     // ---------------------------------------------------------------------------------------------
@@ -45,12 +45,14 @@ class Method {
     protected $cacheDatas;
     /** @var int キャッシュ数(削除済を含む) */
     protected $indexCount;
-    /** @var web\Curl[] cURLインスタンスリスト */
+    /** @var web\Curl[] 実行中のcURLインスタンスリスト */
     protected $curls;
-    /** @var ?web\Curl cURLインスタンス(resumu用) */
-    protected $resumeCurl;
-    /** @var ?CurlMultiHandle cURLのマルチハンドル */
-    protected $curlMultiHandle;
+    /** @var web\Curl[] 登録したcURLインスタンスリスト(未開始) */
+    protected $registedCurls;
+    /** @var web\Curl[] 再開するcURLインスタンスリスト(未完了) */
+    protected $resumingCurls;
+    /** @var ?web\CurlMulti cURLマルチインスタンス */
+    protected $curlMulti;
 
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
@@ -70,13 +72,62 @@ class Method {
      * @return mixed|false 取得データ、失敗時はfalse
      */
     public function exec(): mixed {
+        // cURLインスタンスを生成
         $curl = $this->makeCurlInstance($this->getUrl());
         $curl->setData($this->getParams());
         $this->clearParams();
 
-        $result = $this->receive($curl, $curl->exec());
+        // 実行
+        return $this->receive($curl, $curl->exec());
+    }
 
-        return $result;
+    /**
+     * cURLマルチインスタンスを変更
+     * 
+     * @since 0.88.00
+     * @param ?web\CurlMulti $curlMulti cURLマルチインスタンス
+     */
+    public function setCurlMulti(?web\CurlMulti $curlMulti = null) {
+        // 指定がなければ、生成
+        if ($curlMulti === null)
+            $curlMulti = $this->makeCurlMultiInstance();
+        $this->curlMulti = $curlMulti;
+    }
+
+    /**
+     * cURLマルチインスタンスを取得
+     * 
+     * @since 0.88.00
+     * @return ?web\CurlMulti cURLマルチインスタンス
+     */
+    public function getCurlMulti(): ?web\CurlMulti {
+        return $this->curlMulti;
+    }
+
+    /**
+     * 非同期処理へ登録
+     * 
+     * @since 0.88.00
+     * @return bool 結果
+     */
+    public function regist(): bool {
+        // cURLインスタンスを生成
+        $curl = $this->makeCurlInstance($this->getUrl());
+        $curl->setData($this->getParams());
+        $this->clearParams();
+
+        // cURLマルチインスタンスを生成
+        if ($this->curlMulti === null)
+            $this->setCurlMulti();
+
+        // マルチハンドルへ登録
+        $curl->setCurlMulti($this->curlMulti);
+        if (!$curl->regist()) return false;
+
+        // 登録リストへ追加
+        $this->registedCurls[] = $curl;
+
+        return true;
     }
 
     /**
@@ -86,50 +137,44 @@ class Method {
      * @return bool 結果
      */
     public function async(): bool {
-        // cURLインスタンスを生成
-        $curl = $this->makeCurlInstance($this->getUrl());
-        $curl->setData($this->getParams());
-        $this->clearParams();
+        // 1件も登録が無ければ、登録も兼ねていると判断
+        if (count($this->registedCurls) == 0)
+            $this->regist();
 
-        // マルチハンドルを1つにまとめて、非同期処理を開始
-        $result = $curl->async($this->getMultiHandle());
-        $this->curls[] = $curl;
-        $this->resumeCurl = $curl;
+        // 登録するものが無かった場合、終了
+        if (count($this->registedCurls) == 0)
+            return true;
+
+        // 再開処理用に、マルチハンドル別に1件のみ登録
+        $curlMultis = [];
+        foreach ($this->registedCurls as $curl)
+            if (!in_array($curl->getCurlMulti(), $curlMultis, true)) {
+                $this->resumingCurls[] = $curl;
+                $curlMultis[] = $curl->getCurlMulti();
+            }
+
+        // 非同期処理を開始
+        $result = true;
+        foreach ($this->registedCurls as $curl)
+            if ($curl->async())
+                $this->curls[] = $curl;
+            else
+                $result = false;
+        $this->registedCurls = [];
 
         return $result;
-    }
-
-    /**
-     * cURLのマルチハンドルを取得
-     * 
-     * @since 0.52.00
-     * @return ?CurlMultiHandle cURLのマルチハンドル
-     */
-    public function getMultiHandle(): ?CurlMultiHandle {
-        if (isset($this->curls[0]))
-            return $this->curls[0]->getMultiHandle();
-
-        return $this->curlMultiHandle;
-    }
-
-    /**
-     * cURLのマルチハンドルを設定
-     * 
-     * @since 0.52.00
-     * @param ?CurlMultiHandle $curlMultiHandle cURLのマルチハンドル
-     */
-    public function setMultiHandle(?CurlMultiHandle $curlMultiHandle) {
-        $this->curlMultiHandle = $curlMultiHandle;
     }
 
     /**
      * 非同期処理を再開
      */
     public function resume() {
-        // 次のアクティビティがあるまで、非同期処理を進める
-        $result = $this->resumeCurl?->resume();
-        if (!$result)
-            $this->resumeCurl = null;
+        $resumingCurls = [];
+        foreach ($this->resumingCurls as $curl)
+            // 次のアクティビティがあるかタイムアウトまで、非同期処理を進める
+            if ($curl->resume())
+                $resumingCurls[] = $curl;
+        $this->resumingCurls = $resumingCurls;
     }
 
     /**
@@ -142,8 +187,8 @@ class Method {
         // 終了準備
         $curls = $this->curls;
         $this->curls = [];
-        $this->resumeCurl = null;
-        $this->curlMultiHandle = null;
+        $this->registedCurls = [];
+        $this->resumingCurls = [];
 
         // 残りの処理を進めて、結果を受け取り
         $results = [];
@@ -185,8 +230,9 @@ class Method {
         $this->cacheDatas = [];
         $this->indexCount = 0;
         $this->curls = [];
-        $this->resumeCurl = null;
-        $this->curlMultiHandle = null;
+        $this->registedCurls = [];
+        $this->resumingCurls = [];
+        $this->curlMulti = null;
         $this->clearParams();
     }
 
@@ -200,6 +246,15 @@ class Method {
      */
     protected function makeCurlInstance($url = null): web\Curl {
         return new web\Curl($url);
+    }
+
+    /**
+     * Curlマルチインスタンスを生成
+     * 
+     * @since 0.88.00
+     */
+    protected function makeCurlMultiInstance(): web\CurlMulti {
+        return new web\CurlMulti();
     }
 
     /**

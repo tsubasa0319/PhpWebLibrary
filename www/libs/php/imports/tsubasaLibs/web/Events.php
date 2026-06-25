@@ -27,6 +27,7 @@
 // 0.42.00 2024/10/08 メソッドに、サブプログラムを呼ぶ(データ出力用/帳票出力用)を追加。
 // 0.44.00 2024/10/12 Smartyクラスを追加。
 // 0.47.00 2024/10/19 タイムスタンプインスタンスを生成するメソッドを追加。
+// 0.67.00 2025/01/09 Ajaxイベント時もセッション情報を取得/設定するように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
@@ -50,7 +51,7 @@ use Exception;
  * イベントクラス
  * 
  * @since 0.00.00
- * @version 0.47.00
+ * @version 0.67.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -138,6 +139,7 @@ class Events {
                 $this->eventAfter();
             } else {
                 // Ajaxイベント
+                $this->eventBefore();
                 if (!$this->event())
                     $this->eventError();
                 $this->eventAfterForAjax();
@@ -374,6 +376,29 @@ class Events {
      * @since 0.05.00
      */
     protected function eventAfterForAjax() {
+        // 各入力値をセッションへ保管
+        foreach (get_object_vars($this) as $name => $var) {
+            // 入力情報
+            if ($var instanceof InputItems) {
+                $var->setForSession();
+                $var->setToSession($this->session->unit);
+            }
+
+            // 入力テーブル
+            if ($var instanceof InputTable) {
+                // 全行をループ(頁外も含む)
+                foreach (clone $var as $row)
+                    $row->setForSession();
+                $var->setToSession($name, $this->session->unit);
+            }
+
+            // 選択リスト
+            if ($var instanceof SelectList) {
+                $var->setToSession($name, $this->session->unit);
+            }
+        }
+
+        // 送信元へ結果を返す
         echo json_encode([
             'status' => 'success',
             'values' => $this->valuesForAjax

@@ -5,6 +5,7 @@
 // History:
 // 0.87.02 2025/04/08 作成。
 // 0.87.04 2025/04/24 初回かどうかの判定方法を変更。
+// 1.00.01 2025/06/13 IPアドレスチェック時、ログインしていないセッションであれば空にして処理を継続へ変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 
@@ -12,7 +13,7 @@ namespace tsubasaLibs\web;
  * セッションの安全性確保処理クラス
  * 
  * @since 0.87.02
- * @version 0.87.04
+ * @version 1.00.01
  */
 class SessionSecure {
     // ---------------------------------------------------------------------------------------------
@@ -71,6 +72,13 @@ class SessionSecure {
 
         // IPアドレスチェック
         if ($this->getCurrentIpAddress() !== $this->ipAddress) {
+            // ログインしていないか、タイムアウトしていれば、空のセッションを再取得し、継続
+            if (!$this->session->user->isLoggedIn() or $this->session->user->isTimeout())
+                if ($this->session->reset() and
+                    $this->session->regenerateId() and
+                    $this->session->unset())
+                    return true;
+
             // 危険と判断し、このセッションは破棄
             $this->session->destroy();
             trigger_error('Session is accessed from a different ip-address', E_USER_WARNING);

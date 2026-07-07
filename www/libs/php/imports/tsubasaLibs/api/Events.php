@@ -32,6 +32,7 @@
 // 0.90.04 2025/05/24 コンストラクタでexitするとデストラクタが呼ばれないため、シャットダウン時処理で実行。
 // 0.90.05 2025/05/28 監視1回のループ当たりの待ち時間を設定できるように対応。
 //                    履歴用のDB接続をイベント用のDB接続と別に持つことができるように対応。
+// 1.00.01 2025/06/13 初期設定から許可情報の設定を分離。許可したリモートホスト名かどうかチェックできないため。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
@@ -42,7 +43,7 @@ use Stringable;
  * APIイベントクラス
  * 
  * @since 0.09.00
- * @version 0.90.05
+ * @version 1.00.01
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -272,6 +273,7 @@ class Events {
         $this->canceledMonitoring = false;
         $this->setMonitorInfo();
         $this->setRequestInfo();
+        $this->setPermissionInfo();
         $this->logFilePath = $this->getLogFilePath();
     }
 
@@ -325,6 +327,15 @@ class Events {
         if (!!preg_match('/charset=(.*?)\z/i', $this->contentType, $matches)) {
             $this->charset = trim($matches[1]);
         }
+    }
+
+    /**
+     * 許可情報を設定
+     * 
+     * @since 1.00.01
+     */
+    protected function setPermissionInfo() {
+        $this->allowHosts = [];
     }
 
     /**
@@ -1103,8 +1114,6 @@ class Events {
      * 初期設定
      */
     protected function setInit() {
-        $this->allowHosts = [];
-
         $this->_post = [];
         $this->errorMessage = null;
         $this->canResponseError = false;

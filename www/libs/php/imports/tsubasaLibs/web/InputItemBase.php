@@ -19,6 +19,8 @@
 //                    セレクトボックス/ラジオボタンに対応。
 // 0.20.00 2024/04/23 Web値を設定(GETメソッドより)は、読取専用/出力専用であっても実行するように変更。
 // 0.22.00 2024/05/17 一度セッションへ保管した値は、そのまま保持するように対応。
+// 1.01.02 2025/10/01 プロパティに機密情報かどうかを追加。
+// 1.01.03 2025/10/01 機密情報かどうかの初期値を設定。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 
@@ -26,7 +28,7 @@ namespace tsubasaLibs\web;
  * 入力項目ベースクラス
  * 
  * @since 0.00.00
- * @version 0.22.00
+ * @version 1.01.03
  */
 class InputItemBase {
     // ---------------------------------------------------------------------------------------------
@@ -385,6 +387,7 @@ class InputItemBase {
         $this->isReadOnly = false;
         $this->clearValue();
         $this->isRequired = false;
+        $this->isSensitive = false;
         $this->cssClassForError = '';
         $this->selectList = null;
         $this->labelForNoList = null;

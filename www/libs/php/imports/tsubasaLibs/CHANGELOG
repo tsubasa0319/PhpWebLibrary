@@ -1,3 +1,10 @@
+1.02.01 2025/11/05 11:06:15
+[変更]
+DBのDSN取得/テンポラリテーブル作成をMicrosoft SQL Serverに対応。
+database/DbConnectorBase.php: DSN取得(setDsnMssql)をMicrosoft SQL Serverに対応。
+database/Table.php: テンポラリテーブル作成をMicrosoft SQL Serverに対応(TemporaryTableMakerMssql経由)。
+database/TemporaryTableMakerMssql.php: Microsoft SQL Serverのテンポラリテーブル生成クラスを新規追加。
+
 1.02.00 2025/11/05 11:04:10
 [変更]
 自動コミット属性をMySQL限定にし、MSSQLは直接実行属性を初期Trueに設定。

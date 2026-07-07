@@ -7,6 +7,7 @@
 // History:
 // 0.00.00 2024/01/23 作成。
 // 1.01.02 2025/10/01 パスワードを隠蔽。
+// 1.02.01 2025/10/23 DSN取得をMicrosoft SQL Serverに対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/DbBase.php';
@@ -17,7 +18,7 @@ use SensitiveParameter;
  * DBコネクタベースクラス
  * 
  * @since 0.00.00
- * @version 1.01.02
+ * @version 1.02.01
  */
 class DbConnectorBase {
     // ---------------------------------------------------------------------------------------------
@@ -270,6 +271,7 @@ class DbConnectorBase {
     protected function setDsn() {
         if (!match ($this->_dbengine) {
             self::DB_ENGINE_MYSQL     => $this->setDsnMysql(),
+            self::DB_ENGINE_MSSQL     => $this->setDsnMssql(),
             self::DB_ENGINE_IBMI_ODBC => $this->setDsnIbmiOdbc(),
             default               => false})
             throw new DbException(sprintf('Invalid Db-Engine: %s', $this->_dbengine));
@@ -389,6 +391,33 @@ class DbConnectorBase {
         $prmL = [];
         foreach ($valL as $key => $val) $prmL[] = sprintf('%s=%s', $key, $val);
         $this->_dsn = sprintf('mysql:%s;', implode('; ', $prmL));
+        return true;
+    }
+
+    /**
+     * DSN取得(Microsoft SQL Server)
+     * 
+     * @since 1.02.01
+     * @return bool 成否判定
+     */
+    protected function setDsnMssql() {
+        $valL = [];
+
+        // ホスト名
+        $valL['Server'] = $this->_host;
+
+        // ポート番号
+        if ($this->_port !== null and $this->_port !== 1433)
+            $valL['Server'] .= ':' . $this->_port;
+
+        // 既定のDB名
+        if ($this->_dbname !== null)
+            $valL['Database'] = $this->_dbname;
+
+        $prmL = [];
+        foreach ($valL as $key => $val) $prmL[] = sprintf('%s=%s', $key, $val);
+        $this->_dsn = sprintf('sqlsrv:%s;', implode('; ', $prmL));
+
         return true;
     }
 

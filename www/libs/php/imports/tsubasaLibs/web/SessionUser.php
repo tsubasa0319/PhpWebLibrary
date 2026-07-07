@@ -150,6 +150,7 @@ class SessionUser {
      */
     public function login(string $userId, #[SensitiveParameter] string $password): bool {
         if (!$this->checkForLogin($userId, $password)) return false;
+        if (!$this->checkForSystemAdministratorLogin($userId)) return false;
 
         // 現在のセッションをログアウト
         if ($this->isLoggedIn()) $this->logout();
@@ -306,6 +307,74 @@ class SessionUser {
      * @return bool 成否
      */
     protected function checkForLogin(string $userId, #[SensitiveParameter] string $password): bool {
+        return false;
+    }
+
+    /**
+     * 開発環境かどうか
+     * 
+     * @since 1.03.00
+     * @return bool 結果
+     */
+    protected function isDevelopEnvironment(): bool {
+        return false;
+    }
+
+    /**
+     * システム管理者権限リストを取得
+     * 
+     * @since 1.03.00
+     * @return ?string[] システム管理者権限リスト
+     */
+    protected function getSystemAdministratorRoles(): ?array {
+        return null;
+    }
+
+    /**
+     * アクセス元がシステム管理者の端末かどうか
+     * 
+     * @since 1.03.00
+     * @return bool 結果
+     */
+    protected function isSystemAdministratorDevice(): bool {
+        return false;
+    }
+
+    /**
+     * ログイン時のチェック(システム管理者)
+     * 
+     * @since 1.03.00
+     * @param string $userId ユーザID
+     * @return bool 成否
+     */
+    protected function checkForSystemAdministratorLogin(string $userId): bool {
+        // システム管理者権限を持つ場合のみチェック
+        $hasSysAdminRole = false;
+        $sysAdminRoles = $this->getSystemAdministratorRoles();
+        if ($sysAdminRoles !== null)
+            // 一時的にユーザIDを設定
+            $_userId = $this->userId;
+            $this->userId = $userId;
+
+            $userRoles = $this->getRoles();
+
+            // 戻す
+            $this->userId = $_userId;
+
+            foreach ($sysAdminRoles as $sysAdminRole)
+                if (in_array($sysAdminRole, $userRoles, true)) {
+                    $hasSysAdminRole = true;
+                    break;
+                }
+        if (!$hasSysAdminRole) return true;
+
+        // アクセス元がシステム管理者の端末であれば許可
+        if ($this->isSystemAdministratorDevice()) return true;
+
+        // 開発環境の場合は、ローカル端末も許可
+        if ($this->isDevelopEnvironment())
+            if (in_array($_SERVER['REMOTE_ADDR'], ['127.0.0.1', '::1'], true)) return true;
+
         return false;
     }
 

@@ -5,6 +5,7 @@
    0.20.00 2024/04/23 作成。
    0.28.01 2024/06/26 サブプログラム呼び出しを実装。
    0.75.00 2025/02/19 ライブラリへ移動。
+   1.04.00 2026/05/23 CSRFトークンを追加。
 ------------------------------------------------------------------------------------------------- *}
 <!-- Main section end -->
             </section>
@@ -26,6 +27,7 @@
             <input type="hidden" id="callSubProgramId" value="{$general.callSubProgramId}" disabled>
             <input type="hidden" id="callType" value="{$general.callType}" disabled>
             <input type="hidden" name="startTime" value="{$general.startTime}">
+            <input type="hidden" name="csrfToken" value="{$library.csrfToken}">
         </form>
     </body>
 </html>

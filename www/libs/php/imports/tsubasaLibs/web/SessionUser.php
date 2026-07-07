@@ -17,6 +17,7 @@
 // 1.01.02 2025/10/01 パスワードを隠蔽。
 // 1.03.00 2025/11/05 ログイン時のチェック(システム管理者)を追加。
 // 1.03.01 2025/11/14 構文ミスを訂正。
+// 1.04.00 2026/05/23 ログイン/タイムアウト/ログアウト時に、CSRFトークンを再発行するように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use tsubasaLibs\type;
@@ -26,7 +27,7 @@ use SensitiveParameter;
  * ログインユーザクラス
  * 
  * @since 0.00.00
- * @version 1.03.01
+ * @version 1.04.00
  */
 class SessionUser {
     // ---------------------------------------------------------------------------------------------
@@ -82,7 +83,7 @@ class SessionUser {
         ] as $key)
             if (!isset($_SESSION[static::ID][$key]))
                 $_SESSION[static::ID][$key] = match ($key) {
-                    'status'    =>  'logout',
+                    'status'    =>  static::STATUS_LOGOUT,
                     default     =>  null
                 };
 
@@ -141,6 +142,9 @@ class SessionUser {
      */
     public function setTimeout() {
         $this->refference['status'] = static::STATUS_TIMEOUT_AFTER;
+
+        // CSRFトークンを再発行
+        $this->session->secure->setNewCsrfToken();
     }
 
     /**
@@ -169,6 +173,9 @@ class SessionUser {
         $this->setLoginTime($now);
         $this->setLastAccessTime($now);
 
+        // CSRFトークンを再発行
+        $this->session->secure->setNewCsrfToken();
+
         return true;
     }
 
@@ -180,6 +187,10 @@ class SessionUser {
     public function logout(): bool {
         $this->userId = null;
         $this->refference['status'] = static::STATUS_LOGOUT_AFTER;
+
+        // CSRFトークンを再発行
+        $this->session->secure->setNewCsrfToken();
+
         return true;
     }
 

@@ -11,6 +11,7 @@
    0.26.01 2024/06/22 サブプログラム呼び出しを実装。
    0.33.00 2024/08/27 JavaScriptのフレーム処理が、libs.frameに実装されていることを前提とした仕様へ変更。
    0.75.00 2025/02/19 ライブラリへ移動。
+   1.04.00 2026/05/23 CSRFトークンを追加。
 ------------------------------------------------------------------------------------------------- *}
 <!-- Main section end -->
             </section>
@@ -32,6 +33,7 @@
             <input type="hidden" id="callSubProgramId" value="{$general.callSubProgramId}" disabled>
             <input type="hidden" id="callType" value="{$general.callType}" disabled>
             <input type="hidden" name="startTime" value="{$general.startTime}">
+            <input type="hidden" name="csrfToken" value="{$library.csrfToken}">
         </form>
         <div id="subScreen" class="subScreen" onclick="libs.frame.closeSubScreen(event);">
             <iframe></iframe>

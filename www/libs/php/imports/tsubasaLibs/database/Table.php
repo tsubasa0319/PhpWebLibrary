@@ -37,6 +37,7 @@
 // 0.87.04 2025/04/24 SELECT時に行単位の共有ロック/排他ロックを付与できるように対応。
 // 0.90.00 2025/05/16 実行者の項目IDリストをキャッシュ対応し、再取得を高速化。
 // 0.90.06 2025/05/30 最後に実行したクエリのエラー情報を取得できるように対応。
+// 1.02.01 2025/10/23 テンポラリテーブルを作成をMicrosoft SQL Serverに対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -45,6 +46,7 @@ require_once __DIR__ . '/Key.php';
 require_once __DIR__ . '/Indexes.php';
 require_once __DIR__ . '/QueryPlanning.php';
 require_once __DIR__ . '/Records.php';
+require_once __DIR__ . '/TemporaryTableMakerMssql.php';
 require_once __DIR__ . '/advance/TableCamelCase.php';
 use WeakReference;
 use Stringable;
@@ -53,7 +55,7 @@ use Stringable;
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 0.90.06
+ * @version 1.02.01
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -997,7 +999,7 @@ class Table {
     /**
      * テンポラリテーブルを作成
      * 
-     * 現段階では、MySQLにのみ対応しています。
+     * 現段階では、MySQL/Microsoft SQL Serverに対応しています。
      * 
      * @param ?string $tempTableId テンポラリテーブルID
      * @return static テンポラリテーブルのテーブルクラス
@@ -1006,10 +1008,18 @@ class Table {
         if ($this->isTemp)
             $this->db->throwException('このメソッドを、テンポラリテーブルから実行することはできません。');
 
-        // テーブルID
-        $tempTableId = $tempTableId ?? sprintf('$%s', $this->id);
+        // 既定のテンポラリテーブルのテーブルID
+        $defaultTempTableId = match (true) {
+            $this->db->isMysql()    =>  sprintf('$%s', $this->id),
+            $this->db->isMssql()    =>
+                $this->makeTemporaryTableMakerMssql()->setTableId($this->id)->getDefaultTempTableId(),
+            default =>  null
+        };
+        if ($defaultTempTableId === null)
+            $this->db->throwException('このDBエンジンには未対応です。');
 
         // 再利用
+        $tempTableId = $tempTableId ?? $defaultTempTableId;
         if (array_key_exists($tempTableId, $this->tempTables)) {
             $tempTable = $this->tempTables[$tempTableId];
             if ($tempTable !== null)
@@ -1024,9 +1034,21 @@ class Table {
         $tempTable->baseTable = $this;
 
         // DBへテンポラリテーブルを作成
-        $query = sprintf('CREATE TEMPORARY TABLE %s LIKE %s',
-            $this->getIdForSql($tempTableId), $this->getIdForSql($this->id));
-        if (!$this->db->query($query)) $this->setErrorInfo($this->db);
+        // MySQL
+        if ($this->db->isMysql()) {
+            $query = sprintf('CREATE TEMPORARY TABLE %s LIKE %s',
+                $this->getIdForSql($tempTable->id), $this->getIdForSql($this->id));
+            if (!$this->db->query($query)) $this->setErrorInfo($this->db);
+        }
+
+        // Microsoft SQL Server
+        if ($this->db->isMssql()) {
+            $maker = $this->makeTemporaryTableMakerMssql();
+            $maker->setDb($this->db)
+                  ->setTableId($this->id)
+                  ->setTempTableId($tempTable->id);
+            if (!$maker->create()) $this->setErrorInfo($this->db);
+        }
 
         return $tempTable;
     }
@@ -1210,6 +1232,16 @@ class Table {
 
     // ---------------------------------------------------------------------------------------------
     // 内部処理
+    /**
+     * Microsoft SQL Serverのテンポラリテーブル生成インスタンスを生成
+     * 
+     * @since 1.02.01
+     * @return TemporaryTableMakerMssql Microsoft SQL Serverのテンポラリテーブル生成
+     */
+    protected function makeTemporaryTableMakerMssql(): TemporaryTableMakerMssql {
+        return new TemporaryTableMakerMssql();
+    }
+
     /**
      * 初期設定
      * 

@@ -1,3 +1,8 @@
+1.02.02 2025/11/01 16:23:40
+[変更]
+Microsoft SQL Serverの接続にTLS暗号化/サーバ証明書検証の設定を追加。
+database/DbConnectorBase.php: TLS暗号化(encrypt)/サーバ証明書の信頼(trustServerCertificate)をDSNへ設定できるように対応。
+
 1.02.01 2025/11/05 11:06:15
 [変更]
 DBのDSN取得/テンポラリテーブル作成をMicrosoft SQL Serverに対応。

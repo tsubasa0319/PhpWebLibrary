@@ -52,9 +52,13 @@ class DbConnectorBase {
     protected $_dbname;
     /** @var string 文字セット */
     protected $_charset;
-    /** @var string[]|string ライブラリリスト */
+    /** @var bool TLS暗号化するかどうか(Microsoft SQL Server) */
+    protected $_encrypt;
+    /** @var bool サーバ証明書のチェーンを検証するかどうか(Microsoft SQL Server) */
+    protected $_trustServerCertificate;
+    /** @var string[]|string ライブラリリスト(DB2) */
     protected $_libl;
-    /** @var int CCSID */
+    /** @var int CCSID(DB2) */
     protected $_ccsid;
     /** @var string 接続ユーザID */
     protected $_username;
@@ -190,7 +194,35 @@ class DbConnectorBase {
     }
 
     /**
-     * ライブラリリストを設定
+     * TLS暗号化するかどうかを設定(Microsoft SQL Server)
+     * 
+     * DBサーバ側で暗号化を強制している場合は、この設定は無視されます。
+     * 
+     * @since 1.02.02
+     * @param bool $encrypt TLS暗号化するかどうか
+     * @return static チェーン用
+     */
+    protected function setEncrypt(bool $encrypt): static {
+        $this->_encrypt = $encrypt;
+        return $this;
+    }
+
+    /**
+     * サーバ証明書のチェーンを検証せずに信頼するかどうかを設定(Microsoft SQL Server)
+     * 
+     * TLS暗号化している場合のみ、この設定は適用されます。
+     * 
+     * @since 1.02.02
+     * @param bool $trustServerCertificate サーバ証明書のチェーンを検証せずに信頼するかどうか
+     * @return static チェーン用
+     */
+    protected function setTrustServerCertificate(bool $trustServerCertificate): static {
+        $this->_trustServerCertificate = $trustServerCertificate;
+        return $this;
+    }
+
+    /**
+     * ライブラリリストを設定(DB2)
      * 
      * @param string[] $libl ライブラリリスト
      * @return static チェーン用
@@ -201,7 +233,7 @@ class DbConnectorBase {
     }
 
     /**
-     * CCSIDを設定
+     * CCSIDを設定(DB2)
      * 
      * @param int $ccsid CCSID
      * @return static チェーン用
@@ -413,6 +445,14 @@ class DbConnectorBase {
         // 既定のDB名
         if ($this->_dbname !== null)
             $valL['Database'] = $this->_dbname;
+
+        // TLS暗号化するかどうか
+        if ($this->_encrypt !== null)
+            $valL['encrypt'] = $this->_encrypt ? 'true' : 'false';
+
+        // サーバ証明書のチェーンを検証せずに信頼するかどうか
+        if ($this->_trustServerCertificate !== null)
+            $valL['trustServerCertificate'] = $this->_trustServerCertificate ? 'true' : 'false';
 
         $prmL = [];
         foreach ($valL as $key => $val) $prmL[] = sprintf('%s=%s', $key, $val);

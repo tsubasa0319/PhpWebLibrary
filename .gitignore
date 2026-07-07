@@ -1,3 +1,7 @@
 /temp/*
 !/temp/.gitempty
+/php/*
+!/php/.gitempty
+/logs/*
+!/logs/.gitempty
 .claude/settings.local.json

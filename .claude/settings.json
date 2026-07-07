@@ -8,12 +8,16 @@
       "Write(www/html/css/imports/tsubasaLibs/**)",
       "Edit(www/html/js/imports/tsubasaLibs/**)",
       "Write(www/html/js/imports/tsubasaLibs/**)",
-      "Edit(www/smarty/**)",
-      "Write(www/smarty/**)",
       "Write(temp/**)",
       "Edit(temp/**)",
       "Edit(CLAUDE.md)",
       "Write(CLAUDE.md)",
+      "Edit(docs/**)",
+      "Write(docs/**)",
+      "Edit(conf/**)",
+      "Write(conf/**)",
+      "Edit(installer/**)",
+      "Write(installer/**)",
 
       "Bash(cd:*)",
 
@@ -38,7 +42,6 @@
       "Bash(git rm www/libs/php/imports/*)",
       "Bash(git rm www/html/css/imports/tsubasaLibs/*)",
       "Bash(git rm www/html/js/imports/tsubasaLibs/*)",
-      "Bash(git rm www/smarty/*)",
 
       "Bash(xxd:*)",
       "Bash(tr:*)",
@@ -53,7 +56,21 @@
       "Bash(cut:*)",
       "Bash(rm temp/*)",
       "Bash(bash temp/*)",
-      "Bash(sh temp/*)"
+      "Bash(sh temp/*)",
+      "Bash(php/php.exe:*)",
+
+      "mcp__claude-in-chrome__list_connected_browsers",
+      "mcp__claude-in-chrome__navigate",
+      "mcp__claude-in-chrome__tabs_context_mcp",
+      "mcp__claude-in-chrome__tabs_create_mcp",
+      "mcp__claude-in-chrome__tabs_close_mcp",
+      "mcp__claude-in-chrome__get_page_text",
+      "mcp__claude-in-chrome__read_page",
+      "mcp__claude-in-chrome__computer",
+      "mcp__claude-in-chrome__read_console_messages",
+      "mcp__claude-in-chrome__read_network_requests",
+      "mcp__claude-in-chrome__find",
+      "mcp__claude-in-chrome__form_input"
     ],
     "deny": [
       "Bash(git push:*)",

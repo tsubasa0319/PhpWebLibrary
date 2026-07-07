@@ -29,6 +29,7 @@
 // 0.79.00 2025/03/05 Spaceキーによるアンカークリック処理を追加。
 // 0.80.00 2025/03/06 頁を遷移するボタンが複数あった時、階層が一番近いものを選択するように変更。
 // 0.89.00 2025/05/10 暗転処理を解除を追加。
+// 1.04.00 2026/05/23 Ajaxの送信パラメータにCSRFトークンを追加。
 // -------------------------------------------------------------------------------------------------
 import forArray from "./forArray.js";
 import checker from "./checker.js";
@@ -38,7 +39,7 @@ import Ajax from "./Ajax.js";
  * Web処理
  * 
  * @since 0.05.00
- * @version 0.89.00
+ * @version 1.04.00
  */
 const web = {
     // ---------------------------------------------------------------------------------------------
@@ -457,6 +458,11 @@ const web = {
         const elmSession = self.getElementByJoinName('UNIT_SESSION_ID');
         if (elmSession instanceof HTMLInputElement)
             params['UNIT_SESSION_ID'] = elmSession.value;
+
+        // CSRFトークンを追加
+        const elmCsrfToken = self.getElementByJoinName('csrfToken');
+        if (elmCsrfToken instanceof HTMLInputElement)
+            params['csrfToken'] = elmCsrfToken.value;
 
         // 開始日時を設定
         self.setStartTime();

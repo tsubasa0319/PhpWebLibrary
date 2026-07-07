@@ -1,3 +1,18 @@
+1.04.00 2026/05/23 18:01:59
+[変更]
+CSRFトークンによるPOST改ざん対策を追加し、APIのエラーメッセージをマスキングできるように対応。
+web/SessionSecure.php: CSRFトークンの発行/保持/取得と、POST送信時のトークンチェックを追加。
+web/Session.php: セッション開始時、CSRFトークンが未発行であれば発行するように対応。
+web/SessionUser.php: ログイン/タイムアウト/ログアウト時にCSRFトークンを再発行。
+web/Events.php: Smarty利用時のみCSRFトークンを出力。未ログインがタイムアウトの場合はHTTP 401を返すように変更。PHPDocを訂正。
+web/InputItems.php: setFromSessionが画面単位セッションを引数で受け取るように変更。PHPDocを訂正。
+web/SelectList.php: コンストラクタでイベントインスタンスを受け取るように変更。
+api/Events.php: 送信エラーメッセージをマスキング可能にし、判定を継承先で実装できるように対応。PHPDocを訂正。
+smarty/templates/footer.tpl, smarty/templates/subFooter.tpl: CSRFトークンのhidden項目を追加。
+smarty/Smarty.php: ログポインタのPHPDocを追加。
+js/frame.js: ログアウト送信パラメータにCSRFトークンを追加。
+js/web.js: Ajax送信パラメータにCSRFトークンを追加。
+
 1.03.01 2025/11/14 14:22:37
 [変更]
 システム管理者ログインチェックの構文ミスを訂正。

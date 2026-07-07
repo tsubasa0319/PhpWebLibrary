@@ -9,6 +9,7 @@
 // 0.87.02 2025/04/08 安全性確保処理を追加。リファレンスの更新を自動化。
 // 0.87.04 2025/04/24 DB保存に対応。デバッグモードを実装。
 // 0.90.01 2025/05/17 セッションを破棄して異常終了させる際の例外出力を訂正。
+// 1.04.00 2026/05/23 セッション開始時、CSRFトークンが未発行であれば発行するように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/SessionHandOver.php';
@@ -22,7 +23,7 @@ use Exception;
  * セッションクラス
  * 
  * @since 0.00.00
- * @version 0.90.01
+ * @version 1.04.00
  */
 class Session {
     // ---------------------------------------------------------------------------------------------
@@ -338,6 +339,7 @@ class Session {
         // セッション開始
         if (!static::statusIsActive()) {
             $times = 0;
+            $isStarted = false;
             while ($times++ < 1000 and $isStarted = $this->start()) {
                 // 引き継ぎ中でなければ、続行
                 if (!$this->handOver->isWorking) break;
@@ -357,6 +359,10 @@ class Session {
 
         // 画面単位IDを設定
         $this->unit->setUnitId();
+
+        // CSRFトークンを発行、未発行の場合
+        if ($this->secure->getCsrfToken() === null)
+            $this->secure->setNewCsrfToken();
 
         // セッションハイジャック対策
         if (!$this->secure->execute())

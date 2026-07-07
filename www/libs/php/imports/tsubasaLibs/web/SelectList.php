@@ -5,6 +5,7 @@
 // History:
 // 0.19.00 2024/04/16 作成。
 // 0.19.01 2024/04/17 生成メソッドを標準化。
+// 1.04.00 2026/05/23 プロパティにイベントインスタンスを追加。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/SelectItem.php';
@@ -13,17 +14,23 @@ require_once __DIR__ . '/SelectItem.php';
  * 選択リストクラス
  * 
  * @since 0.19.00
- * @version 0.19.01
+ * @version 1.04.00
  */
 class SelectList {
     // ---------------------------------------------------------------------------------------------
     // プロパティ
+    /** @var Events イベント */
+    protected $events;
     /** @var SelectItem[] 項目リスト */
     protected $items;
 
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
-    public function __construct() {
+    /**
+     * @param Events $events イベント
+     */
+    public function __construct(Events $events) {
+        $this->events = $events;
         $this->setInit();
     }
 

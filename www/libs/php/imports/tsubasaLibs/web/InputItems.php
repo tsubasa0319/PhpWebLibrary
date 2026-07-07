@@ -127,10 +127,11 @@ class InputItems {
      * 画面単位セッションより設定
      * 
      * @since 0.03.00
+     * @param SessionUnit $unit 画面単位セッション
      */
-    public function setFromSession() {
+    public function setFromSession(SessionUnit $unit) {
         foreach ($this->getItems() as $var)
-            $var->setFromSession($this->events->session->unit);
+            $var->setFromSession($unit);
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -273,7 +274,7 @@ class InputItems {
     /**
      * セッションへ登録
      * 
-     * @param SessionUnit 画面単位セッション
+     * @param SessionUnit $unit 画面単位セッション
      */
     public function setToSession(SessionUnit $unit) {
         foreach ($this->getItems() as $item)

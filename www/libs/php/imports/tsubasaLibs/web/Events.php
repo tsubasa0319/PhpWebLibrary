@@ -39,6 +39,7 @@
 //                    無駄なDB接続を減らすため、セッションを取得した後にDB接続するように変更。
 //                    出力データのフラッシュをシャットダウン時に行うように変更。
 // 0.90.03 2025/05/21 Ajax時、最終エラーのタイプがエラーの場合のみ、失敗を返すように変更。
+// 1.04.00 2026/05/23 Smartyを利用時のみ、CSRFトークンを出力するように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/Session.php';
@@ -61,7 +62,7 @@ use Exception;
  * イベントクラス
  * 
  * @since 0.00.00
- * @version 0.90.03
+ * @version 1.04.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -223,7 +224,7 @@ class Events {
      * @since 0.22.00
      * @param string $message メッセージ
      * @param int $code エラーコード
-     * @param Exception 例外オブジェクト
+     * @param Exception $ex 例外オブジェクト
      */
     public function writeException(string $message, int $code = 0, ?Exception $ex = null) {
         try {
@@ -264,7 +265,7 @@ class Events {
      * 
      * @since 0.47.00
      * @param string|DateTime|Stringable $date 日付
-     * @param ?DateTimeZone タイムゾーン
+     * @param ?DateTimeZone $timezone タイムゾーン
      * @return type\TimeStamp タイムスタンプインスタンス
      */
     protected function makeNewTimeStamp($date = 'now', $timezone = null) {
@@ -317,7 +318,13 @@ class Events {
      */
     protected function stopEventByNotLoggedIn() {
         // 既定では、URL自身が無かったものとして返す
-        header('HTTP', true, 404);
+        $status = 404;
+
+        // タイムアウトの場合
+        if ($this->session->user->isTimeout())
+            $status = 401;
+
+        header('HTTP', true, $status);
         if (ob_get_level() > 0) ob_end_clean();
     }
 
@@ -449,6 +456,16 @@ class Events {
             if ($var instanceof SelectList) {
                 $var->setToSession($name, $this->session->unit);
             }
+        }
+
+        // Smartyへ変数を設定(Smartyを利用する場合のみ)
+        if ($this->smarty instanceof Smarty) {
+            // CSRFトークン
+            $csrfToken = htmlspecialchars($this->session->secure->getCsrfToken() ?? '');
+
+            $this->smarty->assign('library', [
+                'csrfToken' =>  $csrfToken
+            ]);
         }
     }
 

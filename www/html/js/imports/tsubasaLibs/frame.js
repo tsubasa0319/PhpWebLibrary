@@ -17,6 +17,7 @@
 // 0.79.00 2025/03/05 キー押下時処理にSpaceキーによるアンカークリック処理を追加。
 // 0.81.00 2025/03/15 サブプログラムであることを識別できるようにパラメータを追加。
 // 0.89.00 2025/05/10 頁非表示時処理に暗転処理を解除を追加。
+// 1.04.00 2026/05/23 ログアウト時の送信パラメータにCSRFトークンを追加。
 // -------------------------------------------------------------------------------------------------
 import checker from "./checker.js";
 import web from "./web.js";
@@ -25,7 +26,7 @@ import web from "./web.js";
  * フレーム処理
  * 
  * @since 0.05.00
- * @version 0.89.00
+ * @version 1.04.00
  */
 const frame = {
     // ---------------------------------------------------------------------------------------------
@@ -240,6 +241,11 @@ const frame = {
         elmButton.type = 'submit';
         elmButton.name = 'btnLogout';
         elmForm.append(elmButton);
+
+        // CSRFトークンを追加、存在する場合のみ
+        const elmCsrfToken = document.getElementsByName('csrfToken')[0];
+        if (elmCsrfToken instanceof HTMLInputElement)
+            elmForm.append(elmCsrfToken.cloneNode());
 
         // フォームを実体化後、実行
         document.body.append(elmForm);

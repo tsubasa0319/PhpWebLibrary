@@ -33,6 +33,8 @@
 // 0.90.05 2025/05/28 監視1回のループ当たりの待ち時間を設定できるように対応。
 //                    履歴用のDB接続をイベント用のDB接続と別に持つことができるように対応。
 // 1.00.01 2025/06/13 初期設定から許可情報の設定を分離。許可したリモートホスト名かどうかチェックできないため。
+// 1.04.00 2026/05/23 エラー送信時メッセージをマスキングできるように対応。
+//                    マスキングするかどうかの判定を継承先で実装できるように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 use tsubasaLibs\type;
@@ -43,7 +45,7 @@ use Stringable;
  * APIイベントクラス
  * 
  * @since 0.09.00
- * @version 1.00.01
+ * @version 1.04.00
  */
 class Events {
     // ---------------------------------------------------------------------------------------------
@@ -1344,6 +1346,7 @@ class Events {
      * 文字セットを変換(PHPでの処理用)
      * 
      * @since 0.31.00
+     * @param string $charset データの文字セット
      * @return ?string 変換後の文字セット
      */
     protected function convertCharsetForPhp($charset): ?string {
@@ -1455,6 +1458,10 @@ class Events {
         // HTTP通信
         if (!headers_sent()) header('HTTP', true, $httpCode);
 
+        // マスキング
+        if ($this->isMaskingErrorMessageToSend())
+            $message = 'An unexpected error has occurred';
+
         // メッセージ送信(JSON形式)
         if ($this->canResponseError) {
             $this->outputJson([
@@ -1504,5 +1511,15 @@ class Events {
      */
     protected function endLog() {
         $this->log('End');
+    }
+
+    /**
+     * 送信するエラーメッセージをマスキングするかどうかチェック
+     * 
+     * @since 1.04.00
+     * @return bool 結果
+     */
+    protected function isMaskingErrorMessageToSend(): bool {
+        return true;
     }
 }

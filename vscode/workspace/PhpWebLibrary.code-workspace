@@ -4,10 +4,6 @@
 			"path": "."
 		},
 		{
-			"name": "www/smarty",
-			"path": "../../www/smarty"
-		},
-		{
 			"name": "www/html/css/imports",
 			"path": "../../www/html/css/imports"
 		},
@@ -21,6 +17,18 @@
 		},
 		{
 			"path": "../../bat"
+		},
+		{
+			"path": "../../conf"
+		},
+		{
+			"path": "../../docs"
+		},
+		{
+			"path": "../../logs"
+		},
+		{
+			"path": "../../temp"
 		}
 	],
 	"settings": {

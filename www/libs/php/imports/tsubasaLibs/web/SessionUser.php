@@ -14,15 +14,17 @@
 // 0.83.00 2025/03/27 ログインしているかどうかの処理から、タイムアウトしているかどうかを分離。
 // 0.87.02 2025/04/08 ログイン時、現在のセッションをログアウトにし、新規セッションへ切り替えるように変更。
 // 0.87.04 2025/04/24 デバッグ出力を追加。
+// 1.01.02 2025/10/01 パスワードを隠蔽。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use tsubasaLibs\type;
+use SensitiveParameter;
 
 /**
  * ログインユーザクラス
  * 
  * @since 0.00.00
- * @version 0.87.04
+ * @version 1.01.02
  */
 class SessionUser {
     // ---------------------------------------------------------------------------------------------
@@ -146,7 +148,7 @@ class SessionUser {
      * @param string $password パスワード
      * @return bool 成否
      */
-    public function login($userId, $password): bool {
+    public function login(string $userId, #[SensitiveParameter] string $password): bool {
         if (!$this->checkForLogin($userId, $password)) return false;
 
         // 現在のセッションをログアウト
@@ -303,7 +305,7 @@ class SessionUser {
      * @param string $password パスワード
      * @return bool 成否
      */
-    protected function checkForLogin($userId, $password): bool {
+    protected function checkForLogin(string $userId, #[SensitiveParameter] string $password): bool {
         return false;
     }
 

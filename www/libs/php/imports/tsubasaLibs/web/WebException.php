@@ -5,37 +5,21 @@
 // History:
 // 0.22.00 2024/05/17 作成。
 // 0.87.04 2025/04/24 トレースにファイルパスや行番号がなかった場合へ対応。
+// 1.01.02 2025/10/01 common\Exceptionを継承するように変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
-use Exception, Throwable;
+require_once __DIR__ . '/../common/Exception.php';
+use tsubasaLibs\common;
 
 /**
  * Web処理の例外クラス
  * 
  * @since 0.22.00
- * @version 0.87.04
+ * @version 1.01.02
  */
-class WebException extends Exception {
+class WebException extends common\Exception {
     // ---------------------------------------------------------------------------------------------
-    // コンストラクタ/デストラクタ
-    public function __construct(string $message, int $code = 0, Throwable $previous = null) {
-        parent::__construct($message, $code, $previous);
-
-        // 主メッセージ
-        error_log(sprintf('PHP WebException: %s in %s on line %s', $message, $this->file, $this->line));
-
-        // スタックトレース(一番元のなったものを参照)
-        $ex = $this;
-        while ($ex->getPrevious() instanceof Throwable)
-            $ex = $ex->getPrevious();
-        error_log('PHP Stack trace:');
-
-        // トレースループ
-        foreach ($ex->getTrace() as $num => $trace)
-            error_log(sprintf('PHP %3d. %s%s%s %s:%s %s',
-                $num + 1,
-                $trace['class'], $trace['type'], $trace['function'],
-                $trace['file'] ?? '', $trace['line'] ?? '', json_encode($trace['args'], JSON_UNESCAPED_UNICODE)
-            ));
-    }
+    // 定数(オーバーライド)
+    /** 例外名 */
+    const EXCEPTION_NAME = 'WebException';
 }

@@ -6,17 +6,18 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
-// 0.90.05 2025/05/28 接続パラメータの設定を接続時に行うように変更。
+// 1.01.02 2025/10/01 パスワードを隠蔽。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/DbBase.php';
 require_once __DIR__ . '/DbException.php';
+use SensitiveParameter;
 
 /**
  * DBコネクタベースクラス
  * 
  * @since 0.00.00
- * @version 0.90.05
+ * @version 1.01.02
  */
 class DbConnectorBase {
     // ---------------------------------------------------------------------------------------------
@@ -71,6 +72,18 @@ class DbConnectorBase {
     public function __construct(?string $env = null) {
         $this->setInit();
         $this->setEnv($env);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // マジックメソッド
+    public function __debugInfo() {
+        $properties = (array)$this;
+
+        // パスワードを隠蔽
+        $key = sprintf("\0*\0%s", '_password');
+        $properties[$key] = '[Sensitive Property]';
+
+        return $properties;
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -214,7 +227,7 @@ class DbConnectorBase {
      * @param string $password 接続パスワード
      * @return static チェーン用
      */
-    protected function setPassword(string $password) {
+    protected function setPassword(#[SensitiveParameter] string $password) {
         $this->_password = $password;
         return $this;
     }

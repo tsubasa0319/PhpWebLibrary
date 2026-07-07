@@ -15,6 +15,8 @@
 // 0.87.02 2025/04/08 ログイン時、現在のセッションをログアウトにし、新規セッションへ切り替えるように変更。
 // 0.87.04 2025/04/24 デバッグ出力を追加。
 // 1.01.02 2025/10/01 パスワードを隠蔽。
+// 1.03.00 2025/11/05 ログイン時のチェック(システム管理者)を追加。
+// 1.03.01 2025/11/14 構文ミスを訂正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use tsubasaLibs\type;
@@ -24,7 +26,7 @@ use SensitiveParameter;
  * ログインユーザクラス
  * 
  * @since 0.00.00
- * @version 1.01.02
+ * @version 1.03.01
  */
 class SessionUser {
     // ---------------------------------------------------------------------------------------------
@@ -351,7 +353,7 @@ class SessionUser {
         // システム管理者権限を持つ場合のみチェック
         $hasSysAdminRole = false;
         $sysAdminRoles = $this->getSystemAdministratorRoles();
-        if ($sysAdminRoles !== null)
+        if ($sysAdminRoles !== null) {
             // 一時的にユーザIDを設定
             $_userId = $this->userId;
             $this->userId = $userId;
@@ -366,6 +368,7 @@ class SessionUser {
                     $hasSysAdminRole = true;
                     break;
                 }
+        }
         if (!$hasSysAdminRole) return true;
 
         // アクセス元がシステム管理者の端末であれば許可

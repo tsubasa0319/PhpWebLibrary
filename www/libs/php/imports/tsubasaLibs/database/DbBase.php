@@ -15,6 +15,7 @@
 //                    メモリ解放はdisposeメソッドか、ガベージコレクションで行う。
 // 0.84.00 2025/03/28 実行者を設定するメソッドを追加。
 // 0.84.01 2025/03/28 実行者インスタンス生成メソッドを追加。
+// 1.01.02 2025/10/01 パスワードを隠蔽。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/DbStatement.php';
@@ -26,12 +27,13 @@ require_once __DIR__ . '/ExecuteLog.php';
 use PDO, PDOException;
 use WeakReference;
 use Throwable;
+use SensitiveParameter;
 
 /**
  * DBクラス(PDOベース)
  * 
  * @since 0.00.00
- * @version 0.84.01
+ * @version 1.01.02
  */
 class DbBase extends PDO {
     // ---------------------------------------------------------------------------------------------
@@ -65,7 +67,8 @@ class DbBase extends PDO {
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
     public function __construct(
-        string $dsn, ?string $username = null, ?string $password = null, ?array $options = null
+        string $dsn, ?string $username = null, #[SensitiveParameter] ?string $password = null,
+        ?array $options = null
     ) {
         $log = new ExecuteLogRow();
         $log->setName('DB接続')->setDetail(sprintf('%s|%s|%s',

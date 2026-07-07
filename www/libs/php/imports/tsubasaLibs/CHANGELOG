@@ -1,3 +1,13 @@
+1.01.02 2025/10/01 15:57:26
+[変更]
+パスワード/機密情報の隠蔽と、例外のスタックトレース出力を改善。
+common/Exception.php: スタックトレースのパラメータ値をデータ型別に変換し、機密パラメータを隠蔽。
+database/DbBase.php, database/DbConnectorBase.php: 接続パスワードを隠蔽(SensitiveParameter/__debugInfo)。
+encryption/Password.php: hash/verify 等のパスワード引数を SensitiveParameter に。
+web/InputItemBase.php: 機密項目(isSensitive)の値を隠蔽。
+web/SessionUser.php: login/checkForLogin のパスワードを SensitiveParameter に。
+web/WebException.php: 共通の例外クラス(common)を継承するように変更。
+
 1.01.01 2025/09/18 15:54:57
 [変更]
 パスワードのランダム生成関数を変更。

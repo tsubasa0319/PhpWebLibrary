@@ -5,14 +5,16 @@
 // History:
 // 1.01.00 2025/09/18 作成。
 // 1.01.01 2025/09/18 ランダム生成に用いる関数を変更。
+// 1.01.02 2025/10/01 パスワードを隠蔽。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\encryption;
+use SensitiveParameter;
 
 /**
  * パスワード暗号化クラス
  * 
  * @since 1.01.00
- * @version 1.01.01
+ * @version 1.01.02
  */
 class Password {
     // ---------------------------------------------------------------------------------------------
@@ -36,7 +38,7 @@ class Password {
      * @param string $plain 平文
      * @return string 暗号文
      */
-    public function hash(string $plain): string {
+    public function hash(#[SensitiveParameter] string $plain): string {
         return match ($this->algo) {
             default =>  $this->hashByBcrypt($plain)
         };
@@ -49,7 +51,7 @@ class Password {
      * @param string $cipher 暗号文
      * @return bool 結果
      */
-    public function verify(string $plain, string $cipher): bool {
+    public function verify(#[SensitiveParameter] string $plain, #[SensitiveParameter] string $cipher): bool {
         return password_verify($this->addPepper($plain), $cipher);
     }
 
@@ -87,7 +89,7 @@ class Password {
      * @param string $plain 平文
      * @return string 暗号文
      */
-    protected function hashByBcrypt(string $plain): string {
+    protected function hashByBcrypt(#[SensitiveParameter] string $plain): string {
         return password_hash($this->addPepper($plain), PASSWORD_BCRYPT, ['cost' => $this->cost]);
     }
 
@@ -99,7 +101,7 @@ class Password {
      * @param string $plain 平文
      * @return string ペッパー付きの平文
      */
-    protected function addPepper(string $plain): string {
+    protected function addPepper(#[SensitiveParameter] string $plain): string {
         return $plain;
     }
 }

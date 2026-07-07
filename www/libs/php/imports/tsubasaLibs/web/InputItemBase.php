@@ -71,6 +71,8 @@ class InputItemBase {
     public $cssClassForError;
     /** @var bool 入力が必須かどうか */
     public $isRequired;
+    /** @var bool 機密情報かどうか */
+    public $isSensitive;
     /** @var bool フォーカス移動先かどうか */
     public $isFocus;
     /** @var string エラーID */
@@ -94,6 +96,22 @@ class InputItemBase {
         $this->name = $name;
         $this->label = $label ?? $name;
         $this->setInit();
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // マジックメソッド
+    public function __debugInfo() {
+        $properties = (array)$this;
+
+        $key = sprintf("\0*\0%s", 'items');
+        unset($properties[$key]);
+
+        // 機密情報を隠蔽
+        if ($this->isSensitive)
+            foreach (['value', 'webValue', 'sessionValue'] as $key)
+                $properties[$key] = '[Sensitive Property]';
+
+        return $properties;
     }
 
     // ---------------------------------------------------------------------------------------------

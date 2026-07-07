@@ -7,6 +7,7 @@
 // 0.87.04 2025/04/24 初回かどうかの判定方法を変更。
 // 1.00.01 2025/06/13 IPアドレスチェック時、ログインしていないセッションであれば空にして処理を継続へ変更。
 // 1.04.00 2026/05/23 CSRFトークンを追加。POST送信時、トークンチェックを追加。
+// 1.04.01 2026/05/26 テストコードが残っていたので訂正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 
@@ -14,7 +15,7 @@ namespace tsubasaLibs\web;
  * セッションの安全性確保処理クラス
  * 
  * @since 0.87.02
- * @version 1.04.00
+ * @version 1.04.01
  */
 class SessionSecure {
     // ---------------------------------------------------------------------------------------------
@@ -94,7 +95,6 @@ class SessionSecure {
         if ($this->hasCsrfToken and strtoupper($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') {
             $csrfToken = $_POST['csrfToken'] ?? null;
             if ($csrfToken !== $this->csrfToken) {
-var_dump($csrfToken, $this->csrfToken);
                 // 危険と判断し、このセッションは破棄
                 $this->session->destroy();
                 trigger_error('Invalid CSRF token', E_USER_WARNING);

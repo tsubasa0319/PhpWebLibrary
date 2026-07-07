@@ -16,6 +16,8 @@
 // 0.84.00 2025/03/28 実行者を設定するメソッドを追加。
 // 0.84.01 2025/03/28 実行者インスタンス生成メソッドを追加。
 // 1.01.02 2025/10/01 パスワードを隠蔽。
+// 1.02.00 2025/10/04 自動コミットの属性変更をMySQLの場合へ限定。
+//                    MSSQLの場合、クエリ直接実行の属性初期値をTrueへ設定。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/DbStatement.php';
@@ -33,7 +35,7 @@ use SensitiveParameter;
  * DBクラス(PDOベース)
  * 
  * @since 0.00.00
- * @version 1.01.02
+ * @version 1.02.00
  */
 class DbBase extends PDO {
     // ---------------------------------------------------------------------------------------------
@@ -209,7 +211,9 @@ class DbBase extends PDO {
 
         try {
             // 自動で生成されたトランザクションは終了させる
-            $autocommit = $this->getAttribute(static::ATTR_AUTOCOMMIT);
+            $autocommit = false;
+            if ($this->isMysql())
+                $autocommit = $this->getAttribute(static::ATTR_AUTOCOMMIT);
             if (!$autocommit and $this->inTransaction()) $this->rollBack();
 
             // トランザクション開始
@@ -394,12 +398,16 @@ class DbBase extends PDO {
 
         // 属性
         $this->setAttribute(static::ATTR_ERRMODE, static::ERRMODE_EXCEPTION);
-        $this->setAttribute(static::ATTR_AUTOCOMMIT, false);
+        if ($this->isMysql())
+            $this->setAttribute(static::ATTR_AUTOCOMMIT, false);
         $this->setAttribute(static::ATTR_EMULATE_PREPARES, false);
         $this->setAttribute(static::ATTR_DEFAULT_FETCH_MODE, static::FETCH_ASSOC);
         $this->setAttribute(static::ATTR_STATEMENT_CLASS,
             // 自身を循環参照するため、弱い参照
             [DbStatement::class, [WeakReference::create($this)]]);
+        if ($this->isMssql())
+            // 前のクエリで適用した設定が必要な場合にtrue、主にテンポラリテーブル用
+            $this->setAttribute(static::SQLSRV_ATTR_DIRECT_QUERY, true);
     }
 
     /**

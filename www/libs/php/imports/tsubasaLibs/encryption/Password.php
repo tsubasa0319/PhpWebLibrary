@@ -4,6 +4,7 @@
 //
 // History:
 // 1.01.00 2025/09/18 作成。
+// 1.01.01 2025/09/18 ランダム生成に用いる関数を変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\encryption;
 
@@ -11,7 +12,7 @@ namespace tsubasaLibs\encryption;
  * パスワード暗号化クラス
  * 
  * @since 1.01.00
- * @version 1.01.00
+ * @version 1.01.01
  */
 class Password {
     // ---------------------------------------------------------------------------------------------
@@ -64,7 +65,7 @@ class Password {
     public function makeNewPepper(int $length = 16): string {
         return sprintf(str_repeat('%s', $length), ...(function($length) {
             $values = [];
-            for ($i = 0; $i < $length; $i++) $values[] = chr(mt_rand(32, 126));
+            for ($i = 0; $i < $length; $i++) $values[] = chr(random_int(32, 126));
             return $values;
         })($length));
     }

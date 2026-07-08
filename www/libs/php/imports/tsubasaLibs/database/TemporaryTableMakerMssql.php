@@ -4,6 +4,8 @@
 //
 // History:
 // 1.02.01 2025/10/23 作成。
+// 1.05.02 2026/06/05 インデックスなしテーブルで prepare('') が呼ばれるバグ修正。
+//                    IDENTITY(1,1) をテンポラリテーブルへ引き継ぎ対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 
@@ -11,7 +13,7 @@ namespace tsubasaLibs\database;
  * Microsoft SQL Serverのテンポラリテーブル生成クラス
  * 
  * @since 1.02.01
- * @version 1.02.01
+ * @version 1.05.02
  */
 class TemporaryTableMakerMssql {
     // ---------------------------------------------------------------------------------------------
@@ -22,7 +24,7 @@ class TemporaryTableMakerMssql {
     protected $tableId;
     /** @var string テンポラリテーブルID */
     protected $tempTableId;
-    /** @var array<int, array{name:string, type:string, isNullable:bool, default:?string}> 項目リスト */
+    /** @var array<int, array{name:string, type:string, isNullable:bool, isIdentity:bool, default:?string}> 項目リスト */
     protected $columns;
     /** @var array<int, array{name:string, maxLength:int}> データ型リスト */
     protected $types;
@@ -117,9 +119,11 @@ class TemporaryTableMakerMssql {
 
         // インデックス生成(SQL Server 2014(12.x)より前)
         if (!$this->isSqlServer2014OrLater()) {
-            $stmt = $this->db->prepare(
-                implode('; ', $this->makeSqlListCreateIndexForSqlServer2012OrEarlier()));
-            if (!$stmt or !$stmt->execute()) return false;
+            $sqls = $this->makeSqlListCreateIndexForSqlServer2012OrEarlier();
+            if (!empty($sqls)) {
+                $stmt = $this->db->prepare(implode('; ', $sqls));
+                if (!$stmt or !$stmt->execute()) return false;
+            }
         }
 
         return true;
@@ -197,6 +201,7 @@ class TemporaryTableMakerMssql {
             'name'          =>  $rm['name'],                                // 項目名
             'type'          =>  $this->getTypeFromColumnsRecord($rm),       // データ型名
             'isNullable'    =>  $rm['is_nullable'] == 1,                    // 値にNullを許可するかどうか
+            'isIdentity'    =>  $rm['is_identity'] == 1,                    // 自動採番かどうか
             'default'       =>  null                                        // 既定値
         ];
 
@@ -338,8 +343,7 @@ class TemporaryTableMakerMssql {
     /**
      * クエリパーツを取得(項目定義)
      * 
-     * 自動採番の設定は引き継ぎません。  
-     * 例: employee_id int NOT NULL, company_id nvarchar(2) NOT NULL, ...
+     * 例: employee_id int IDENTITY(1,1) NOT NULL, company_id nvarchar(2) NOT NULL, ...
      * 
      * @return string SQLパーツ
      */
@@ -354,6 +358,9 @@ class TemporaryTableMakerMssql {
 
             // データ型
             $words[] = $column['type'];
+
+            // 自動採番
+            if ($column['isIdentity']) $words[] = 'IDENTITY(1,1)';
 
             // NULL値を許可するかどうか
             if (!$column['isNullable']) $words[] = 'NOT NULL';

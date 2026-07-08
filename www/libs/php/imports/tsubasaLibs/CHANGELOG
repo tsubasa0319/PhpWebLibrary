@@ -1,3 +1,10 @@
+1.06.00 2026/06/05 00:00:00
+[変更]
+外部設定(.confidential/.env)を読み込む仕組みを追加。
+system/ExternalConfig.php: .confidential 配下の .env を読み込む外部設定の抽象クラスを新規追加。
+system/loader.php: system サブライブラリのローダを新規追加。
+loader.php: system/loader.php の読み込みを追加。
+
 1.05.04 2026/06/05 00:00:00
 [変更]
 Microsoft SQL Server接続時に、ロック待ちタイムアウト(SET LOCK_TIMEOUT)を設定できるように対応。

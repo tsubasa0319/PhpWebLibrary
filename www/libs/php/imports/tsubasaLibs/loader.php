@@ -14,6 +14,7 @@
 // 0.41.00 2024/10/02 メール処理用のクラスローダを追加。
 // 0.87.01 2025/04/08 Smarty用のクラスローダを追加。
 // 1.01.00 2025/09/18 暗号化用のクラスローダを追加。
+// 1.06.00 2026/06/05 外部設定用のクラスローダを追加。
 // -------------------------------------------------------------------------------------------------
 require_once __DIR__ . '/type/loader.php';
 require_once __DIR__ . '/database/loader.php';
@@ -25,3 +26,4 @@ require_once __DIR__ . '/cli/loader.php';
 require_once __DIR__ . '/mail/loader.php';
 require_once __DIR__ . '/smarty/loader.php';
 require_once __DIR__ . '/encryption/loader.php';
+require_once __DIR__ . '/system/loader.php';

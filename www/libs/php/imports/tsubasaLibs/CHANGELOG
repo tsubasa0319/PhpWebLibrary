@@ -1,3 +1,8 @@
+1.05.04 2026/06/05 00:00:00
+[変更]
+Microsoft SQL Server接続時に、ロック待ちタイムアウト(SET LOCK_TIMEOUT)を設定できるように対応。
+database/DbBase.php: $lockTimeoutMs(既定null=未設定)を追加し、MSSQL接続時に設定されていれば SET LOCK_TIMEOUT を発行(ロック無限待ちによる固着を防止)。
+
 1.05.03 2026/06/05 00:00:00
 [変更]
 テーブル更新(makeSqlUpdateFromTable)をMicrosoft SQL Serverに対応。

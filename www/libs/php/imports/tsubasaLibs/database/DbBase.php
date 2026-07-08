@@ -18,6 +18,8 @@
 // 1.01.02 2025/10/01 パスワードを隠蔽。
 // 1.02.00 2025/10/04 自動コミットの属性変更をMySQLの場合へ限定。
 //                    MSSQLの場合、クエリ直接実行の属性初期値をTrueへ設定。
+// 1.05.04 2026/06/05 MSSQL: 接続時に SET LOCK_TIMEOUT を発行する仕組みを追加($lockTimeoutMs・既定null=未設定)。
+//                    ロック待ちの無限待ちによる固着防止。値はサブクラスで上書き可。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/DbStatement.php';
@@ -35,7 +37,7 @@ use SensitiveParameter;
  * DBクラス(PDOベース)
  * 
  * @since 0.00.00
- * @version 1.02.00
+ * @version 1.05.04
  */
 class DbBase extends PDO {
     // ---------------------------------------------------------------------------------------------
@@ -65,6 +67,8 @@ class DbBase extends PDO {
     protected $tableInstances;
     /** @var Executor 実行者 */
     public $executor;
+    /** @var ?int MSSQL: SET LOCK_TIMEOUT のミリ秒。null は未設定(既定=無限待ち)。サブクラスで上書き可 */
+    protected $lockTimeoutMs = null;
 
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
@@ -408,6 +412,10 @@ class DbBase extends PDO {
         if ($this->isMssql())
             // 前のクエリで適用した設定が必要な場合にtrue、主にテンポラリテーブル用
             $this->setAttribute(static::SQLSRV_ATTR_DIRECT_QUERY, true);
+
+        // Microsoft SQL Server: ロック待ちの上限を設定(無限待ちによる固着防止)
+        if ($this->isMssql() and $this->lockTimeoutMs !== null)
+            $this->exec(sprintf('SET LOCK_TIMEOUT %d', $this->lockTimeoutMs));
     }
 
     /**

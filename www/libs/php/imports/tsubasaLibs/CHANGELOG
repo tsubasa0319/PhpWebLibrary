@@ -1,3 +1,8 @@
+1.05.03 2026/06/05 00:00:00
+[変更]
+テーブル更新(makeSqlUpdateFromTable)をMicrosoft SQL Serverに対応。
+database/Table.php: makeSqlUpdateFromTable を SQL Server の UPDATE ... FROM ... INNER JOIN 構文に対応(WHERE句の代入漏れも修正)。
+
 1.05.02 2026/06/05 00:00:00
 [変更]
 Microsoft SQL Serverのテンポラリテーブル生成を改善(空クエリ回避/自動採番の引継ぎ)。

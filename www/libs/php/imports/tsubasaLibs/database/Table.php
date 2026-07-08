@@ -41,6 +41,7 @@
 // 1.05.00 2026/06/05 $tableName を追加。DBテーブル名を任意で別名指定できるように対応。
 //                    convertIdFromVarToSql/convertIdFromSqlToVar にて、
 //                    Item::$columnName / Table::$tableName を参照するように対応。
+// 1.05.03 2026/06/05 makeSqlUpdateFromTable: Microsoft SQL Server の UPDATE FROM JOIN 構文に対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -58,7 +59,7 @@ use Stringable;
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 1.05.00
+ * @version 1.05.03
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -4032,12 +4033,19 @@ class Table {
             $whereEquations[] = $this->makeSqlWhereChangedOnlyFromTable($setIds);
 
         // 生成
-        $sql = 'UPDATE';
-        $sql = sprintf('%s %s AS tbl INNER JOIN %s AS tmp ON %s SET %s',
-            $sql, $tableId, $tempTableId, implode(' AND ', $joinEquations),
-            implode(', ', $setEquations));
-        if (count($whereEquations) > 0) sprintf('%s WHERE %s',
-            $sql, implode(' AND ', $whereEquations));
+        if ($this->db->isMssql()) {
+            // SQL Server: UPDATE tbl SET ... FROM tbl INNER JOIN tmp ON ...
+            $sql = sprintf('UPDATE tbl SET %s FROM %s AS tbl INNER JOIN %s AS tmp ON %s',
+                implode(', ', $setEquations),
+                $tableId, $tempTableId, implode(' AND ', $joinEquations));
+        } else {
+            // MySQL: UPDATE tbl INNER JOIN tmp ON ... SET ...
+            $sql = sprintf('UPDATE %s AS tbl INNER JOIN %s AS tmp ON %s SET %s',
+                $tableId, $tempTableId, implode(' AND ', $joinEquations),
+                implode(', ', $setEquations));
+        }
+        if (count($whereEquations) > 0)
+            $sql = sprintf('%s WHERE %s', $sql, implode(' AND ', $whereEquations));
 
         return $sql;
     }

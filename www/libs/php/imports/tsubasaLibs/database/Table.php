@@ -38,6 +38,9 @@
 // 0.90.00 2025/05/16 実行者の項目IDリストをキャッシュ対応し、再取得を高速化。
 // 0.90.06 2025/05/30 最後に実行したクエリのエラー情報を取得できるように対応。
 // 1.02.01 2025/10/23 テンポラリテーブルを作成をMicrosoft SQL Serverに対応。
+// 1.05.00 2026/06/05 $tableName を追加。DBテーブル名を任意で別名指定できるように対応。
+//                    convertIdFromVarToSql/convertIdFromSqlToVar にて、
+//                    Item::$columnName / Table::$tableName を参照するように対応。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -55,15 +58,17 @@ use Stringable;
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 1.02.01
+ * @version 1.05.00
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
     // プロパティ
     /** @var DbBase $db DBクラス */
     public $db;
-    /** @var string テーブルID */
+    /** @var string テーブルID(PHPクラス内での識別名) */
     public $id;
+    /** @var ?string DBテーブル名(null の場合は $id を使用) */
+    protected $tableName;
     /** @var string ステートメントクラス名 */
     protected $statementClass;
     /** @var Items 項目リスト */
@@ -106,6 +111,10 @@ class Table {
     protected $cachedExecutorIdsForUpdate;
     /** @var ?string[] 実行者の項目IDリストのキャッシュ(Update用、入力) */
     protected $cachedExecutorIdsForUpdateWithInput;
+    /** @var ?array<string, string> PHP名→DB名のカラム名マッピングキャッシュ */
+    protected $cachedColumnNameMapVarToSql;
+    /** @var ?array<string, string> DB名→PHP名のカラム名マッピングキャッシュ */
+    protected $cachedColumnNameMapSqlToVar;
 
     // ---------------------------------------------------------------------------------------------
     // コンストラクタ/デストラクタ
@@ -1278,23 +1287,81 @@ class Table {
     /**
      * テーブルID/項目IDを変換(SQL→変数)
      * 
-     * 主に、DB上はスネークケース、PHP上はキャメルケースで定義した場合の変換用。
+     * 主に、DB上はスネークケース、PHP上はキャメルケースで定義した場合の変換用。  
+     * Item::$columnName / Table::$tableName が設定されている場合は、そちらを優先する。
      * @param string $id テーブルID/項目ID
      * @return string SQL→変数
      */
     protected function convertIdFromSqlToVar(string $id): string {
+        // テーブル名の逆引き
+        if ($this->tableName !== null && $id === $this->tableName)
+            return $this->id;
+
+        // カラム名の逆引き
+        if ($this->items !== null) {
+            $map = $this->getColumnNameMapSqlToVar();
+            if (isset($map[$id])) return $map[$id];
+        }
+
         return $id;
     }
 
     /**
      * テーブルID/項目IDを変換(変数→SQL)
      * 
-     * 主に、DB上はスネークケース、PHP上はキャメルケースで定義した場合の変換用。
+     * 主に、DB上はスネークケース、PHP上はキャメルケースで定義した場合の変換用。  
+     * Item::$columnName / Table::$tableName が設定されている場合は、そちらを優先する。
      * @param string $id テーブルID/項目ID
      * @return string 変数→SQL
      */
     protected function convertIdFromVarToSql(string $id): string {
+        // テーブル名の変換
+        if ($id === $this->id && $this->tableName !== null)
+            return $this->tableName;
+
+        // カラム名の変換
+        if ($this->items !== null) {
+            $map = $this->getColumnNameMapVarToSql();
+            if (isset($map[$id])) return $map[$id];
+        }
+
         return $id;
+    }
+
+    /**
+     * PHP名→DB名のカラム名マッピングを取得
+     * 
+     * @since 1.05.00
+     * @return array<string, string>
+     */
+    protected function getColumnNameMapVarToSql(): array {
+        if ($this->cachedColumnNameMapVarToSql !== null)
+            return $this->cachedColumnNameMapVarToSql;
+        $map = [];
+        foreach ($this->items->getItemsArray() as $item) {
+            if ($item->columnName !== null) $map[$item->id] = $item->columnName;
+        }
+        $this->cachedColumnNameMapVarToSql = $map;
+
+        return $map;
+    }
+
+    /**
+     * DB名→PHP名のカラム名マッピングを取得
+     * 
+     * @since 1.05.00
+     * @return array<string, string>
+     */
+    protected function getColumnNameMapSqlToVar(): array {
+        if ($this->cachedColumnNameMapSqlToVar !== null)
+            return $this->cachedColumnNameMapSqlToVar;
+        $map = [];
+        foreach ($this->items->getItemsArray() as $item) {
+            if ($item->columnName !== null) $map[$item->columnName] = $item->id;
+        }
+        $this->cachedColumnNameMapSqlToVar = $map;
+
+        return $map;
     }
 
     /**

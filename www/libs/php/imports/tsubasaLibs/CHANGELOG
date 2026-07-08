@@ -1,3 +1,9 @@
+1.05.00 2026/06/05 00:00:00
+[変更]
+項目/テーブルのDB名を任意で別名指定できるように対応(スネークケース/キャメルケース変換)。
+database/Item.php: DBカラム名を保持する $columnName プロパティを追加。
+database/Table.php: DBテーブル名 $tableName を追加し、convertIdFromVarToSql/convertIdFromSqlToVar で Item::$columnName / Table::$tableName を参照するように対応。
+
 1.04.01 2026/05/26 15:28:06
 [変更]
 CSRFトークンチェックに残っていたテストコードを訂正。

@@ -29,6 +29,7 @@
       "Bash(git diff:*)",
       "Bash(git --no-pager diff:*)",
       "Bash(git rev-parse:*)",
+      "Bash(git rev-list:*)",
       "Bash(git branch:*)",
       "Bash(git hash-object:*)",
       "Bash(git cat-file:*)",

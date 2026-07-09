@@ -1,3 +1,9 @@
+1.07.00 2026/06/12 00:00:00
+[変更]
+TCPDFラッパーのOutput()が戻り値(dest='S'等)を正しく返すように修正。
+pdf/Tcpdf.php: Output() を return parent::Output(...) に修正(dest='S' 等で文字列を返せていなかった)。
+pdf/#phpdoc/Tcpdf.php: Output() のPHPDocに @return string と return ''; を追加。
+
 1.06.00 2026/06/05 00:00:00
 [変更]
 外部設定(.confidential/.env)を読み込む仕組みを追加。

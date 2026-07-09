@@ -8,6 +8,7 @@
 // 0.28.05 2024/07/12 ライブラリで使用しているTCPDFのプロパティ/メソッドを全て定義。
 //                    よく使うメソッドにドキュメントを追加。
 // 0.44.00 2024/10/12 不足している定義を追加。
+// 1.07.00 2026/06/12 Output() の戻り値に @return string を追加。
 // -------------------------------------------------------------------------------------------------
 use tsubasaLibs\pdf\PdfException;
 
@@ -407,8 +408,11 @@ class TCPDF {
      * @param string $name ファイル名
      * @param string $dest 出力方法  
      *     I:ブラウザ出力 D:ダウンロード F:ファイル保存 S:ソース出力
+     * @return string dest='S' の場合はPDFバイナリ文字列、それ以外は空文字
      */
-    public function Output($name = 'doc.pdf', $dest = 'I') {}
+    public function Output($name = 'doc.pdf', $dest = 'I') {
+        return '';
+    }
     /**
      * 頁の幅を取得
      * 

@@ -42,6 +42,7 @@
 //                    convertIdFromVarToSql/convertIdFromSqlToVar にて、
 //                    Item::$columnName / Table::$tableName を参照するように対応。
 // 1.05.03 2026/06/05 makeSqlUpdateFromTable: Microsoft SQL Server の UPDATE FROM JOIN 構文に対応。
+// 1.08.00 2026/07/11 phpdocの複数行記述の継続行に行末2スペース(Markdown改行)を付与。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -59,7 +60,7 @@ use Stringable;
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 1.05.03
+ * @version 1.08.00
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -708,8 +709,8 @@ class Table {
      * tbl.[PrimaryKey2] = tmp.[PrimaryKey2] AND  
      * ...  
      * SET  
-     * tbl.[Item1] = tmp.[Item1],
-     * tbl.[Item2] = tmp.[Item2],
+     * tbl.[Item1] = tmp.[Item1],  
+     * tbl.[Item2] = tmp.[Item2],  
      * ...
      * 
      * @since 0.38.00

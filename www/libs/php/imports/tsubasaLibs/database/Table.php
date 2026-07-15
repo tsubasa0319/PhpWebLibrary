@@ -42,7 +42,7 @@
 //                    convertIdFromVarToSql/convertIdFromSqlToVar にて、
 //                    Item::$columnName / Table::$tableName を参照するように対応。
 // 1.05.03 2026/06/05 makeSqlUpdateFromTable: Microsoft SQL Server の UPDATE FROM JOIN 構文に対応。
-// 1.08.00 2026/07/11 phpdocの複数行記述の継続行に行末2スペース(Markdown改行)を付与。
+// 1.08.00 2026/07/15 phpdocの複数行記述の継続行に行末2スペース(Markdown改行)を付与。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';

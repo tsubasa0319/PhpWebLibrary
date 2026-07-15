@@ -1,12 +1,15 @@
 <?php
 // -------------------------------------------------------------------------------------------------
-// SmartyクラスのPHPDoc
+// Smartyクラスのフォールバック(未導入時)
+//
+// Smarty本体が未導入でも extends/parent::/型解決を成立させるための代役(生成時は例外)。
 //
 // History:
 // 0.08.00 2024/02/27 作成。
 // 0.75.00 2025/02/19 setTemplateDir/addTemplateDir/setCompileDir/setCacheDir/addPluginsDirを追加。
 // 0.87.00 2025/04/05 getTemplateDir/display/createTemplate/_getSmartyObj/_getTemplateIdを追加。
 // 0.87.01 2025/04/08 ディレクトリを移動。
+// 1.08.00 2026/07/15 #phpdoc から fallback へ改称(未導入時フォールバックとして用途を明確化)。
 // -------------------------------------------------------------------------------------------------
 use tsubasaLibs\web\WebException;
 

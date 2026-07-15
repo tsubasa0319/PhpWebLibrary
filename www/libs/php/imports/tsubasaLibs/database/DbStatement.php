@@ -11,6 +11,7 @@
 //                    クエリ履歴の長さに上限を設定。
 // 0.40.01 2024/09/26 子クラスのインスタンスは、弱い参照でプロパティに持つように変更。
 // 0.48.00 2024/10/24 バインドに失敗時、エラー処理を追加。
+// 1.08.00 2026/07/15 fetch/fetchAll を override として追加(#phpdoc/DbStatement.php を統合)。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/ValueType.php';
@@ -21,7 +22,7 @@ use WeakReference;
  * DBステートメントクラス(PDOベース)
  * 
  * @since 0.00.00
- * @version 0.48.00
+ * @version 1.08.00
  */
 class DbStatement extends PDOStatement {
     // ---------------------------------------------------------------------------------------------
@@ -104,6 +105,31 @@ class DbStatement extends PDOStatement {
 
         $this->addQueryHistory($log, $result);
         return $result;
+    }
+
+    /**
+     * 次のレコードを取得
+     * 
+     * @param int $mode 受取データ型(DbBase::FETCH_*)
+     * @param int $cursorOrientation どの行を取得するか(DbBase::FETCH_ORI_*)
+     * @param int $cursorOffset FETCH_ORI_ABS:絶対行番号 FETCH_ORI_REL:相対行番号
+     * @return mixed 見つかればレコード、見つからなければfalse
+     */
+    public function fetch(
+        int $mode = DbBase::FETCH_DEFAULT, int $cursorOrientation = DbBase::FETCH_ORI_NEXT,
+        int $cursorOffset = 0
+    ): mixed {
+        return parent::fetch($mode, $cursorOrientation, $cursorOffset);
+    }
+
+    /**
+     * 全てのレコードを取得
+     * 
+     * @param int $mode 受取データ型(DbBase::FETCH_*)
+     * @return array レコード配列
+     */
+    public function fetchAll(int $mode = DbBase::FETCH_DEFAULT, ...$args):array {
+        return parent::fetchAll($mode, ...$args);
     }
 
     // ---------------------------------------------------------------------------------------------

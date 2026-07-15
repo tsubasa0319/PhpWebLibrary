@@ -12,6 +12,7 @@
 // 0.28.04 2024/07/06 グリッド線を描画後、線のスタイルが破線になってしまうため修正。各種設定の保存/復元を追加。
 // 0.28.05 2024/07/12 文字列出力が連続出力の場合、中央寄せ/右寄せで移動したX座標を出力後に戻すよう対応。
 // 1.07.00 2026/06/12 Output() の戻り値を正しく return するよう修正（dest='S' 等で文字列を返せていなかった）。
+// 1.08.00 2026/07/15 TCPDF未導入時の読込先を #phpdoc から fallback へ変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\pdf;
 require_once __DIR__ . '/PdfException.php';
@@ -19,13 +20,13 @@ use TCPDF as BaseClass;
 use DateTime, Exception;
 
 // TCPDFを未導入の場合に読み込み
-if (!class_exists(BaseClass::class)) require __DIR__ . '/#phpdoc/Tcpdf.php';
+if (!class_exists(BaseClass::class)) require __DIR__ . '/fallback/Tcpdf.php';
 
 /**
  * TCPDFクラス
  * 
  * @since 0.28.00
- * @version 1.07.00
+ * @version 1.08.00
  */
 class Tcpdf extends BaseClass {
     // ---------------------------------------------------------------------------------------------

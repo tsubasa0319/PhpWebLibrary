@@ -14,6 +14,7 @@
 // 0.67.00 2025/01/09 行を追加/削除時、頁を移動するように変更。
 // 0.68.00 2025/01/09 行を変更/削除時、入力者情報を更新するように変更。
 // 0.80.00 2025/03/06 頁を遷移時、対象のボタンへフォーカス移動するように変更。
+// 1.08.00 2026/07/15 offsetGet/current を override として追加(#phpdoc/InputTable.php を統合)。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/InputTableRow.php';
@@ -24,7 +25,7 @@ use tsubasaLibs\type\ArrayLike;
  * 入力テーブルクラス
  * 
  * @since 0.18.00
- * @version 0.80.00
+ * @version 1.08.00
  */
 class InputTable extends ArrayLike {
     // ---------------------------------------------------------------------------------------------
@@ -54,6 +55,18 @@ class InputTable extends ArrayLike {
 
     // ---------------------------------------------------------------------------------------------
     // メソッド(オーバーライド)
+    // 取得
+    /** @return InputTableRow 行 */
+    public function offsetGet(mixed $offset): mixed {
+        return parent::offsetGet($offset);
+    }
+
+    // 現在の読み取り位置のデータ値を取得
+    /** @return InputTableRow 行 */
+    public function current(): mixed {
+        return parent::current();
+    }
+
     // 初期化
     public function clear() {
         parent::clear();

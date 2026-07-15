@@ -1,3 +1,14 @@
+1.08.00 2026/07/15 11:56:00
+[変更]
+phpdocの複数行記述の継続行に行末2スペース(Markdown改行)を付与し、プレビューでの行連結を防止。
+また #phpdoc ディレクトリを廃止し、IDE補助情報を各クラスへ集約(外部ライブラリ未導入時のフォールバックは fallback へ改称)。
+database/Table.php: updateFromTable のSQL例示の継続行に不足していた行末2スペースを付与(他は既に付与済み)。
+smarty/Smarty.php, smarty/Smarty_Internal_Template.php, pdf/Tcpdf.php: 未導入時の読込先を #phpdoc から fallback へ変更。
+smarty/#phpdoc/*, pdf/#phpdoc/*: fallback/ へ改称(用途を明確化)。
+database/DbBase.php: PDO継承定数を「定数(オーバーライド)」として PDO::定数 を右辺に明示・文書化。
+database/DbStatement.php, database/TableStatement.php, database/Records.php, web/InputTable.php: 継承メソッドを override 化して戻り値型を明示(#phpdoc を統合)。
+database/#phpdoc/*, web/#phpdoc/*: 削除(本体クラスへ統合)。
+
 1.07.00 2026/06/12 00:00:00
 [変更]
 TCPDFラッパーのOutput()が戻り値(dest='S'等)を正しく返すように修正。

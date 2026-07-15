@@ -10,19 +10,21 @@
 // 0.75.00 2025/02/19 テンプレート/プラグインディレクトリを内包。
 // 0.87.00 2025/04/05 開発環境のみ、ログを出力するように対応。
 // 0.87.01 2025/04/08 tsubasaLibs\smartyへ移動。
+// 1.08.00 2026/07/15 Smarty未導入時の読込先を #phpdoc から fallback へ変更。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\smarty;
 require_once __DIR__ . '/Smarty_Internal_Template.php';
 use Smarty as BaseClass;
+use Smarty_Internal_Template;
 
 // Smartyを未導入の場合に読み込み
-if (!class_exists(BaseClass::class)) require __DIR__ . '/#phpdoc/Smarty.php';
+if (!class_exists(BaseClass::class)) require __DIR__ . '/fallback/Smarty.php';
 
 /**
  * Smartyクラス
  * 
  * @since 0.44.00
- * @version 0.87.01
+ * @version 1.08.00
  */
 class Smarty extends BaseClass {
     // ---------------------------------------------------------------------------------------------
@@ -111,7 +113,7 @@ class Smarty extends BaseClass {
     // テンプレートIDを取得
     public function _getTemplateId(
         $template_name, $cache_id = null, $compile_id = null, $caching = null,
-        ?\Smarty_Internal_Template $template = null
+        ?Smarty_Internal_Template $template = null
     ) {
         $templateId = parent::_getTemplateId(
             $template_name, $cache_id, $compile_id, $cache_id, $template);

@@ -20,6 +20,7 @@
 //                    MSSQLの場合、クエリ直接実行の属性初期値をTrueへ設定。
 // 1.05.04 2026/06/05 MSSQL: 接続時に SET LOCK_TIMEOUT を発行する仕組みを追加($lockTimeoutMs・既定null=未設定)。
 //                    ロック待ちの無限待ちによる固着防止。値はサブクラスで上書き可。
+// 1.08.00 2026/07/15 PDO継承定数を「定数(オーバーライド)」として明示・文書化(#phpdoc/DbBase.php を統合)。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/DbStatement.php';
@@ -37,11 +38,84 @@ use SensitiveParameter;
  * DBクラス(PDOベース)
  * 
  * @since 0.00.00
- * @version 1.05.04
+ * @version 1.08.00
  */
 class DbBase extends PDO {
     // ---------------------------------------------------------------------------------------------
-    // 定数
+    // 定数(オーバーライド)
+    /**
+     * 自動コミットするかどうか
+     * 
+     * 値は、bool型で指定します。  
+     * OCI, Firebird, MySQLでのみ有効。  
+     * 既定値: true
+     */
+    public const ATTR_AUTOCOMMIT = PDO::ATTR_AUTOCOMMIT;
+    /**
+     * 既定の次のレコードを受け取る方法
+     * 
+     * 値は、FETCH_*より選択します。  
+     * 既定値: FETCH_BOTH
+     */
+    public const ATTR_DEFAULT_FETCH_MODE = PDO::ATTR_DEFAULT_FETCH_MODE;
+    /**
+     * プリペアドステートメントのエミュレーションを有効にするかどうか
+     * 
+     * 値は、bool型で指定します。  
+     * OCI, Firebird, MySQLでのみ有効。  
+     * 既定値: true
+     */
+    public const ATTR_EMULATE_PREPARES = PDO::ATTR_EMULATE_PREPARES;
+    /**
+     * エラーレポートモード
+     * 
+     * 値は、ERRMODE_*より選択します。  
+     * 既定値: ERRMODE_SILENT
+     */
+    public const ATTR_ERRMODE = PDO::ATTR_ERRMODE;
+    /**
+     * ステートメントクラス
+     * 
+     * 値は、以下のように指定します。  
+     * [|class_name|, [...|constructor_args|]
+     */
+    public const ATTR_STATEMENT_CLASS = PDO::ATTR_STATEMENT_CLASS;
+    /**
+     * タイムアウト秒数
+     * 
+     * 値は、秒数をint型で指定します。  
+     * ドライバにより、どの秒数を管理するのかが変わります。
+     */
+    public const ATTR_TIMEOUT = PDO::ATTR_TIMEOUT;
+    /** エラーコードを設定することのみ */
+    public const ERRMODE_SILENT = PDO::ERRMODE_SILENT;
+    /** E_WARNINGを発生 */
+    public const ERRMODE_WARNING = PDO::ERRMODE_WARNING;
+    /** PDOExceptionをスロー */
+    public const ERRMODE_EXCEPTION = PDO::ERRMODE_EXCEPTION;
+    /** 連想配列で受け取り(添字はカラム名) */
+    public const FETCH_ASSOC = PDO::FETCH_ASSOC;
+    /** 連想配列で受け取り(添字は0始まりの連番と、カラム名の両方) */
+    public const FETCH_BOTH = PDO::FETCH_BOTH;
+    /** クラスプロパティにマッピング */
+    public const FETCH_CLASS = PDO::FETCH_CLASS;
+    /** ATTR_DEFAULT_FETCH_MODEに設定した値を継承 */
+    public const FETCH_DEFAULT = PDO::FETCH_DEFAULT;
+    /** 連想配列で受け取り(添字は0始まりの連番) */
+    public const FETCH_NUM = PDO::FETCH_NUM;
+    /** コンストラクタを実行後に、プロパティへ値を受け取り */
+    public const FETCH_PROPS_LATE = PDO::FETCH_PROPS_LATE;
+    /** データ型(ブール型) */
+    public const PARAM_BOOL = PDO::PARAM_BOOL;
+    /** データ型(整数型) */
+    public const PARAM_INT = PDO::PARAM_INT;
+    /** データ型(NULL型) */
+    public const PARAM_NULL = PDO::PARAM_NULL;
+    /** データ型(文字列型) */
+    public const PARAM_STR = PDO::PARAM_STR;
+
+    // ---------------------------------------------------------------------------------------------
+    // 定数(追加)
     /** データ型(追加、日付型) */
     public const PARAM_ADD_DATE = 16;
     /** データ型(追加、日時型) */

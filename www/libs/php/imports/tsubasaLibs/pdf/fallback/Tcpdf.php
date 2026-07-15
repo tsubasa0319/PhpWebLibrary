@@ -1,6 +1,8 @@
 <?php
 // -------------------------------------------------------------------------------------------------
-// TCPDFクラスのPHPDoc
+// TCPDFクラスのフォールバック(未導入時)
+//
+// TCPDF本体が未導入でも extends/parent::/型解決を成立させるための代役(生成時は例外)。
 //
 // History:
 // 0.28.00 2024/06/26 作成。
@@ -9,6 +11,7 @@
 //                    よく使うメソッドにドキュメントを追加。
 // 0.44.00 2024/10/12 不足している定義を追加。
 // 1.07.00 2026/06/12 Output() の戻り値に @return string を追加。
+// 1.08.00 2026/07/15 #phpdoc から fallback へ改称。
 // -------------------------------------------------------------------------------------------------
 use tsubasaLibs\pdf\PdfException;
 
@@ -338,7 +341,7 @@ class TCPDF {
      * @param float $h 高さ
      * @param string $style 描画スタイル  
      *     空/D:境界線を引く F:塗りつぶす CNZ:クリップ(even-odd) CEO:クリップ(non-zero)
-     * @param array{width:float, cap:string, join:string, dash:string, phase:int, color:array} $border-style 境界線スタイル
+     * @param array{width:float, cap:string, join:string, dash:string, phase:int, color:array} $border_style 境界線スタイル
      * @param array $fill_color 塗りつぶす色
      */
     public function Rect($x, $y, $w, $h, $style = '', $border_style = [], $fill_color = []) {}
@@ -353,7 +356,7 @@ class TCPDF {
      * @param float $angend
      * @param string $style 描画スタイル  
      *     空/D:境界線を引く F:塗りつぶす CNZ:クリップ(even-odd) CEO:クリップ(non-zero)
-     * @param array{width:float, cap:string, join:string, dash:string, phase:int, color:array} $border-style 境界線スタイル
+     * @param array{width:float, cap:string, join:string, dash:string, phase:int, color:array} $line_style 境界線スタイル
      * @param array $fill_color 塗りつぶす色
      * @param int $nc 曲線数
      */
@@ -374,7 +377,7 @@ class TCPDF {
      * @param float $afinish
      * @param string $style 描画スタイル  
      *     空/D:境界線を引く F:塗りつぶす CNZ:クリップ(even-odd) CEO:クリップ(non-zero)
-     * @param array{width:float, cap:string, join:string, dash:string, phase:int, color:array} $border-style 境界線スタイル
+     * @param array{width:float, cap:string, join:string, dash:string, phase:int, color:array} $line_style 境界線スタイル
      * @param array $fill_color 塗りつぶす色
      * @param int $nc 曲線数
      */

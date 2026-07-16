@@ -7,6 +7,7 @@
 // 1.05.02 2026/06/05 インデックスなしテーブルで prepare('') が呼ばれるバグ修正。
 //                    IDENTITY(1,1) をテンポラリテーブルへ引き継ぎ対応。
 // 1.08.01 2026/07/15 @param の変数名欠落を補完し、コード補完(型解決)を改善。
+//                    $indexes の @var で array< の閉じ > 欠落によるパースエラー(P1129)を訂正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 
@@ -29,7 +30,7 @@ class TemporaryTableMakerMssql {
     protected $columns;
     /** @var array<int, array{name:string, maxLength:int}> データ型リスト */
     protected $types;
-    /** @var array<int, array{name:string, isPrimaryKey:bool, isUnique:bool, type:string} インデックスリスト */
+    /** @var array<int, array{name:string, isPrimaryKey:bool, isUnique:bool, type:string}> インデックスリスト */
     protected $indexes;
     /** @var array<int, array<int, array{name:string, isDescendingKey:bool}>> インデックス項目リスト */
     protected $indexesColumns;

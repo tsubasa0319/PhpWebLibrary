@@ -7,6 +7,7 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
+// 1.08.01 2026/07/15 ホスト Items のプロパティ($addedItems)を @property で宣言し、trait 内参照の未定義プロパティ警告(P1014)を解消。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database\advance;
 use tsubasaLibs\database;
@@ -15,7 +16,8 @@ use tsubasaLibs\database;
  * 項目定義リストへ項目追加(入力ログ)
  * 
  * @since 0.00.00
- * @version 0.00.00
+ * @version 1.08.01
+ * @property string[] $addedItems 追加項目
  */
 trait ItemsInputterItem {
     // ---------------------------------------------------------------------------------------------

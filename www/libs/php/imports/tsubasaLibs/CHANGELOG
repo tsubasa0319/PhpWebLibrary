@@ -1,3 +1,8 @@
+1.08.01 2026/07/15 14:57:41
+[変更]
+トレイトからホストクラスのプロパティ参照でコード補完(型解決)が効かない問題(P1014)を修正。
+database/advance/ItemsCreatorItem.php, ItemsInputterItem.php, ItemsUpdaterItem.php: ホスト Items の $addedItems を @property で宣言(intelephense の @mixin はトレイトのプロパティを解決しないため)。
+
 1.08.00 2026/07/15 11:56:00
 [変更]
 phpdocの複数行記述の継続行に行末2スペース(Markdown改行)を付与し、プレビューでの行連結を防止。

@@ -5,6 +5,7 @@
 // History:
 // 0.90.00 2025/05/16 作成。
 // 1.08.01 2026/07/16 メソッド引数の型を明示(型ヒント/@param)しコード補完(P1132)を改善。
+// 1.08.02 2026/07/16 内部専用メソッド addChache/editChache のスペルミスを addCache/editCache へ改名。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 
@@ -12,7 +13,7 @@ namespace tsubasaLibs\api;
  * APIメソッドクラス(一括キー検索用)
  * 
  * @since 0.90.00
- * @version 1.08.01
+ * @version 1.08.02
  */
 class MethodByKeys extends Method {
     // ---------------------------------------------------------------------------------------------
@@ -56,7 +57,7 @@ class MethodByKeys extends Method {
 
             // 検索対象へ追加
             $this->partSearchKeys[] = $key;
-            $this->addChache($key, false);
+            $this->addCache($key, false);
 
             // 上限の件数に到達した場合、実行
             if (count($this->partSearchKeys) >= $this->maxSearchCount) {
@@ -69,7 +70,7 @@ class MethodByKeys extends Method {
                     // キャッシュへ登録
                     $key = $this->getSearchKeyByData($data);
                     if ($key !== null)
-                        $this->editChache($key, $data);
+                        $this->editCache($key, $data);
                 }
                 $this->partSearchKeys = [];
             }
@@ -86,7 +87,7 @@ class MethodByKeys extends Method {
                 // キャッシュへ登録
                 $key = $this->getSearchKeyByData($data);
                 if ($key !== null)
-                    $this->editChache($key, $data);
+                    $this->editCache($key, $data);
             }
             $this->partSearchKeys = [];
         }
@@ -118,7 +119,7 @@ class MethodByKeys extends Method {
 
             // 検索対象へ追加
             $this->partSearchKeys[] = $key;
-            $this->addChache($key, false);
+            $this->addCache($key, false);
 
             // 上限の件数に到達した場合、登録
             if (count($this->partSearchKeys) >= $this->maxSearchCount) {
@@ -155,7 +156,7 @@ class MethodByKeys extends Method {
                     // キャッシュへ登録
                     $key = $this->getSearchKeyByData($data);
                     if ($key !== null)
-                        $this->editChache($key, $data);
+                        $this->editCache($key, $data);
                 }
 
         // キャッシュ分を追加
@@ -252,7 +253,7 @@ class MethodByKeys extends Method {
      * @param mixed $key アクセスキー
      * @param mixed $data 取得データ
      */
-    protected function addChache($key, $data) {
+    protected function addCache($key, $data) {
         if (!$this->isCaching) return;
 
         // キャッシュキーを取得
@@ -272,7 +273,7 @@ class MethodByKeys extends Method {
      * @param mixed $key アクセスキー
      * @param mixed $data 取得データ
      */
-    protected function editChache($key, $data) {
+    protected function editCache($key, $data) {
         if (!$this->isCaching) return;
 
         // キャッシュキーを取得

@@ -6,6 +6,7 @@
 // 1.02.01 2025/10/23 作成。
 // 1.05.02 2026/06/05 インデックスなしテーブルで prepare('') が呼ばれるバグ修正。
 //                    IDENTITY(1,1) をテンポラリテーブルへ引き継ぎ対応。
+// 1.08.01 2026/07/15 @param の変数名欠落を補完し、コード補完(型解決)を改善。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 
@@ -13,7 +14,7 @@ namespace tsubasaLibs\database;
  * Microsoft SQL Serverのテンポラリテーブル生成クラス
  * 
  * @since 1.02.01
- * @version 1.05.02
+ * @version 1.08.01
  */
 class TemporaryTableMakerMssql {
     // ---------------------------------------------------------------------------------------------
@@ -235,7 +236,7 @@ class TemporaryTableMakerMssql {
     /**
      * データ型を取得(項目リストのレコードより)
      * 
-     * @param array{user_type_id:int, max_length:int} sys.columnsのレコード
+     * @param array{user_type_id:int, max_length:int} $rm sys.columnsのレコード
      * @return string データ型
      */
     protected function getTypeFromColumnsRecord(array $rm): string {

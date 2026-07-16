@@ -7,6 +7,7 @@
 // 0.51.00 2024/11/13 検索速度を上げるため、検索値がStringableの場合は先にstringへ変換するように変更。
 // 0.58.00 2024/12/12 対象レコードかどうかチェックを、部分一致の場合に失敗する不備に対して修正。
 // 1.08.01 2026/07/15 メソッド引数の型を明示(型ヒント/@param)しコード補完(P1132)を改善。
+//                    setValues の @param に欠落していた変数名を補完。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 use Stringable;
@@ -77,7 +78,7 @@ class SelectArrayPlan {
     /**
      * 検索値リストを設定
      * 
-     * @param array 検索値リスト
+     * @param array $values 検索値リスト
      */
     public function setValues(array $values) {
         // 検索値リストを値型へ変換

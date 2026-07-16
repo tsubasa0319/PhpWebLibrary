@@ -13,6 +13,7 @@
 // 0.48.00 2024/10/24 入力/変更されている項目IDのリストを取得を追加。
 // 0.90.00 2025/05/16 項目IDリストの取得を、項目リストのインスタンスで行い効率化。
 // 1.08.01 2026/07/15 メソッド引数の型を明示(型ヒント/@param)しコード補完(P1132)を改善。
+//                    convertName の @param として記述されていた戻り値説明を @return へ訂正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/advance/RecordCreatorItem.php';
@@ -294,7 +295,7 @@ class Record {
      * 項目IDを変換(DB→クラス)
      * 
      * @param string $id 項目ID
-     * @param string 変換後
+     * @return string 変換後
      */
     protected function convertName(string $id): string {
         $table = $this->stmt?->table;

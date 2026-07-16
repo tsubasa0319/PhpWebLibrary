@@ -6,6 +6,7 @@
 // 0.16.00 2024/03/23 作成。
 // 0.18.00 2024/03/30 初期化を追加。
 // 0.22.00 2024/05/17 要素を削除(順序番号指定)を追加。
+// 1.08.01 2026/07/15 @param の変数名欠落を補完し、コード補完(型解決)を改善。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\type;
 use ArrayAccess, Iterator, Countable;
@@ -15,7 +16,7 @@ use Stringable;
  * 配列型クラス
  * 
  * @since 0.16.00
- * @version 0.22.00
+ * @version 1.08.01
  */
 class ArrayLike implements ArrayAccess, Iterator, Countable {
     // ---------------------------------------------------------------------------------------------
@@ -72,7 +73,7 @@ class ArrayLike implements ArrayAccess, Iterator, Countable {
      * 設定
      * 
      * @param ?int|string|Stringable $offset キー値
-     * @param mixed データ値
+     * @param mixed $value データ値
      */
     public function offsetSet(mixed $offset, mixed $value): void {
         if ($offset === null) {

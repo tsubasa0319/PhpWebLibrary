@@ -5,6 +5,9 @@ database/advance/ItemsCreatorItem.php, ItemsInputterItem.php, ItemsUpdaterItem.p
 メソッド引数へ @param を付与/補完し、コード補完(P1132)を改善。
 api/MethodByKeys.php, database/Record.php, database/SelectArrayPlan.php, database/SelectPlan.php, web/Curl.php, web/Menu.php: クラスメソッドへ @param を付与(欠落変数名の補完含む)。
 smarty/plugins/function.attributes.php: smarty_function_attributes へ docblock(@param/@return)を付与。
+@param の変数名欠落を補完し、コード補完(型解決)を改善。一部は @param として記述されていた戻り値説明を @return へ訂正。
+web/CurlMulti.php, web/Curl.php, database/SelectArrayPlan.php, database/SelectPlan.php, database/DbBase.php, database/TemporaryTableMakerMssql.php, type/ArrayLike.php, pdf/Tcpdf.php: @param に欠落していた変数名を補完。
+database/Record.php, web/Curl.php: @param として記述されていた戻り値説明を @return へ訂正。
 
 1.08.00 2026/07/15 11:56:00
 [変更]

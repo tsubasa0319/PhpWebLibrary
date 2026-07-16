@@ -21,6 +21,7 @@
 // 1.05.04 2026/06/05 MSSQL: 接続時に SET LOCK_TIMEOUT を発行する仕組みを追加($lockTimeoutMs・既定null=未設定)。
 //                    ロック待ちの無限待ちによる固着防止。値はサブクラスで上書き可。
 // 1.08.00 2026/07/15 PDO継承定数を「定数(オーバーライド)」として明示・文書化(#phpdoc/DbBase.php を統合)。
+// 1.08.01 2026/07/15 @param の変数名欠落を補完し、コード補完(型解決)を改善。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/DbStatement.php';
@@ -38,7 +39,7 @@ use SensitiveParameter;
  * DBクラス(PDOベース)
  * 
  * @since 0.00.00
- * @version 1.08.00
+ * @version 1.08.01
  */
 class DbBase extends PDO {
     // ---------------------------------------------------------------------------------------------
@@ -424,7 +425,7 @@ class DbBase extends PDO {
     /**
      * 予約語をエスケープ
      * 
-     * @param string 単語
+     * @param string $word 単語
      * @return string エスケープ後
      */
     public function escapeWord(string $word): string {

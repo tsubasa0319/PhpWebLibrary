@@ -6,6 +6,7 @@
 // 1.01.00 2025/09/18 作成。
 // 1.01.01 2025/09/18 ランダム生成に用いる関数を変更。
 // 1.01.02 2025/10/01 パスワードを隠蔽。
+// 1.08.02 2026/07/16 メソッド引数へネイティブ型ヒントを付与し、コード補完(P1132)を改善。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\encryption;
 use SensitiveParameter;
@@ -14,7 +15,7 @@ use SensitiveParameter;
  * パスワード暗号化クラス
  * 
  * @since 1.01.00
- * @version 1.01.02
+ * @version 1.08.02
  */
 class Password {
     // ---------------------------------------------------------------------------------------------
@@ -65,7 +66,7 @@ class Password {
      * @return string ペッパー値
      */
     public function makeNewPepper(int $length = 16): string {
-        return sprintf(str_repeat('%s', $length), ...(function($length) {
+        return sprintf(str_repeat('%s', $length), ...(function(int $length) {
             $values = [];
             for ($i = 0; $i < $length; $i++) $values[] = chr(random_int(32, 126));
             return $values;

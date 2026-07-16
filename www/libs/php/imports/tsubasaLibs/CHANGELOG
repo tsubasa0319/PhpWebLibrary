@@ -1,3 +1,10 @@
+1.08.02 2026/07/16 15:43:53
+[変更]
+メソッド引数へネイティブ型ヒントを付与し、コード補完(P1132)を改善。
+database/advance/TableCamelCase.php: convertSnakeToCamel/convertCamelToSnake の $id へ string 型ヒント(戻り値型 string も付与)。
+common/Exception.php, encryption/Password.php, web/Message.php, web/SessionSecure.php: closure の引数へ型ヒント(array/int)を付与。
+smarty/plugins/function.attributes.php: smarty_function_attributes の $params へ array 型ヒントを付与。
+
 1.08.01 2026/07/16 15:10:42
 [変更]
 トレイトからホストクラスのプロパティ参照でコード補完(型解決)が効かない問題(P1014)を修正。

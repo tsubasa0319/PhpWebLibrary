@@ -9,6 +9,7 @@
 // 0.87.04 2025/04/24 スタックトレースの取得を、ファイルパス/行番号が無い場合に対応。
 // 1.01.02 2025/10/01 スタックトレースの取得を、パラメータが無い場合に対応。
 //                    スタックトレースのパラメータ値の取得を参照型へ対応。
+// 1.08.02 2026/07/16 メソッド引数へネイティブ型ヒントを付与し、コード補完(P1132)を改善。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\common;
 use Exception as BaseException, Throwable;
@@ -18,7 +19,7 @@ use SensitiveParameterValue;
  * 共通の例外クラス
  * 
  * @since 0.28.02
- * @version 1.01.02
+ * @version 1.08.02
  */
 class Exception extends BaseException {
     // ---------------------------------------------------------------------------------------------
@@ -52,7 +53,7 @@ class Exception extends BaseException {
                 $num + 1,
                 $trace['file'] ?? '', $trace['line'] ?? '',
                 $trace['class'] ?? '', $trace['type'] ?? '', $trace['function'] ?? '',
-                (function ($args) {
+                (function (array $args) {
                     $_args = [];
                     if (is_array($args))
                         foreach ($args as $arg)

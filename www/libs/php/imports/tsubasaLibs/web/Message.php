@@ -14,6 +14,7 @@
 // 0.28.00 2024/06/26 帳票出力開始のメッセージを追加。
 // 0.46.00 2024/10/18 未取消/取消済/復元期限超過のメッセージを追加。
 // 0.73.00 2025/02/04 同じパスワードのメッセージを追加。
+// 1.08.02 2026/07/16 メソッド引数へネイティブ型ヒントを付与し、コード補完(P1132)を改善。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 
@@ -21,7 +22,7 @@ namespace tsubasaLibs\web;
  * メッセージクラス
  * 
  * @since 0.01.00
- * @version 0.73.00
+ * @version 1.08.02
  */
 class Message {
     // ---------------------------------------------------------------------------------------------
@@ -126,7 +127,7 @@ class Message {
         $this->content = null;
 
         // 検索
-        foreach (array_filter($this->list, function ($message) use ($id) {
+        foreach (array_filter($this->list, function (array $message) use ($id) {
             return $message['id'] === $id;
         }) as $message) {
             // HTTPリクエストエラー時、メッセージを取得

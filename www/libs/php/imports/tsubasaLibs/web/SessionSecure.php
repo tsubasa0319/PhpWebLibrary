@@ -8,6 +8,7 @@
 // 1.00.01 2025/06/13 IPアドレスチェック時、ログインしていないセッションであれば空にして処理を継続へ変更。
 // 1.04.00 2026/05/23 CSRFトークンを追加。POST送信時、トークンチェックを追加。
 // 1.04.01 2026/05/26 テストコードが残っていたので訂正。
+// 1.08.02 2026/07/16 メソッド引数へネイティブ型ヒントを付与し、コード補完(P1132)を改善。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 
@@ -15,7 +16,7 @@ namespace tsubasaLibs\web;
  * セッションの安全性確保処理クラス
  * 
  * @since 0.87.02
- * @version 1.04.01
+ * @version 1.08.02
  */
 class SessionSecure {
     // ---------------------------------------------------------------------------------------------
@@ -188,7 +189,7 @@ class SessionSecure {
      */
     protected function issueCsrfToken(): string {
         $length = 64;
-        return sprintf(str_repeat('%s', $length), ...(function($length) {
+        return sprintf(str_repeat('%s', $length), ...(function(int $length) {
             $values = [];
             for ($i = 0; $i < $length; $i++) $values[] = chr(random_int(32, 126));
             return $values;

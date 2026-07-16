@@ -7,6 +7,7 @@
 // 0.75.00 2025/02/19 ライブラリへ移動。
 // 0.87.01 2025/04/08 SmartyPluginsの場所を移動。
 // 1.08.01 2026/07/16 smarty_function_attributes へ docblock(@param/@return)を付与し、コード補完(P1132)を改善。
+// 1.08.02 2026/07/16 smarty_function_attributes の $params へ array 型ヒントを付与。
 // -------------------------------------------------------------------------------------------------
 require_once __DIR__ . '/../../loader.php';
 use tsubasaLibs\smarty\SmartyPlugins;
@@ -18,6 +19,6 @@ use tsubasaLibs\smarty\SmartyPlugins;
  * @param Smarty $smarty Smartyオブジェクト
  * @return string 属性リスト文字列
  */
-function smarty_function_attributes($params, &$smarty) {
+function smarty_function_attributes(array $params, &$smarty) {
     return SmartyPlugins::attributes($params, $smarty);
 }

@@ -7,6 +7,7 @@
 // History:
 // 0.00.00 2024/01/23 作成。
 // 0.11.00 2024/03/08 データ型のクラス名を変更。
+// 1.08.02 2026/07/16 メソッド引数へネイティブ型ヒントを付与し、コード補完(P1132)を改善。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database\advance;
 
@@ -14,7 +15,7 @@ namespace tsubasaLibs\database\advance;
  * テーブルID/項目IDをキャメルケースとして処理
  * 
  * @since 0.00.00
- * @version 0.11.00
+ * @version 1.08.02
  */
 trait TableCamelCase {
     // ---------------------------------------------------------------------------------------------
@@ -42,7 +43,7 @@ trait TableCamelCase {
     /**
      * スネークケースからキャメルケースへ変換
      */
-    protected function convertSnakeToCamel($id) {
+    protected function convertSnakeToCamel(string $id): string {
         $id = ucwords(str_replace('_', ' ', $id));
         return lcfirst(str_replace(' ', '', $id));
     }
@@ -50,7 +51,7 @@ trait TableCamelCase {
     /**
      * キャメルケースからスネークケースへ変換
      */
-    protected function convertCamelToSnake($id) {
+    protected function convertCamelToSnake(string $id): string {
         return strtolower(preg_replace('/[A-Z]/', '_$0', $id));
     }
 }

@@ -4,6 +4,7 @@
 //
 // History:
 // 0.90.00 2025/05/16 作成。
+// 1.08.01 2026/07/15 メソッド引数の型を明示(型ヒント/@param)しコード補完(P1132)を改善。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\api;
 
@@ -11,7 +12,7 @@ namespace tsubasaLibs\api;
  * APIメソッドクラス(一括キー検索用)
  * 
  * @since 0.90.00
- * @version 0.90.00
+ * @version 1.08.01
  */
 class MethodByKeys extends Method {
     // ---------------------------------------------------------------------------------------------
@@ -218,6 +219,7 @@ class MethodByKeys extends Method {
     /**
      * キーのデータ型をチェック
      * 
+     * @param mixed $key 検索キー
      * @return bool 結果
      */
     protected function checkKey($key): bool {

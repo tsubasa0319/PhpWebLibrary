@@ -2,6 +2,9 @@
 [変更]
 トレイトからホストクラスのプロパティ参照でコード補完(型解決)が効かない問題(P1014)を修正。
 database/advance/ItemsCreatorItem.php, ItemsInputterItem.php, ItemsUpdaterItem.php: ホスト Items の $addedItems を @property で宣言(intelephense の @mixin はトレイトのプロパティを解決しないため)。
+メソッド引数へ @param を付与/補完し、コード補完(P1132)を改善。
+api/MethodByKeys.php, database/Record.php, database/SelectArrayPlan.php, database/SelectPlan.php, web/Curl.php, web/Menu.php: クラスメソッドへ @param を付与(欠落変数名の補完含む)。
+smarty/plugins/function.attributes.php: smarty_function_attributes へ docblock(@param/@return)を付与。
 
 1.08.00 2026/07/15 11:56:00
 [変更]

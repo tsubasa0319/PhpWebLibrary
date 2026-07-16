@@ -6,6 +6,7 @@
 // 0.01.00 2024/02/05 作成。
 // 0.01.01 2024/02/06 TOPへ遷移するリンクを修正。
 // 0.22.00 2024/05/17 システム管理者権限を定数化。
+// 1.08.01 2026/07/15 メソッド引数の型を明示(型ヒント/@param)しコード補完(P1132)を改善。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 
@@ -13,7 +14,7 @@ namespace tsubasaLibs\web;
  * メニュークラス
  * 
  * @since 0.01.00
- * @version 0.22.00
+ * @version 1.08.01
  */
 class Menu {
     // ---------------------------------------------------------------------------------------------
@@ -143,7 +144,7 @@ class Menu {
     /**
      * メニューグループのリンク用項目を生成
      * 
-     * @param array{id: string, name: string, roles: string[]} メニューグループ
+     * @param array{id: string, name: string, roles: string[]} $group メニューグループ
      * @return array{url: string, name: string} リンク用項目
      */
     protected function makeGroupLink($group): array {

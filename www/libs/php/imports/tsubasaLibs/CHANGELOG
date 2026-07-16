@@ -4,6 +4,8 @@
 database/advance/TableCamelCase.php: convertSnakeToCamel/convertCamelToSnake の $id へ string 型ヒント(戻り値型 string も付与)。
 common/Exception.php, encryption/Password.php, web/Message.php, web/SessionSecure.php: closure の引数へ型ヒント(array/int)を付与。
 smarty/plugins/function.attributes.php: smarty_function_attributes の $params へ array 型ヒントを付与。
+docblock の型が名前空間解決できずコード補完(P1133)が効かない箇所へ、use を追加。
+cli/TaskImportCsv.php: exec の @throws Exception が名前空間 tsubasaLibs\cli 下で誤解決されるため、use Exception で組み込みの \Exception へ解決。
 
 1.08.01 2026/07/16 15:10:42
 [変更]

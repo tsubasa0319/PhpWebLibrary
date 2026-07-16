@@ -1,4 +1,4 @@
-1.08.02 2026/07/16 15:51:24
+1.08.02 2026/07/16 16:07:13
 [変更]
 メソッド引数へネイティブ型ヒントを付与し、コード補完(P1132)を改善。
 database/advance/TableCamelCase.php: convertSnakeToCamel/convertCamelToSnake の $id へ string 型ヒント(戻り値型 string も付与)。

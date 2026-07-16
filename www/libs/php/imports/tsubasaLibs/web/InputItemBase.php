@@ -21,6 +21,7 @@
 // 0.22.00 2024/05/17 一度セッションへ保管した値は、そのまま保持するように対応。
 // 1.01.02 2025/10/01 プロパティに機密情報かどうかを追加。
 // 1.01.03 2025/10/01 機密情報かどうかの初期値を設定。
+// 1.08.01 2026/07/15 setSessionValueFromValue の実在しない引数の @param を削除し、コード補完を改善。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 
@@ -28,7 +29,7 @@ namespace tsubasaLibs\web;
  * 入力項目ベースクラス
  * 
  * @since 0.00.00
- * @version 1.01.03
+ * @version 1.08.01
  */
 class InputItemBase {
     // ---------------------------------------------------------------------------------------------
@@ -444,7 +445,6 @@ class InputItemBase {
      * セッション値を設定(値より)
      * 
      * @since 0.03.00
-     * @param SessionUnit $unit 画面単位セッション
      */
     protected function setSessionValueFromValue() {
         $this->sessionValue = $this->getWebValueFromValue();

@@ -45,6 +45,7 @@
 // 1.08.00 2026/07/15 phpdocの複数行記述の継続行に行末2スペース(Markdown改行)を付与。
 // 1.08.01 2026/07/15 @param の documented 型が宣言型と非互換な箇所を訂正し、コード補完(P1131)を改善。
 //                    引数型 self のメソッドの @param static を @param self へ統一(PHPは引数型に static を宣言不可)。
+//                    updateFromTable の @param 変数名のスペルミス($tempRrecord)を $tempRecord へ訂正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -717,7 +718,7 @@ class Table {
      * 
      * @since 0.38.00
      * @param self $tempTable 他のテーブル
-     * @param ?Record $tempRrecord 他のテーブルへINSERTした時のレコード
+     * @param ?Record $tempRecord 他のテーブルへINSERTした時のレコード
      * @return int|false 件数
      */
     public function updateFromTable(self $tempTable, ?Record $tempRecord = null): int|false {

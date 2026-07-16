@@ -12,6 +12,7 @@
 //                    静的メソッドに、日付を表す値かどうかチェックを追加。
 // 0.64.00 2024/12/20 日付を表す文字列であるかどうかチェックが空文字を許可しなくなっていたので修正。
 // 0.82.00 2025/03/26 日付を表す文字列の型チェック/型変換を各種追加。
+// 1.08.01 2026/07/15 setDate の @param を実引数へ整合($year→$dateOrYear、型/説明も宣言に合わせ)、コード補完を改善。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\type;
 use Stringable;
@@ -21,7 +22,7 @@ use DateTime, DateTimeZone;
  * 日付型クラス
  * 
  * @since 0.00.00
- * @version 0.82.00
+ * @version 1.08.01
  */
 class Date implements Stringable {
     // ---------------------------------------------------------------------------------------------
@@ -105,7 +106,7 @@ class Date implements Stringable {
      * 
      * 変更しない部分は、nullを設定してください。
      * 
-     * @param ?static|int $year 年
+     * @param ?self|int $dateOrYear 日付または年
      * @param ?int $month 月
      * @param ?int $day 日
      * @return static チェーン用

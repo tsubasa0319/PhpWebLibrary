@@ -14,6 +14,7 @@
 // 0.90.00 2025/05/16 項目IDリストの取得を、項目リストのインスタンスで行い効率化。
 // 1.08.01 2026/07/15 メソッド引数の型を明示(型ヒント/@param)しコード補完(P1132)を改善。
 //                    convertName の @param として記述されていた戻り値説明を @return へ訂正。
+//                    setValuesFromRecord の @param static を、宣言型に合わせ @param self へ訂正(P1131)。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/advance/RecordCreatorItem.php';
@@ -129,7 +130,7 @@ class Record {
     /**
      * 他のレコードより値を受け取り
      * 
-     * @param static $that レコード
+     * @param self $that レコード
      * @return static チェーン用
      */
     public function setValuesFromRecord(self $that): static {

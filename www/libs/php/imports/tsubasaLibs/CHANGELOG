@@ -8,6 +8,8 @@ smarty/plugins/function.attributes.php: smarty_function_attributes へ docblock(
 @param の変数名欠落を補完し、コード補完(型解決)を改善。一部は @param として記述されていた戻り値説明を @return へ訂正。
 web/CurlMulti.php, web/Curl.php, database/SelectArrayPlan.php, database/SelectPlan.php, database/DbBase.php, database/TemporaryTableMakerMssql.php, type/ArrayLike.php, pdf/Tcpdf.php: @param に欠落していた変数名を補完。
 database/Record.php, web/Curl.php: @param として記述されていた戻り値説明を @return へ訂正。
+@param の documented 型が宣言型と非互換でコード補完(P1131)が効かない箇所を訂正。
+database/Table.php, database/Record.php: 引数型 self のメソッドの @param static を @param self へ統一(PHPは引数型に static を宣言不可のため documented を宣言型へ合わせる)。
 
 1.08.00 2026/07/15 11:56:00
 [変更]

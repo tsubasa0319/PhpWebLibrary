@@ -10,6 +10,7 @@
 // 0.87.00 2025/04/05 getTemplateDir/display/createTemplate/_getSmartyObj/_getTemplateIdを追加。
 // 0.87.01 2025/04/08 ディレクトリを移動。
 // 1.08.00 2026/07/15 #phpdoc から fallback へ改称(未導入時フォールバックとして用途を明確化)。
+// 1.08.02 2026/07/16 assignを追加(アプリがsmarty->assignを使用するが、未導入時に型解決できずP1013となるため)。
 // -------------------------------------------------------------------------------------------------
 use tsubasaLibs\web\WebException;
 
@@ -27,6 +28,18 @@ class Smarty {
 
     // ---------------------------------------------------------------------------------------------
     // メソッド
+    /**
+     * テンプレート変数を割り当て
+     * 
+     * @param string|array $tpl_var 変数名(または 変数名=>値 の配列)
+     * @param mixed $value 値
+     * @param bool $nocache キャッシュしないかどうか
+     * @return static チェーン用
+     */
+    public function assign($tpl_var, $value = null, $nocache = false) {
+        return $this;
+    }
+
     /**
      * テンプレートディレクトリを登録
      * 

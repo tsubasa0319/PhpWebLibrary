@@ -47,6 +47,7 @@
 //                    引数型 self のメソッドの @param static を @param self へ統一(PHPは引数型に static を宣言不可)。
 //                    updateFromTable の @param 変数名のスペルミス($tempRrecord)を $tempRecord へ訂正。
 //                    bindValueInsert の @param 型名のスペルミス(TableStatemtne)を TableStatement へ訂正し、コード補完(P1133)を改善。
+// 1.08.02 2026/07/16 update の makeBindItemsSetFromRecord 呼び出しから余分な第2引数を削除し、コード補完(P1119)を改善。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -64,7 +65,7 @@ use Stringable;
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 1.08.01
+ * @version 1.08.02
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -680,7 +681,7 @@ class Table {
 
         // バインド
         $this->bindValueUpdate($stmt,
-            $this->makeBindItemsSetFromRecord($record, $record->getChangedIds()),
+            $this->makeBindItemsSetFromRecord($record),
             $this->makeBindItemsWhereEqFromRecord($key, $record),
             $this->makeBindItemsWhereChangedOnlyFromRecord($record)
         );

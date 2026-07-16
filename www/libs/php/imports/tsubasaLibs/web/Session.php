@@ -10,6 +10,7 @@
 // 0.87.04 2025/04/24 DB保存に対応。デバッグモードを実装。
 // 0.90.01 2025/05/17 セッションを破棄して異常終了させる際の例外出力を訂正。
 // 1.04.00 2026/05/23 セッション開始時、CSRFトークンが未発行であれば発行するように対応。
+// 1.08.02 2026/07/16 getIniSaveHandler の @return の型を宣言(string)へ合わせ、コード補完(P1131)を改善。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/SessionHandOver.php';
@@ -23,7 +24,7 @@ use Exception;
  * セッションクラス
  * 
  * @since 0.00.00
- * @version 1.04.00
+ * @version 1.08.02
  */
 class Session {
     // ---------------------------------------------------------------------------------------------
@@ -96,7 +97,7 @@ class Session {
      * 保存方法を取得
      * 
      * @since 0.87.04
-     * @return bool 保存方法
+     * @return string 保存方法
      */
     static public function getIniSaveHandler(): string {
         return ini_get('session.save_handler');

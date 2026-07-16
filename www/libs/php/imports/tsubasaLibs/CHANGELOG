@@ -1,3 +1,24 @@
+1.08.02 2026/07/16 16:07:13
+[変更]
+メソッド引数へネイティブ型ヒントを付与し、コード補完(P1132)を改善。
+database/advance/TableCamelCase.php: convertSnakeToCamel/convertCamelToSnake の $id へ string 型ヒント(戻り値型 string も付与)。
+common/Exception.php, encryption/Password.php, web/Message.php, web/SessionSecure.php: closure の引数へ型ヒント(array/int)を付与。
+smarty/plugins/function.attributes.php: smarty_function_attributes の $params へ array 型ヒントを付与。
+docblock の型が名前空間解決できずコード補完(P1133)が効かない箇所へ、use を追加。
+cli/TaskImportCsv.php: exec の @throws Exception が名前空間 tsubasaLibs\cli 下で誤解決されるため、use Exception で組み込みの \Exception へ解決。
+メソッド名のスペルミスを訂正。
+api/MethodByKeys.php: 内部専用の addChache/editChache を addCache/editCache へ改名(protected・外部参照なしを shiwake_mask で確認済)。
+Smarty未導入時のフォールバックに不足メソッドを追加し、コード補完(P1013)を改善。
+smarty/fallback/Smarty.php: assign を追加(Events の smarty->assign が、未導入時フォールバックの \Smarty に解決され未定義だった)。
+while 条件内でのみ代入される変数が未定義となり得る(P1116)箇所を、ループ前初期化で訂正。
+web/SessionHandOver.php: switch の $isStarted をループ前に false で初期化($times=0 で必ず初回代入されるため挙動不変)。
+条件付きでのみ代入される変数が未定義となり得る(P1116)箇所を、初期化で訂正。
+web/SessionUnit.php: removeOldUnits の $lastAccessTime をループ先頭で null 初期化(!$isTarget のときのみ代入・参照だが intelephense が連動を追えないため。$isTarget は false→true のみで実行時は安全・挙動不変)。
+メソッド呼び出しの引数過多(P1119)を訂正。
+database/Table.php: update の makeBindItemsSetFromRecord 呼び出しから余分な第2引数($record->getChangedIds())を削除(メソッドは1引数・内部で getChangedIds を使用するため冗長。PHPは余分引数を無視するため挙動不変)。
+@return の型が宣言型と非互換でコード補完(P1131)が効かない箇所を訂正。
+web/Session.php: getIniSaveHandler の @return bool を、宣言型に合わせ @return string へ訂正。
+
 1.08.01 2026/07/16 15:10:42
 [変更]
 トレイトからホストクラスのプロパティ参照でコード補完(型解決)が効かない問題(P1014)を修正。

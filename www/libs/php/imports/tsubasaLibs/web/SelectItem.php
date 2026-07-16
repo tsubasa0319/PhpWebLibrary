@@ -4,6 +4,7 @@
 //
 // History:
 // 0.19.00 2024/04/16 作成。
+// 1.08.01 2026/07/16 getForSmarty の @return の配列形状記法を訂正し、コード補完(P1129)を改善。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 
@@ -11,7 +12,7 @@ namespace tsubasaLibs\web;
  * 選択項目クラス
  * 
  * @since 0.19.00
- * @version 0.19.00
+ * @version 1.08.01
  */
 class SelectItem {
     // ---------------------------------------------------------------------------------------------
@@ -50,7 +51,7 @@ class SelectItem {
     /**
      * Smarty用に取得
      * 
-     * @return array<value:string, label:string>
+     * @return array{value: string, label: string}
      */
     public function getForSmarty(): array {
         return [

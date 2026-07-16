@@ -43,6 +43,10 @@
 //                    Item::$columnName / Table::$tableName を参照するように対応。
 // 1.05.03 2026/06/05 makeSqlUpdateFromTable: Microsoft SQL Server の UPDATE FROM JOIN 構文に対応。
 // 1.08.00 2026/07/15 phpdocの複数行記述の継続行に行末2スペース(Markdown改行)を付与。
+// 1.08.01 2026/07/16 @param の documented 型が宣言型と非互換な箇所を訂正し、コード補完(P1131)を改善。
+//                    引数型 self のメソッドの @param static を @param self へ統一(PHPは引数型に static を宣言不可)。
+//                    updateFromTable の @param 変数名のスペルミス($tempRrecord)を $tempRecord へ訂正。
+//                    bindValueInsert の @param 型名のスペルミス(TableStatemtne)を TableStatement へ訂正し、コード補完(P1133)を改善。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/TableStatement.php';
@@ -60,7 +64,7 @@ use Stringable;
  * テーブルクラス
  * 
  * @since 0.00.00
- * @version 1.08.00
+ * @version 1.08.01
  */
 class Table {
     // ---------------------------------------------------------------------------------------------
@@ -576,7 +580,7 @@ class Table {
      * tbl.[PrimaryKey1] IS NULL
      * 
      * @since 0.38.00
-     * @param static $tempTable 追加元のテーブル
+     * @param self $tempTable 追加元のテーブル
      * @return int|false 件数
      */
     public function insertFromTable(self $tempTable): int|false {
@@ -604,7 +608,7 @@ class Table {
      * メソッド名を、insertFromTableへ変更しました。
      * 
      * @deprecated
-     * @param static $tempTable 追加元のテーブル
+     * @param self $tempTable 追加元のテーブル
      * @return int|false 件数
      */
     public function insertsFromTable(self $tempTable): int|false {
@@ -619,7 +623,7 @@ class Table {
      * FROM [AnotherTable] AS tmp
      * 
      * @since 0.37.00
-     * @param static $tempTable 追加元のテーブル
+     * @param self $tempTable 追加元のテーブル
      * @return int|false 件数
      */
     public function insertAllFromTable(self $tempTable): int|false {
@@ -714,8 +718,8 @@ class Table {
      * ...
      * 
      * @since 0.38.00
-     * @param static $tempTable 他のテーブル
-     * @param ?Record $tempRrecord 他のテーブルへINSERTした時のレコード
+     * @param self $tempTable 他のテーブル
+     * @param ?Record $tempRecord 他のテーブルへINSERTした時のレコード
      * @return int|false 件数
      */
     public function updateFromTable(self $tempTable, ?Record $tempRecord = null): int|false {
@@ -749,7 +753,7 @@ class Table {
      * メソッド名を、updateFromTableへ変更しました。
      * 
      * @deprecated
-     * @param static $tempTable テーブル
+     * @param self $tempTable テーブル
      * @param ?Record $recordForTarget 対象とする項目を決定するためのレコード
      * @return int|false 件数
      */
@@ -1472,7 +1476,7 @@ class Table {
      * INSERT時に設定する項目IDリストを取得(別テーブルより)
      * 
      * @since 0.48.00
-     * @param static $table 別テーブル
+     * @param self $table 別テーブル
      * @return string[] 項目IDのリスト
      */
     protected function getIntoIdsFromTable(self $table): array {
@@ -1524,7 +1528,7 @@ class Table {
      * UPDATE時に設定する項目IDリストを取得(別テーブルより)
      * 
      * @since 0.48.00
-     * @param static $table 別テーブル
+     * @param self $table 別テーブル
      * @return string[] 項目IDのリスト
      */
     protected function getSetIdsFromTable(self $table): array {
@@ -3783,7 +3787,7 @@ class Table {
     /**
      * 値をバインド(INSERTクエリ)
      * 
-     * @param TableStatemtne $stmt テーブルステートメント
+     * @param TableStatement $stmt テーブルステートメント
      * @param array{item: Item, value: mixed}[] $bindItemsValues VALUES句のバインド項目のリスト
      */
     protected function bindValueInsert(TableStatement $stmt, array $bindItemsValues) {
@@ -3793,7 +3797,7 @@ class Table {
     /**
      * SQLステートメントを生成(INSERTクエリ、別のテーブルより、キー重複分は除外)
      * 
-     * @param static $tempTable 別のテーブル
+     * @param self $tempTable 別のテーブル
      * @return string SQLステートメント
      */
     protected function makeSqlInsertFromTable(self $tempTable): string {
@@ -3868,7 +3872,7 @@ class Table {
      * SQLステートメントを生成(INSERTクエリ、別のテーブルより、全レコード)
      * 
      * @since 0.37.00
-     * @param static $tempTable 別のテーブル
+     * @param self $tempTable 別のテーブル
      * @return string SQLステートメント
      */
     protected function makeSqlInsertAllFromTable(self $tempTable): string {
@@ -3974,7 +3978,7 @@ class Table {
     /**
      * SQLステートメントを生成(UPDATEクエリ、他のテーブルより)
      * 
-     * @param static $tempTable 他のテーブル
+     * @param self $tempTable 他のテーブル
      * @param ?string[] $tempIntoItemIds 他のテーブルへINSERTした時の項目IDリスト
      * @return string|false SQLステートメント、更新対象とする項目がなければfalse
      */

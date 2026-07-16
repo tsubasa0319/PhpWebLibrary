@@ -12,6 +12,10 @@
 // 0.40.02 2024/09/27 一時利用のため、ステートメントインスタンスがNullである場合を考慮。
 // 0.48.00 2024/10/24 入力/変更されている項目IDのリストを取得を追加。
 // 0.90.00 2025/05/16 項目IDリストの取得を、項目リストのインスタンスで行い効率化。
+// 1.08.01 2026/07/16 メソッド引数の型を明示(型ヒント/@param)しコード補完(P1132)を改善。
+//                    convertName の @param として記述されていた戻り値説明を @return へ訂正。
+//                    setValuesFromRecord の @param static を、宣言型に合わせ @param self へ訂正(P1131)。
+//                    set{Creator,Inputter,Updater}Values の @param database\Executor を、自名前空間のため Executor へ訂正(P1133)。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/advance/RecordCreatorItem.php';
@@ -25,7 +29,7 @@ use Stringable;
  * レコードクラス
  * 
  * @since 0.00.00
- * @version 0.90.00
+ * @version 1.08.01
  */
 class Record {
     // ---------------------------------------------------------------------------------------------
@@ -64,6 +68,10 @@ class Record {
 
     // ---------------------------------------------------------------------------------------------
     // マジックメソッド
+    /**
+     * @param string $name 項目ID
+     * @param mixed $value 項目値
+     */
     public function __set($name, $value) {
         // 定義されていない項目を、自動追加させない
         // 変換後の名前で、値を取得
@@ -123,7 +131,7 @@ class Record {
     /**
      * 他のレコードより値を受け取り
      * 
-     * @param static $that レコード
+     * @param self $that レコード
      * @return static チェーン用
      */
     public function setValuesFromRecord(self $that): static {
@@ -289,7 +297,7 @@ class Record {
      * 項目IDを変換(DB→クラス)
      * 
      * @param string $id 項目ID
-     * @param string 変換後
+     * @return string 変換後
      */
     protected function convertName(string $id): string {
         $table = $this->stmt?->table;
@@ -337,21 +345,21 @@ class Record {
     /**
      * 作成者を設定
      * 
-     * @param database\Executor $executor 実行者
+     * @param Executor $executor 実行者
      */
     protected function setCreatorValues(Executor $executor) {}
 
     /**
      * 入力者を設定
      * 
-     * @param database\Executor $executor 実行者
+     * @param Executor $executor 実行者
      */
     protected function setInputterValues(Executor $executor) {}
 
     /**
      * 更新者を設定(INSERT用)
      * 
-     * @param database\Executor $executor 実行者
+     * @param Executor $executor 実行者
      */
     protected function setUpdaterValues(Executor $executor) {}
 }

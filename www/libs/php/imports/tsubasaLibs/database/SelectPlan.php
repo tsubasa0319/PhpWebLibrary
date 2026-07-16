@@ -6,6 +6,8 @@
 // 0.16.00 2024/03/23 作成。
 // 0.51.00 2024/11/13 検索速度を上げるため、検索値がStringableの場合は先にstringへ変換するように変更。
 // 0.58.00 2024/12/12 対象レコードかどうかチェックを、部分一致の場合に失敗する不備に対して修正。
+// 1.08.01 2026/07/16 メソッド引数の型を明示(型ヒント/@param)しコード補完(P1132)を改善。
+//                    isTarget/setValues の @param に欠落していた変数名を補完。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 use Stringable;
@@ -14,7 +16,7 @@ use Stringable;
  * 選択クエリ予定クラス
  * 
  * @since 0.16.00
- * @version 0.58.00
+ * @version 1.08.01
  */
 class SelectPlan {
     // ---------------------------------------------------------------------------------------------
@@ -37,7 +39,7 @@ class SelectPlan {
     /**
      * 重複した予定かどうか
      * 
-     * @param array 検索値リスト
+     * @param array $values 検索値リスト
      * @return bool 結果
      */
     public function isDuplicate($values): bool {
@@ -47,7 +49,7 @@ class SelectPlan {
     /**
      * 対象レコードかどうか
      * 
-     * @param Record レコード
+     * @param Record $record レコード
      * @return bool 結果
      */
     public function isTarget(Record $record): bool {
@@ -77,7 +79,7 @@ class SelectPlan {
     /**
      * 検索値リストを設定
      * 
-     * @param array 検索値リスト
+     * @param array $values 検索値リスト
      */
     public function setValues(array $values) {
         // 検索値リストを値型へ変換

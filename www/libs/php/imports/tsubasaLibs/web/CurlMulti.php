@@ -7,6 +7,7 @@
 // 0.90.00 2025/05/16 非同期処理の開始時、既に開始済があれば先に終わらせる。
 // 0.90.06 2025/05/30 非同期処理を開始時、cURLの準備処理を実行する。
 //                    cURLインスタンスを追加時、そのインスタンスのマルチハンドルに自身を設定。
+// 1.08.01 2026/07/16 @param の変数名欠落を補完し、コード補完(型解決)を改善。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use CurlHandle, CurlMultiHandle;
@@ -15,7 +16,7 @@ use CurlHandle, CurlMultiHandle;
  * cURLマルチクラス
  * 
  * @since 0.88.00
- * @version 0.90.06
+ * @version 1.08.01
  */
 class CurlMulti {
     // ---------------------------------------------------------------------------------------------
@@ -56,7 +57,7 @@ class CurlMulti {
      * curl_multi_add_handle関数をメソッド化したものですが、  
      * 代わりにaddCurlメソッドの使用を推奨。
      * 
-     * @param CurlHandle cURLハンドル
+     * @param CurlHandle $curlHandle cURLハンドル
      * @return int 成功時に0、エラー時にエラーコード(CURLM_*)
      */
     public function addHandle(CurlHandle $curlHandle): int {
@@ -91,7 +92,7 @@ class CurlMulti {
      * curl_multi_remove_handle関数をメソッド化したものですが、  
      * 代わりにremoveCurlメソッドの使用を推奨。
      * 
-     * @param CurlHandle cURLハンドル
+     * @param CurlHandle $curlHandle cURLハンドル
      * @return int 成功時に0、エラー時にエラーコード(CURLM_*)
      */
     public function removeHandle(CurlHandle $curlHandle): int {
@@ -105,7 +106,7 @@ class CurlMulti {
     /**
      * 返り値を取得
      * 
-     * @param CurlHandle cURLハンドル
+     * @param CurlHandle $curlHandle cURLハンドル
      * @return ?string 返り値
      */
     static public function getcontent(CurlHandle $curlHandle): ?string {

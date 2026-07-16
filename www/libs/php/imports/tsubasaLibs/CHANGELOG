@@ -1,3 +1,28 @@
+1.08.01 2026/07/16 15:10:42
+[変更]
+トレイトからホストクラスのプロパティ参照でコード補完(型解決)が効かない問題(P1014)を修正。
+database/advance/ItemsCreatorItem.php, ItemsInputterItem.php, ItemsUpdaterItem.php: ホスト Items の $addedItems を @property で宣言(intelephense の @mixin はトレイトのプロパティを解決しないため)。
+メソッド引数へ @param を付与/補完し、コード補完(P1132)を改善。
+api/MethodByKeys.php, database/Record.php, database/SelectArrayPlan.php, database/SelectPlan.php, web/Curl.php, web/Menu.php: クラスメソッドへ @param を付与(欠落変数名の補完含む)。
+smarty/plugins/function.attributes.php: smarty_function_attributes へ docblock(@param/@return)を付与。
+@param の変数名欠落を補完し、コード補完(型解決)を改善。一部は @param として記述されていた戻り値説明を @return へ訂正。
+web/CurlMulti.php, web/Curl.php, database/SelectArrayPlan.php, database/SelectPlan.php, database/DbBase.php, database/TemporaryTableMakerMssql.php, type/ArrayLike.php, pdf/Tcpdf.php: @param に欠落していた変数名を補完。
+database/Record.php, web/Curl.php: @param として記述されていた戻り値説明を @return へ訂正。
+@param の documented 型が宣言型と非互換でコード補完(P1131)が効かない箇所を訂正。
+database/Table.php, database/Record.php: 引数型 self のメソッドの @param static を @param self へ統一(PHPは引数型に static を宣言不可のため documented を宣言型へ合わせる)。
+@param が実引数と一致しない箇所を訂正し、コード補完を改善。
+database/Table.php: updateFromTable の @param 変数名のスペルミス($tempRrecord)を $tempRecord へ訂正。
+type/Date.php: setDate の @param を実引数へ整合($year→$dateOrYear、型の static を self へ(?self|int)、説明も更新)。
+web/InputItemBase.php: setSessionValueFromValue に残る実在しない引数の @param を削除。
+自名前空間を冗長に前置した docblock 型でコード補完(P1133)が効かない箇所を訂正。
+database/Record.php: setCreatorValues/setInputterValues/setUpdaterValues の @param database\Executor を Executor へ訂正(自名前空間 tsubasaLibs\database 下で database\ を前置すると database\database\Executor と二重解決され未定義になるため)。
+docblock の配列形状記法が不正でパースエラー(P1129)となる箇所を訂正。
+web/SelectItem.php: getForSmarty の @return を array<value:string, label:string> から array{value: string, label: string} へ訂正(名前付きキーの配列形状は <> ではなく {} 記法)。
+ジェネリック array< の閉じ > 欠落でパースエラー(P1129)となる箇所を訂正。
+database/TemporaryTableMakerMssql.php: $indexes の @var で array<int, array{...} に閉じ > を補完(他の $columns/$types/$indexesColumns は <> 均衡済で対象外)。
+docblock の型名のスペルミスで未定義型となる(P1133)箇所を訂正。
+database/Table.php: bindValueInsert の @param 型名 TableStatemtne を TableStatement へ訂正。
+
 1.08.00 2026/07/15 11:56:00
 [変更]
 phpdocの複数行記述の継続行に行末2スペース(Markdown改行)を付与し、プレビューでの行連結を防止。

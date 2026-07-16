@@ -14,6 +14,8 @@
 // 0.88.00 2025/05/10 マルチハンドルをクラス化し、他のcURLと合わせて非同期処理できるように対応。
 //                    標準のcURL関数をメソッド化。マルチハンドルの処理の記述を外部へ移動。
 // 0.90.06 2025/05/30 マルチハンドルを変更時、マルチハンドルにハンドルを追加。
+// 1.08.01 2026/07/16 メソッド引数の型を明示(型ヒント/@param)しコード補完(P1132)を改善。
+//                    @param に欠落していた変数名を補完。makeReceiveDataForJson の戻り値説明を @return へ訂正。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 require_once __DIR__ . '/CurlMulti.php';
@@ -23,7 +25,7 @@ use CurlHandle;
  * cURLクラス
  * 
  * @since 0.09.00
- * @version 0.90.06
+ * @version 1.08.01
  */
 class Curl {
     // ---------------------------------------------------------------------------------------------
@@ -192,7 +194,7 @@ class Curl {
      * 接続タイムアウト時間を変更
      * 
      * @since 0.78.00
-     * @param ?int 接続タイムアウト時間(秒)
+     * @param ?int $connectTimeout 接続タイムアウト時間(秒)
      * @return static チェーン用
      */
     public function setConnectTimeout(?int $connectTimeout): static {
@@ -215,7 +217,7 @@ class Curl {
      * タイムアウト時間を変更
      * 
      * @since 0.78.00
-     * @param ?int タイムアウト時間(秒)
+     * @param ?int $timeout タイムアウト時間(秒)
      * @return static チェーン用
      */
     public function setTimeout(?int $timeout): static {
@@ -523,6 +525,7 @@ class Curl {
      * 文字セットを変換(PHPでの処理用)
      * 
      * @since 0.31.02
+     * @param string $charset 変換前の文字セット
      * @return ?string 変換後の文字セット
      */
     protected function convertCharsetForPhp($charset): ?string {
@@ -552,7 +555,7 @@ class Curl {
      * 
      * @since 0.31.02
      * @param string $response JSON形式の返り値
-     * @param mixed デコード後
+     * @return mixed デコード後
      */
     protected function makeReceiveDataForJson($response) {
         $info = $this->getinfo();

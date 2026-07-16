@@ -43,7 +43,7 @@
 //                    Item::$columnName / Table::$tableName を参照するように対応。
 // 1.05.03 2026/06/05 makeSqlUpdateFromTable: Microsoft SQL Server の UPDATE FROM JOIN 構文に対応。
 // 1.08.00 2026/07/15 phpdocの複数行記述の継続行に行末2スペース(Markdown改行)を付与。
-// 1.08.01 2026/07/15 @param の documented 型が宣言型と非互換な箇所を訂正し、コード補完(P1131)を改善。
+// 1.08.01 2026/07/16 @param の documented 型が宣言型と非互換な箇所を訂正し、コード補完(P1131)を改善。
 //                    引数型 self のメソッドの @param static を @param self へ統一(PHPは引数型に static を宣言不可)。
 //                    updateFromTable の @param 変数名のスペルミス($tempRrecord)を $tempRecord へ訂正。
 //                    bindValueInsert の @param 型名のスペルミス(TableStatemtne)を TableStatement へ訂正し、コード補完(P1133)を改善。

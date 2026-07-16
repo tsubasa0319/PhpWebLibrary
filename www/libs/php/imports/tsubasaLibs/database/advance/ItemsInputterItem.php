@@ -7,7 +7,7 @@
 //
 // History:
 // 0.00.00 2024/01/23 作成。
-// 1.08.01 2026/07/15 ホスト Items のプロパティ($addedItems)を @property で宣言し、trait 内参照の未定義プロパティ警告(P1014)を解消。
+// 1.08.01 2026/07/16 ホスト Items のプロパティ($addedItems)を @property で宣言し、trait 内参照の未定義プロパティ警告(P1014)を解消。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database\advance;
 use tsubasaLibs\database;

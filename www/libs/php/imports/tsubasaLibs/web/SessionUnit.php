@@ -13,6 +13,7 @@
 // 0.87.03 2025/04/09 古い画面単位セッションを削除時、自身も削除してしまっていたので訂正。
 // 0.87.04 2025/04/24 ユニットIDの変更を専用メソッドへ独立。現在画面の情報のリファレンスを追加。
 //                    デバッグ出力を追加。
+// 1.08.02 2026/07/16 removeOldUnits にて条件付き代入の $lastAccessTime をループ先頭で初期化し、コード補完(P1116)を改善。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use tsubasaLibs\type;
@@ -22,7 +23,7 @@ use Exception;
  * 画面単位セッションクラス
  * 
  * @since 0.03.00
- * @version 0.87.04
+ * @version 1.08.02
  */
 class SessionUnit {
     // ---------------------------------------------------------------------------------------------
@@ -252,6 +253,7 @@ class SessionUnit {
             if ($unitId === $this->unitId) continue;
 
             $isTarget = false;
+            $lastAccessTime = null;
 
             // 不正
             if (!is_array($this->refference[$unitId] ?? null)) $isTarget = true;

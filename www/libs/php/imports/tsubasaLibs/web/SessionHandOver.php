@@ -7,6 +7,7 @@
 // 0.87.02 2025/04/08 リファレンスの更新を自動化。
 // 0.87.04 2025/04/24 メソッドが動的から静的に変わった分を対応。
 //                    引き継ぎ先へ切り替える時の存在チェックの方法を変更。
+// 1.08.02 2026/07/16 switch にて while 条件内でのみ代入される $isStarted をループ前に初期化し、コード補完(P1116)を改善。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\web;
 use tsubasaLibs\type;
@@ -15,7 +16,7 @@ use tsubasaLibs\type;
  * セッション引き継ぎ先クラス
  * 
  * @since 0.87.00
- * @version 0.87.04
+ * @version 1.08.02
  */
 class SessionHandOver {
     // ---------------------------------------------------------------------------------------------
@@ -143,6 +144,7 @@ class SessionHandOver {
 
         // 開始
         $times = 0;
+        $isStarted = false;
         while ($times++ < 1000 and $isStarted = $this->session->start(true)) {
             // 処理中でなければ、続行
             if (!$this->isWorking) break;

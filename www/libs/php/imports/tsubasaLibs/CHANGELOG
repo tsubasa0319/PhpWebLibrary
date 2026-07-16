@@ -10,6 +10,8 @@ cli/TaskImportCsv.php: exec の @throws Exception が名前空間 tsubasaLibs\cl
 api/MethodByKeys.php: 内部専用の addChache/editChache を addCache/editCache へ改名(protected・外部参照なしを shiwake_mask で確認済)。
 Smarty未導入時のフォールバックに不足メソッドを追加し、コード補完(P1013)を改善。
 smarty/fallback/Smarty.php: assign を追加(Events の smarty->assign が、未導入時フォールバックの \Smarty に解決され未定義だった)。
+while 条件内でのみ代入される変数が未定義となり得る(P1116)箇所を、ループ前初期化で訂正。
+web/SessionHandOver.php: switch の $isStarted をループ前に false で初期化($times=0 で必ず初回代入されるため挙動不変)。
 
 1.08.01 2026/07/16 15:10:42
 [変更]

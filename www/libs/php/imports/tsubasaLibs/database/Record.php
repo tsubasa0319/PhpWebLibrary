@@ -15,6 +15,7 @@
 // 1.08.01 2026/07/15 メソッド引数の型を明示(型ヒント/@param)しコード補完(P1132)を改善。
 //                    convertName の @param として記述されていた戻り値説明を @return へ訂正。
 //                    setValuesFromRecord の @param static を、宣言型に合わせ @param self へ訂正(P1131)。
+//                    set{Creator,Inputter,Updater}Values の @param database\Executor を、自名前空間のため Executor へ訂正(P1133)。
 // -------------------------------------------------------------------------------------------------
 namespace tsubasaLibs\database;
 require_once __DIR__ . '/advance/RecordCreatorItem.php';
@@ -344,21 +345,21 @@ class Record {
     /**
      * 作成者を設定
      * 
-     * @param database\Executor $executor 実行者
+     * @param Executor $executor 実行者
      */
     protected function setCreatorValues(Executor $executor) {}
 
     /**
      * 入力者を設定
      * 
-     * @param database\Executor $executor 実行者
+     * @param Executor $executor 実行者
      */
     protected function setInputterValues(Executor $executor) {}
 
     /**
      * 更新者を設定(INSERT用)
      * 
-     * @param database\Executor $executor 実行者
+     * @param Executor $executor 実行者
      */
     protected function setUpdaterValues(Executor $executor) {}
 }

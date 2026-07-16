@@ -14,6 +14,8 @@ database/Table.php, database/Record.php: 引数型 self のメソッドの @para
 database/Table.php: updateFromTable の @param 変数名のスペルミス($tempRrecord)を $tempRecord へ訂正。
 type/Date.php: setDate の @param を実引数へ整合($year→$dateOrYear、型の static を self へ(?self|int)、説明も更新)。
 web/InputItemBase.php: setSessionValueFromValue に残る実在しない引数の @param を削除。
+自名前空間を冗長に前置した docblock 型でコード補完(P1133)が効かない箇所を訂正。
+database/Record.php: setCreatorValues/setInputterValues/setUpdaterValues の @param database\Executor を Executor へ訂正(自名前空間 tsubasaLibs\database 下で database\ を前置すると database\database\Executor と二重解決され未定義になるため)。
 
 1.08.00 2026/07/15 11:56:00
 [変更]
